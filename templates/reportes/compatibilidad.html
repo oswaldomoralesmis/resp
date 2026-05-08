@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Compatibilidad{% endblock %}
+{% block page_title %}Compatibilidad de Horarios{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header">🔄 Servidores con Más de una Plaza</div>
+  <div class="card-body" style="padding:0;">
+    <table class="table-resp">
+      <thead><tr><th>Expediente</th><th>RFC</th><th>Nombre Completo</th><th>Correo Institucional</th></tr></thead>
+      <tbody>
+        {% for s in servidores %}
+        <tr>
+          <td>{{ s.expediente }}</td><td><code>{{ s.rfc }}</code></td>
+          <td>{{ s.primer_apellido }} {{ s.nombre }}</td><td>{{ s.correo_institucional|default:"—" }}</td>
+        </tr>
+        {% empty %}<tr><td colspan="4" class="text-muted text-center" style="padding:30px;">Sin registros.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+
+
+
+{% block content %}
+<div class="breadcrumb-resp">
+  <a href="{% url 'dashboard' %}">&#127968; Inicio</a>
+  <span class="sep">&#8250;</span>
+  <a href="{% url 'servidor_list' %}">Padr&oacute;n</a>
+  <span class="sep">&#8250;</span>
+  <span>{{ titulo }}</span>
+</div>
+
+<div class="card">
+  <div class="card-header">&#128100; {{ titulo }}</div>
+  <div class="card-body">
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      <!-- IDENTIFICACIÓN -->
+      <div class="form-section-title" style="margin-bottom:12px;">&#128203; Identificaci&oacute;n</div>
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <label for="{{ form.expediente.id_for_label }}" class="form-label fw-semibold">{{ form.expediente.label }} <span class="text-danger">*</span></label>
+          {{ form.expediente }}
+          {% if form.expediente.errors %}<div class="text-danger small mt-1">{{ form.expediente.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div class="col-md-4">
+          <label for="{{ form.rfc.id_for_label }}" class="form-label fw-semibold">{{ form.rfc.label }} <span class="text-danger">*</span></label>
+          {{ form.rfc }}
+          {% if form.rfc.errors %}<div class="text-danger small mt-1">{{ form.rfc.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div class="col-md-4">
+          <label for="{{ form.curp.id_for_label }}" class="form-label fw-semibold">{{ form.curp.label }} <span class="text-danger">*</span></label>
+          {{ form.curp }}
+          {% if form.curp.errors %}<div class="text-danger small mt-1">{{ form.curp.errors|join:", " }}</div>{% endif %}
+        </div>
+      </div>
+
+      <!-- NOMBRE -->
+      <div class="form-section-title" style="margin-bottom:12px;">&#128100; Nombre</div>
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <label for="{{ form.nombre.id_for_label }}" class="form-label fw-semibold">{{ form.nombre.label }} <span class="text-danger">*</span></label>
+          {{ form.nombre }}
+          {% if form.nombre.errors %}<div class="text-danger small mt-1">{{ form.nombre.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div class="col-md-4">
+          <label for="{{ form.primer_apellido.id_for_label }}" class="form-label fw-semibold">{{ form.primer_apellido.label }} <span class="text-danger">*</span></label>
+          {{ form.primer_apellido }}
+          {% if form.primer_apellido.errors %}<div class="text-danger small mt-1">{{ form.primer_apellido.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div class="col-md-4">
+          <label for="{{ form.segundo_apellido.id_for_label }}" class="form-label fw-semibold">{{ form.segundo_apellido.label }}</label>
+          {{ form.segundo_apellido }}
+          {% if form.segundo_apellido.errors %}<div class="text-danger small mt-1">{{ form.segundo_apellido.errors|join:", " }}</div>{% endif %}
+        </div>
+      </div>
+
+      <!-- DATOS PERSONALES -->
+      <div class="form-section-title" style="margin-bottom:12px;">&#128197; Datos Personales</div>
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <label for="{{ form.fecha_nacimiento.id_for_label }}" class="form-label fw-semibold">{{ form.fecha_nacimiento.label }} <span class="text-danger">*</span></label>
+          {{ form.fecha_nacimiento }}
+          {% if form.fecha_nacimiento.errors %}<div class="text-danger small mt-1">{{ form.fecha_nacimiento.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div class="col-md-3">
+          <label for="{{ form.sexo.id_for_label }}" class="form-label fw-semibold">{{ form.sexo.label }} <span class="text-danger">*</span></label>
+          {{ form.sexo }}
+          {% if form.sexo.errors %}<div class="text-danger small mt-1">{{ form.sexo.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div class="col-md-3">
+          <label for="{{ form.estado_civil.id_for_label }}" class="form-label fw-semibold">{{ form.estado_civil.label }}</label>
+          {{ form.estado_civil }}
+        </div>
+        <div class="col-md-3">
+          <label for="{{ form.correo_institucional.id_for_label }}" class="form-label fw-semibold">{{ form.correo_institucional.label }}</label>
+          {{ form.correo_institucional }}
+        </div>
+        <div class="col-md-3">
+          <label for="{{ form.entidad_nacimiento.id_for_label }}" class="form-label fw-semibold">{{ form.entidad_nacimiento.label }}</label>
+          {{ form.entidad_nacimiento }}
+        </div>
+        <div class="col-md-3">
+          <label for="{{ form.pais_nacimiento.id_for_label }}" class="form-label fw-semibold">{{ form.pais_nacimiento.label }}</label>
+          {{ form.pais_nacimiento }}
+        </div>
+      </div>
+
+      <!-- SEGURIDAD SOCIAL -->
+      <div class="form-section-title" style="margin-bottom:12px;">&#127973; Seguridad Social y Sindicato</div>
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <label for="{{ form.iss.id_for_label }}" class="form-label fw-semibold">{{ form.iss.label }} <span class="text-danger">*</span></label>
+          {{ form.iss }}
+        </div>
+        <div class="col-md-3">
+          <label for="{{ form.nss.id_for_label }}" class="form-label fw-semibold">{{ form.nss.label }}</label>
+          {{ form.nss }}
+        </div>
+        <div class="col-md-2">
+          <label for="{{ form.sindicalizado.id_for_label }}" class="form-label fw-semibold">{{ form.sindicalizado.label }}</label>
+          {{ form.sindicalizado }}
+        </div>
+        <div class="col-md-4">
+          <label for="{{ form.sindicato.id_for_label }}" class="form-label fw-semibold">{{ form.sindicato.label }}</label>
+          {{ form.sindicato }}
+        </div>
+        <div class="col-md-3">
+          <label for="{{ form.tiene_otra_plaza.id_for_label }}" class="form-label fw-semibold">{{ form.tiene_otra_plaza.label }}</label>
+          {{ form.tiene_otra_plaza }}
+        </div>
+      </div>
+
+      <hr style="border-color:#dee2e6;margin:8px 0 20px;">
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn-institucional">&#128190; {{ accion }}</button>
+        <a href="{% url 'servidor_list' %}" class="btn-outline">&#10005; Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto uppercase RFC y CURP mientras se escribe
+document.querySelectorAll('.text-uppercase').forEach(el => {
+  el.addEventListener('input', function() { this.value = this.value.toUpperCase(); });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Información Básica{% endblock %}
+{% block page_title %}Información Básica Quincenal{% endblock %}
+{% block content %}
+<div class="breadcrumb-resp"><a href="{% url 'dashboard' %}">🏠</a><span class="sep">›</span><span>Inf. Básica</span></div>
+<div class="card">
+  <div class="card-header" style="justify-content:space-between;">
+    <span>📋 Registros Quincenales</span>
+    <a href="{% url 'info_basica_create' %}" class="btn-institucional btn-sm">➕ Nuevo Registro</a>
+  </div>
+  <div class="card-body">
+    <form method="get" style="margin-bottom:16px;">
+      <div class="search-bar"><span>🔍</span>
+        <input type="text" name="q" value="{{ request.GET.q }}" placeholder="RFC, nombre, ID plaza...">
+        <button type="submit">Buscar</button>
+      </div>
+    </form>
+    <div style="overflow-x:auto;">
+      <table class="table-resp">
+        <thead><tr><th>Quincena</th><th>Servidor</th><th>Dependencia</th><th>Plaza</th><th>Estatus</th><th>Neto</th><th>Acciones</th></tr></thead>
+        <tbody>
+          {% for r in registros %}
+          <tr>
+            <td><span class="badge-blue">{{ r.quincena }}</span></td>
+            <td>{{ r.servidor.primer_apellido }} {{ r.servidor.nombre }}</td>
+            <td>{{ r.dependencia.clave }}</td>
+            <td>{{ r.id_plaza }}</td>
+            <td>{{ r.estatus_plaza }}</td>
+            <td>${{ r.total_neto|floatformat:2 }}</td>
+            <td><a href="{% url 'info_basica_update' r.pk %}" class="btn-institucional btn-sm">Editar</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" class="text-muted text-center" style="padding:30px;">Sin registros.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if is_paginated %}
+    <div class="pagination-resp">
+      {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}" class="page-btn">‹</a>{% endif %}
+      <span class="page-btn active">{{ page_obj.number }}</span>
+      {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}" class="page-btn">›</a>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

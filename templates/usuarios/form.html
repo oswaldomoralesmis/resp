@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+
+
+
+{% block content %}
+<div class="breadcrumb-resp">
+  <a href="{% url 'usuario_list' %}">&#127968; Usuarios</a>
+  <span class="sep">&#8250;</span>
+  <span>{{ titulo }}</span>
+</div>
+
+<div class="card" style="max-width:760px;">
+  <div class="card-header">&#128100; {{ titulo }}</div>
+  <div class="card-body">
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      <div class="form-section-title" style="margin-bottom:12px;">&#128273; Acceso al Sistema</div>
+      <div class="row g-3 mb-4">
+        <div class="col-md-6">
+          <label for="{{ form.username.id_for_label }}" class="form-label fw-semibold">{{ form.username.label }} <span class="text-danger">*</span></label>
+          {{ form.username }}
+          {% if form.username.errors %}<div class="text-danger small mt-1">{{ form.username.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div class="col-md-6">
+          <label for="{{ form.email.id_for_label }}" class="form-label fw-semibold">{{ form.email.label }} <span class="text-danger">*</span></label>
+          {{ form.email }}
+          {% if form.email.errors %}<div class="text-danger small mt-1">{{ form.email.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div class="col-md-6">
+          <label for="{{ form.password1.id_for_label }}" class="form-label fw-semibold">{{ form.password1.label }} <span class="text-danger">*</span></label>
+          {{ form.password1 }}
+          {% if form.password1.errors %}<div class="text-danger small mt-1">{{ form.password1.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div class="col-md-6">
+          <label for="{{ form.password2.id_for_label }}" class="form-label fw-semibold">{{ form.password2.label }} <span class="text-danger">*</span></label>
+          {{ form.password2 }}
+          {% if form.password2.errors %}<div class="text-danger small mt-1">{{ form.password2.errors|join:", " }}</div>{% endif %}
+        </div>
+      </div>
+
+      <div class="form-section-title" style="margin-bottom:12px;">&#128100; Datos del Servidor P&uacute;blico</div>
+      <div class="row g-3 mb-4">
+        <div class="col-md-6">
+          <label for="{{ form.first_name.id_for_label }}" class="form-label fw-semibold">{{ form.first_name.label }}</label>
+          {{ form.first_name }}
+        </div>
+        <div class="col-md-6">
+          <label for="{{ form.last_name.id_for_label }}" class="form-label fw-semibold">{{ form.last_name.label }}</label>
+          {{ form.last_name }}
+        </div>
+        <div class="col-md-4">
+          <label for="{{ form.rfc.id_for_label }}" class="form-label fw-semibold">{{ form.rfc.label }}</label>
+          {{ form.rfc }}
+        </div>
+        <div class="col-md-4">
+          <label for="{{ form.curp.id_for_label }}" class="form-label fw-semibold">{{ form.curp.label }}</label>
+          {{ form.curp }}
+        </div>
+      </div>
+
+      <div class="form-section-title" style="margin-bottom:12px;">&#127959; Permisos y Acceso</div>
+      <div class="row g-3 mb-4">
+        <div class="col-md-6">
+          <label for="{{ form.rol.id_for_label }}" class="form-label fw-semibold">{{ form.rol.label }} <span class="text-danger">*</span></label>
+          {{ form.rol }}
+          {% if form.rol.errors %}<div class="text-danger small mt-1">{{ form.rol.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div class="col-md-6">
+          <label for="{{ form.dependencia.id_for_label }}" class="form-label fw-semibold">{{ form.dependencia.label }}</label>
+          {{ form.dependencia }}
+        </div>
+      </div>
+
+      <hr style="margin:8px 0 16px;">
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn-institucional">&#128190; Guardar</button>
+        <a href="{% url 'usuario_list' %}" class="btn-outline">&#10005; Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.text-uppercase').forEach(el => {
+  el.addEventListener('input', function() { this.value = this.value.toUpperCase(); });
+});
+</script>
+{% endblock %}

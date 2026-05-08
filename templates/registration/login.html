@@ -1,0 +1,45 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acceso — RESP Tabasco</title>
+  <link rel="stylesheet" href="{% static 'css/resp.css' %}">
+</head>
+<body>
+<div class="login-page">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-escudo">🏛️</div>
+      <h1>RESP</h1>
+      <p>Registro Estatal de Servidores Públicos<br>Gobierno del Estado de Tabasco</p>
+    </div>
+    {% if form.errors %}
+    <div class="alert-resp alert-danger">❌ Correo o contraseña incorrectos.</div>
+    {% endif %}
+    {% for msg in messages %}
+    <div class="alert-resp alert-{{ msg.tags }}">{{ msg }}</div>
+    {% endfor %}
+    <form method="post">
+      {% csrf_token %}
+      <div style="margin-bottom:16px;">
+        <label class="form-label">Correo institucional</label>
+        <input type="email" name="username" class="form-control" placeholder="usuario@tabasco.gob.mx" autofocus required>
+      </div>
+      <div style="margin-bottom:24px;">
+        <label class="form-label">Contraseña</label>
+        <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+      </div>
+      <input type="hidden" name="next" value="{{ next }}">
+      <button type="submit" class="btn-institucional w-100" style="justify-content:center;padding:12px;">
+        🔐 Iniciar Sesión
+      </button>
+    </form>
+    <div style="margin-top:20px;text-align:center;font-size:12px;color:#999;">
+      ¿Problemas para acceder? Contacta al administrador del sistema.
+    </div>
+  </div>
+</div>
+</body>
+</html>

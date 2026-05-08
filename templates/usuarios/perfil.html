@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Mi Perfil{% endblock %}
+{% block page_title %}Mi Perfil{% endblock %}
+{% block content %}
+<div class="card" style="max-width:600px;">
+  <div class="card-header">👤 Información del Usuario</div>
+  <div class="card-body">
+    <div class="grid-2">
+      <div><div class="form-label">Nombre</div><div>{{ request.user.get_full_name }}</div></div>
+      <div><div class="form-label">Correo institucional</div><div>{{ request.user.email }}</div></div>
+      <div><div class="form-label">RFC</div><div>{{ request.user.rfc|default:"—" }}</div></div>
+      <div><div class="form-label">CURP</div><div>{{ request.user.curp|default:"—" }}</div></div>
+      <div><div class="form-label">Rol</div><div><span class="badge-blue">{{ request.user.get_rol_display }}</span></div></div>
+      <div><div class="form-label">Dependencia</div><div>{{ request.user.dependencia|default:"—" }}</div></div>
+    </div>
+    <div style="margin-top:20px;">
+      <a href="{% url 'usuario_update' request.user.pk %}" class="btn-institucional btn-sm">✏️ Editar perfil</a>
+      <a href="{% url 'cambiar_contrasena' %}" class="btn-outline btn-sm">🔐 Cambiar contraseña</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

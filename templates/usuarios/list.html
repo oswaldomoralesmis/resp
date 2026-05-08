@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Usuarios{% endblock %}
+{% block page_title %}Control de Usuarios{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header" style="justify-content:space-between;">
+    <span>👥 Usuarios del Sistema</span>
+    <a href="{% url 'usuario_create' %}" class="btn-institucional btn-sm">➕ Nuevo Usuario</a>
+  </div>
+  <div class="card-body" style="padding:0;">
+    <table class="table-resp">
+      <thead><tr><th>Nombre</th><th>Correo</th><th>RFC</th><th>Rol</th><th>Dependencia</th><th>Estado</th><th>Acciones</th></tr></thead>
+      <tbody>
+        {% for u in usuarios %}
+        <tr>
+          <td>{{ u.get_full_name|default:u.username }}</td>
+          <td>{{ u.email }}</td>
+          <td><code>{{ u.rfc|default:"—" }}</code></td>
+          <td><span class="badge-blue">{{ u.get_rol_display }}</span></td>
+          <td>{{ u.dependencia|default:"—" }}</td>
+          <td>{% if u.activo_sistema %}<span class="badge-activo">Activo</span>{% else %}<span class="badge-inactivo">Inactivo</span>{% endif %}</td>
+          <td>
+            <a href="{% url 'usuario_update' u.pk %}" class="btn-institucional btn-sm">Editar</a>
+            {% if u.activo_sistema and u.pk != request.user.pk %}
+            <a href="{% url 'usuario_inactivar' u.pk %}" class="btn-rojo btn-sm">Inactivar</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}<tr><td colspan="7" class="text-muted text-center" style="padding:30px;">Sin usuarios.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

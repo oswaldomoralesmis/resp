@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Programas{% endblock %}
+{% block page_title %}Programas Presupuestales{% endblock %}
+
+{% block content %}
+<div class="breadcrumb-resp"><a href="{% url 'catalogo_index' %}">&#127968; Cat&aacute;logos</a><span class="sep">&#8250;</span><span>Programas</span></div>
+<div class="card">
+  <div class="card-header" style="justify-content:space-between;">
+    <span>&#128203; Programas Presupuestales{% if page_obj %} <span class="badge-blue">{{ page_obj.paginator.count }}</span>{% endif %}</span>
+    <div class="d-flex gap-2">
+      <a href="{% url 'descargar_catalogo' 'programas' %}" class="btn-dorado btn-sm">&#8659; Excel</a>
+      <a href="{% url 'programa_create' %}" class="btn-institucional btn-sm">&#10133; Nuevo</a>
+    </div>
+  </div>
+  <div class="card-body">
+    <form method="get" class="mb-3">
+      <div class="row g-2 align-items-center">
+        <div class="col-md-4"><div class="search-bar"><span>&#128269;</span><input type="text" name="q" value="{{ q }}" placeholder="Clave o descripci&oacute;n..."><button type="submit">Buscar</button></div></div>
+        <div class="col-md-4"><select name="dep" class="form-select form-select-sm" onchange="this.form.submit()"><option value="">Todas las dependencias</option>{% for d in dependencias %}<option value="{{ d.id }}" {% if dep_sel == d.id|stringformat:"s" %}selected{% endif %}>{{ d.clave }} - {{ d.descripcion|truncatechars:25 }}</option>{% endfor %}</select></div>
+        {% if q %}<div class="col-auto"><a href="." class="btn-outline btn-sm">&#10005; Limpiar</a></div>{% endif %}
+      </div>
+    </form>
+    <div style="overflow-x:auto;">
+      <table class="table-resp">
+        <thead><tr><th>Ejercicio</th><th>Dependencia</th><th>Unidad</th><th>Clave Programa</th><th>Descripci&oacute;n</th><th>Acciones</th></tr></thead>
+        <tbody>
+          {% for r in registros %}
+          <tr>
+            <td>{{ r.ejercicio }}</td><td><span class="badge-blue">{{ r.dependencia.clave }}</span></td>
+            <td>{{ r.unidad.clave }}</td><td><strong>{{ r.clave }}</strong></td>
+            <td>{{ r.descripcion|truncatechars:50 }}</td>
+            <td><a href="{% url 'programa_update' r.pk %}" class="btn-institucional btn-sm">Editar</a></td>
+          </tr>
+          {% empty %}<tr><td colspan="6" class="text-muted text-center" style="padding:28px;">Sin registros.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if is_paginated %}<div class="pagination-resp mt-3">{% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&q={{ q }}&dep={{ dep_sel }}" class="page-btn">&#8249;</a>{% endif %}<span class="page-btn active">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>{% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&q={{ q }}&dep={{ dep_sel }}" class="page-btn">&#8250;</a>{% endif %}</div>{% endif %}
+  </div>
+</div>
+{% endblock %}

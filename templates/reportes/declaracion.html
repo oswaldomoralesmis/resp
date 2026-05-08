@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Declaración Patrimonial{% endblock %}
+{% block page_title %}Sujetos Obligados — Declaración Patrimonial{% endblock %}
+{% block content %}
+<div class="flex-between mb-3 no-print">
+  <div></div>
+  <div style="display:flex;gap:8px;">
+    <button onclick="window.print()" class="btn-institucional btn-sm">🖨️ Imprimir</button>
+  </div>
+</div>
+<div class="card">
+  <div class="card-header">⚖️ Padrón de Sujetos Obligados a Declaración Patrimonial</div>
+  <div class="card-body" style="padding:0;">
+    <table class="table-resp">
+      <thead><tr><th>Dependencia</th><th>Expediente</th><th>RFC</th><th>Nombre Completo</th><th>Plaza</th><th>Tipo Declaración</th></tr></thead>
+      <tbody>
+        {% for r in registros %}
+        <tr>
+          <td>{{ r.dependencia.clave }}</td>
+          <td>{{ r.servidor.expediente }}</td>
+          <td><code>{{ r.servidor.rfc }}</code></td>
+          <td>{{ r.servidor.primer_apellido }} {{ r.servidor.segundo_apellido }} {{ r.servidor.nombre }}</td>
+          <td>{{ r.id_plaza }}</td>
+          <td>{{ r.tipo_declaracion|default:"—" }}</td>
+        </tr>
+        {% empty %}<tr><td colspan="6" class="text-muted text-center" style="padding:30px;">Sin registros.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

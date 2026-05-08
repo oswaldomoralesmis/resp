@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Padrón{% endblock %}
+{% block page_title %}Padrón de Servidores Públicos{% endblock %}
+{% block content %}
+<div class="breadcrumb-resp">
+  <a href="{% url 'dashboard' %}">🏠 Inicio</a><span class="sep">›</span><span>Padrón</span>
+</div>
+<div class="card">
+  <div class="card-header" style="justify-content:space-between;">
+    <span>👤 Servidores Públicos</span>
+    <div style="display:flex;gap:8px;">
+      <a href="{% url 'servidor_create' %}" class="btn-institucional btn-sm">➕ Nuevo</a>
+      <a href="{% url 'exportar_excel' 'padron' %}" class="btn-dorado btn-sm">📥 Excel</a>
+    </div>
+  </div>
+  <div class="card-body">
+    <form method="get" style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
+      <div class="search-bar" style="flex:1;min-width:220px;">
+        <span>🔍</span>
+        <input type="text" name="q" value="{{ q }}" placeholder="RFC, CURP, nombre, expediente...">
+        <button type="submit">Buscar</button>
+      </div>
+      <select name="dependencia" class="form-select" style="max-width:240px;" onchange="this.form.submit()">
+        <option value="">Todas las dependencias</option>
+        {% for d in dependencias %}<option value="{{ d.id }}" {% if request.GET.dependencia == d.id|stringformat:"s" %}selected{% endif %}>{{ d.clave }} - {{ d.descripcion|truncatechars:30 }}</option>{% endfor %}
+      </select>
+      {% if q or request.GET.dependencia %}<a href="{% url 'servidor_list' %}" class="btn-outline btn-sm">✕ Limpiar</a>{% endif %}
+    </form>
+
+    {% if servidores %}
+    <div style="overflow-x:auto;">
+      <table class="table-resp">
+        <thead>
+          <tr>
+            <th>Expediente</th><th>RFC</th><th>Nombre Completo</th><th>Sexo</th>
+            <th>ISS</th><th>Correo Institucional</th><th>Estatus</th><th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in servidores %}
+          <tr>
+            <td><strong>{{ s.expediente }}</strong></td>
+            <td><code>{{ s.rfc }}</code></td>
+            <td>{{ s.primer_apellido }} {{ s.segundo_apellido }} {{ s.nombre }}</td>
+            <td>{{ s.sexo }}</td>
+            <td>{{ s.iss }}</td>
+            <td>{{ s.correo_institucional|default:"—" }}</td>
+            <td>{% if s.activo %}<span class="badge-activo">Activo</span>{% else %}<span class="badge-inactivo">Baja</span>{% endif %}</td>
+            <td>
+              <a href="{% url 'servidor_detail' s.pk %}" class="btn-outline btn-sm">Ver</a>
+              <a href="{% url 'servidor_update' s.pk %}" class="btn-institucional btn-sm">Editar</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if is_paginated %}
+    <div class="pagination-resp">
+      {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&q={{ q }}" class="page-btn">‹ Anterior</a>{% endif %}
+      <span class="page-btn active">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&q={{ q }}" class="page-btn">Siguiente ›</a>{% endif %}
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="text-muted text-center" style="padding:40px;">
+      {% if q %}No se encontraron resultados para "<strong>{{ q }}</strong>".{% else %}No hay servidores registrados aún.{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

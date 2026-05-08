@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% block title %}Cargar Layout{% endblock %}
+{% block page_title %}Carga de Información{% endblock %}
+
+{% block content %}
+<div class="breadcrumb-resp">
+  <a href="{% url 'dashboard' %}">&#127968;</a>
+  <span class="sep">&#8250;</span>
+  <a href="{% url 'carga_list' %}">Cargas</a>
+  <span class="sep">&#8250;</span>
+  <span>Nueva Carga</span>
+</div>
+
+<div class="grid-2" style="align-items:start;">
+
+  <!-- ── Formulario de carga ── -->
+  <div class="card">
+    <div class="card-header">&#128228; Subir Archivo Layout</div>
+    <div class="card-body">
+
+      <div class="alert-resp alert-info" style="margin-bottom:20px;">
+        &#8505;&#65039; Formatos aceptados: <strong>.xlsx, .xls</strong>.
+        Aseg&uacute;rese de usar la plantilla oficial antes de subir el archivo.
+      </div>
+
+      <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+
+        <div style="margin-bottom:16px;">
+          <label class="form-label">Per&iacute;odo (Quincena) <span style="color:var(--institucional-rojo);">*</span></label>
+          {{ form.periodo }}
+          {% if form.periodo.errors %}
+          <div style="color:var(--institucional-rojo);font-size:12px;margin-top:3px;">{{ form.periodo.errors|join:", " }}</div>
+          {% endif %}
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <label class="form-label">Dependencia <span style="color:var(--institucional-rojo);">*</span></label>
+          {{ form.dependencia }}
+          {% if form.dependencia.errors %}
+          <div style="color:var(--institucional-rojo);font-size:12px;margin-top:3px;">{{ form.dependencia.errors|join:", " }}</div>
+          {% endif %}
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <label class="form-label">Tipo de Layout <span style="color:var(--institucional-rojo);">*</span></label>
+          {{ form.tipo }}
+          {% if form.tipo.errors %}
+          <div style="color:var(--institucional-rojo);font-size:12px;margin-top:3px;">{{ form.tipo.errors|join:", " }}</div>
+          {% endif %}
+        </div>
+
+        <div style="margin-bottom:24px;">
+          <label class="form-label">Archivo <span style="color:var(--institucional-rojo);">*</span></label>
+          <div style="border:2px dashed #BDC3C7;border-radius:8px;padding:20px;text-align:center;
+                      transition:all .2s;cursor:pointer;background:#FAFAFA;"
+               id="drop-zone"
+               ondragover="this.style.borderColor='var(--institucional-azul)';this.style.background='#EBF5FB';event.preventDefault();"
+               ondragleave="this.style.borderColor='#BDC3C7';this.style.background='#FAFAFA';"
+               ondrop="handleDrop(event);"
+               onclick="document.getElementById('id_archivo').click();">
+            <div style="font-size:36px;margin-bottom:8px;">&#128196;</div>
+            <div style="font-weight:600;color:var(--institucional-azul);margin-bottom:4px;">
+              Arrastra el archivo aqu&iacute; o haz clic para seleccionar
+            </div>
+            <div class="text-muted" id="nombre-archivo">Formatos: .xlsx, .xls</div>
+          </div>
+          <div style="display:none;">{{ form.archivo }}</div>
+          {% if form.archivo.errors %}
+          <div style="color:var(--institucional-rojo);font-size:12px;margin-top:3px;">{{ form.archivo.errors|join:", " }}</div>
+          {% endif %}
+        </div>
+
+        <div style="display:flex;gap:10px;">
+          <button type="submit" class="btn-verde" style="flex:1;justify-content:center;padding:11px;">
+            &#128228; Subir y Procesar
+          </button>
+          <a href="{% url 'carga_list' %}" class="btn-outline">&#10005; Cancelar</a>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Descarga de plantillas ── -->
+  <div>
+    <div class="card">
+      <div class="card-header">&#128229; Descargar Plantillas Oficiales</div>
+      <div class="card-body">
+        <p style="font-size:13px;color:#555;margin-bottom:16px;">
+          Usa estas plantillas para preparar tu informaci&oacute;n.
+          Ya incluyen encabezados, instrucciones y filas de ejemplo.
+        </p>
+
+        <!-- Información Básica -->
+        <a href="{% url 'descargar_plantilla' 'basica' %}" style="text-decoration:none;">
+          <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;
+                      border:1.5px solid #D6EAF8;border-radius:8px;margin-bottom:10px;
+                      background:#EBF5FB;transition:all .2s;cursor:pointer;"
+               onmouseover="this.style.borderColor='var(--institucional-azul)';this.style.background='#D6EAF8';"
+               onmouseout="this.style.borderColor='#D6EAF8';this.style.background='#EBF5FB';">
+            <div style="width:44px;height:44px;background:var(--institucional-azul);border-radius:10px;
+                        display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">
+              &#128202;
+            </div>
+            <div style="flex:1;">
+              <div style="font-weight:700;font-size:14px;color:var(--institucional-azul);">
+                Layout Informaci&oacute;n B&aacute;sica
+              </div>
+              <div style="font-size:12px;color:#666;margin-top:2px;">
+                Actualizaci&oacute;n quincenal &bull; 42 columnas &bull; Incluye instrucciones
+              </div>
+            </div>
+            <div style="color:var(--institucional-azul);font-size:20px;">&#8659;</div>
+          </div>
+        </a>
+
+        <!-- Datos Personales -->
+        <a href="{% url 'descargar_plantilla' 'personales' %}" style="text-decoration:none;">
+          <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;
+                      border:1.5px solid #D5F5E3;border-radius:8px;margin-bottom:10px;
+                      background:#EAFAF1;transition:all .2s;cursor:pointer;"
+               onmouseover="this.style.borderColor='var(--institucional-verde)';this.style.background='#D5F5E3';"
+               onmouseout="this.style.borderColor='#D5F5E3';this.style.background='#EAFAF1';">
+            <div style="width:44px;height:44px;background:var(--institucional-verde);border-radius:10px;
+                        display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">
+              &#128100;
+            </div>
+            <div style="flex:1;">
+              <div style="font-weight:700;font-size:14px;color:var(--institucional-verde);">
+                Layout Datos Personales
+              </div>
+              <div style="font-size:12px;color:#666;margin-top:2px;">
+                Actualizaci&oacute;n anual &bull; 18 columnas &bull; Domicilio y datos de salud
+              </div>
+            </div>
+            <div style="color:var(--institucional-verde);font-size:20px;">&#8659;</div>
+          </div>
+        </a>
+
+        <!-- Bajas -->
+        <a href="{% url 'descargar_plantilla' 'bajas' %}" style="text-decoration:none;">
+          <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;
+                      border:1.5px solid #FADBD8;border-radius:8px;margin-bottom:4px;
+                      background:#FDEDEC;transition:all .2s;cursor:pointer;"
+               onmouseover="this.style.borderColor='var(--institucional-rojo)';this.style.background='#FADBD8';"
+               onmouseout="this.style.borderColor='#FADBD8';this.style.background='#FDEDEC';">
+            <div style="width:44px;height:44px;background:var(--institucional-rojo);border-radius:10px;
+                        display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">
+              &#128683;
+            </div>
+            <div style="flex:1;">
+              <div style="font-weight:700;font-size:14px;color:var(--institucional-rojo);">
+                Layout Bajas
+              </div>
+              <div style="font-size:12px;color:#666;margin-top:2px;">
+                Actualizaci&oacute;n quincenal &bull; 12 columnas &bull; Incluye cat&aacute;logo de motivos
+              </div>
+            </div>
+            <div style="color:var(--institucional-rojo);font-size:20px;">&#8659;</div>
+          </div>
+        </a>
+
+      </div>
+    </div>
+
+    <!-- Recordatorio -->
+    <div class="card" style="border-left:4px solid var(--institucional-dorado);">
+      <div class="card-body" style="padding:14px 16px;">
+        <div style="font-weight:700;font-size:13px;color:var(--institucional-dorado);margin-bottom:6px;">
+          &#9888;&#65039; Recuerda antes de subir
+        </div>
+        <ul style="margin:0;padding-left:18px;font-size:12px;color:#555;line-height:1.8;">
+          <li>Usar <strong>MAYÚSCULAS</strong> en todos los campos de texto</li>
+          <li>Campos opcionales vacíos: escribir <strong>NULL</strong></li>
+          <li>Fechas en formato <strong>DD/MM/AAAA</strong></li>
+          <li>No modificar encabezados ni agregar columnas</li>
+          <li>Los datos deben iniciar en la <strong>fila 6</strong></li>
+          <li>No dejar filas vacías entre registros</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Actualizar nombre del archivo al seleccionar
+document.getElementById('id_archivo').addEventListener('change', function() {
+  const nombre = this.files[0] ? this.files[0].name : 'Formatos: .xlsx, .xls';
+  document.getElementById('nombre-archivo').textContent = nombre;
+  document.getElementById('nombre-archivo').style.color = this.files[0] ? 'var(--institucional-verde)' : '';
+  document.getElementById('nombre-archivo').style.fontWeight = this.files[0] ? '600' : '';
+});
+
+// Drag & drop
+function handleDrop(e) {
+  e.preventDefault();
+  const dropZone = document.getElementById('drop-zone');
+  dropZone.style.borderColor = '#BDC3C7';
+  dropZone.style.background = '#FAFAFA';
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const input = document.getElementById('id_archivo');
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  input.files = dt.files;
+  document.getElementById('nombre-archivo').textContent = file.name;
+  document.getElementById('nombre-archivo').style.color = 'var(--institucional-verde)';
+  document.getElementById('nombre-archivo').style.fontWeight = '600';
+}
+
+// Seleccionar tipo automáticamente según el nombre del archivo
+document.getElementById('id_archivo').addEventListener('change', function() {
+  const nombre = this.files[0] ? this.files[0].name.toLowerCase() : '';
+  const select = document.getElementById('id_tipo');
+  if (!select) return;
+  if (nombre.includes('basica') || nombre.includes('básica')) select.value = 'basica';
+  else if (nombre.includes('personal')) select.value = 'personales';
+  else if (nombre.includes('baja')) select.value = 'bajas';
+});
+</script>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Categorías{% endblock %}
+{% block page_title %}Catálogo de Categorías{% endblock %}
+
+{% block content %}
+<div class="breadcrumb-resp"><a href="{% url 'catalogo_index' %}">&#127968; Cat&aacute;logos</a><span class="sep">&#8250;</span><span>Categor&iacute;as</span></div>
+<div class="card">
+  <div class="card-header" style="justify-content:space-between;">
+    <span>&#127991;&#65039; Categor&iacute;as{% if page_obj %} <span class="badge-blue">{{ page_obj.paginator.count }}</span>{% endif %}</span>
+    <div class="d-flex gap-2">
+      <a href="{% url 'descargar_catalogo' 'categoria' %}" class="btn-dorado btn-sm">&#8659; Excel</a>
+      <a href="{% url 'categoria_create' %}" class="btn-institucional btn-sm">&#10133; Nueva</a>
+    </div>
+  </div>
+  <div class="card-body">
+    <form method="get" class="mb-3">
+      <div class="row g-2">
+        <div class="col-md-5"><div class="search-bar"><span>&#128269;</span><input type="text" name="q" value="{{ q }}" placeholder="Clave o descripci&oacute;n..."><button type="submit">Buscar</button></div></div>
+        {% if q %}<div class="col-auto"><a href="." class="btn-outline btn-sm">&#10005; Limpiar</a></div>{% endif %}
+      </div>
+    </form>
+    <div style="overflow-x:auto;">
+      <table class="table-resp">
+        <thead><tr><th>Clave</th><th>Descripci&oacute;n</th><th>Tipo Plaza</th><th>TP</th><th>Nivel</th><th>Acciones</th></tr></thead>
+        <tbody>
+          {% for r in registros %}
+          <tr>
+            <td><strong>{{ r.clave }}</strong></td><td>{{ r.descripcion }}</td>
+            <td>{{ r.tipo_plaza }}</td><td><span class="badge-blue">{{ r.tp }}</span></td><td>{{ r.nivel }}</td>
+            <td><a href="{% url 'categoria_update' r.pk %}" class="btn-institucional btn-sm">Editar</a></td>
+          </tr>
+          {% empty %}<tr><td colspan="6" class="text-muted text-center" style="padding:28px;">Sin registros.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if is_paginated %}<div class="pagination-resp mt-3">{% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&q={{ q }}" class="page-btn">&#8249;</a>{% endif %}<span class="page-btn active">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>{% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&q={{ q }}" class="page-btn">&#8250;</a>{% endif %}</div>{% endif %}
+  </div>
+</div>
+{% endblock %}

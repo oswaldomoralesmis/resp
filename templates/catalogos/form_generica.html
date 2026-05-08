@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="breadcrumb-resp">
+  <a href="{% url 'catalogo_index' %}">&#127968; Cat&aacute;logos</a>
+  <span class="sep">&#8250;</span><a href="{{ back_url }}">&#8592; Regresar</a>
+  <span class="sep">&#8250;</span><span>{{ titulo }}</span>
+</div>
+
+<div class="card" style="max-width:680px;">
+  <div class="card-header">&#9999;&#65039; {{ titulo }}</div>
+  <div class="card-body">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="row g-3">
+        {% for field in form %}
+        <div class="
+          {% if field.name in 'descripcion,nombre,domicilio' %}col-md-12
+          {% elif field.name in 'ejercicio,subcategoria,nivel,clave_num,num_exterior,num_interior,cp,tp' %}col-md-3
+          {% elif field.name in 'clave,abreviatura,tipo_contrato,nivel_educativo,municipio,localidad,estado,familia_linguistica,estatus,tipo_plaza' %}col-md-4
+          {% elif field.name in 'dependencia,unidad,programa,entidad,tipo_contratacion' %}col-md-6
+          {% elif field.name in 'superficie_total,superficie_construida,telefono,identificador_cndh' %}col-md-4
+          {% else %}col-md-8{% endif %}
+        ">
+          <label for="{{ field.id_for_label }}" class="form-label fw-semibold">
+            {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
+          </label>
+          {{ field }}
+          {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+          {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|join:", " }}</div>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <hr class="mt-4 mb-3">
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn-institucional">&#128190; Guardar</button>
+        <a href="{{ back_url }}" class="btn-outline">&#10005; Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.querySelectorAll('.text-uppercase').forEach(el => {
+  el.addEventListener('input', () => { el.value = el.value.toUpperCase(); });
+});
+</script>
+{% endblock %}

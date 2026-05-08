@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+<div class="breadcrumb-resp"><span>🏠 Inicio</span></div>
+<div class="grid-4" style="margin-bottom:24px;">
+  <div class="stat-card">
+    <div class="stat-icon azul">👤</div>
+    <div><div class="stat-number">{{ total_servidores|default:"0" }}</div><div class="stat-label">Servidores Activos</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon verde">🏢</div>
+    <div><div class="stat-number">{{ total_dependencias|default:"0" }}</div><div class="stat-label">Dependencias</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon dorado">📅</div>
+    <div><div class="stat-number">{{ periodo_actual.quincena|default:"—" }}</div><div class="stat-label">Período Activo</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon rojo">📊</div>
+    <div><div class="stat-number">{{ stats_estatus|length }}</div><div class="stat-label">Tipos de Estatus</div></div>
+  </div>
+</div>
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">⚡ Acciones Rápidas</div>
+    <div class="card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <a href="{% url 'servidor_create' %}" class="btn-institucional" style="justify-content:center;">➕ Nuevo Servidor</a>
+      <a href="{% url 'carga_new' %}" class="btn-verde" style="justify-content:center;">📤 Cargar Layout</a>
+      <a href="{% url 'reporte_padron' %}" class="btn-outline" style="justify-content:center;">📄 Ver Padrón</a>
+      <a href="{% url 'exportar_excel' 'padron' %}" class="btn-dorado" style="justify-content:center;">📥 Exportar Excel</a>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">📊 Distribución por Estatus de Plaza</div>
+    <div class="card-body">
+      {% if stats_estatus %}
+        {% for s in stats_estatus %}
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f0f0f0;">
+          <span>{{ s.estatus_plaza__descripcion|default:"Sin estatus" }}</span>
+          <span class="badge-blue">{{ s.total }}</span>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="text-muted text-center" style="padding:20px;">Sin datos registrados aún.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+<div class="card">
+  <div class="card-header">📅 Período de Carga Vigente</div>
+  <div class="card-body">
+    {% if periodo_actual %}
+    <div class="grid-3">
+      <div><div class="form-label">Quincena</div><div style="font-size:22px;font-weight:800;color:var(--institucional-azul);">{{ periodo_actual.quincena }}</div></div>
+      <div><div class="form-label">Inicio de recepción</div><div style="font-size:15px;font-weight:600;">{{ periodo_actual.fecha_inicio }}</div></div>
+      <div><div class="form-label">Fin de recepción</div><div style="font-size:15px;font-weight:600;">{{ periodo_actual.fecha_fin }}</div></div>
+    </div>
+    {% else %}
+    <div class="alert-resp alert-warning">⚠️ No hay período activo. <a href="{% url 'periodo_create' %}">Configurar</a></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Cambiar Contraseña{% endblock %}
+{% block page_title %}Cambiar Contraseña{% endblock %}
+{% block content %}
+<div class="card" style="max-width:450px;margin:0 auto;">
+  <div class="card-header">🔐 Cambiar Contraseña</div>
+  <div class="card-body">
+    {% if request.user.contrasena_temporal %}
+    <div class="alert-resp alert-warning">⚠️ Está usando una contraseña temporal. Por favor cámbiela ahora.</div>
+    {% endif %}
+    <form method="post">{% csrf_token %}
+      {% for field in form %}
+      <div style="margin-bottom:14px;"><label class="form-label">{{ field.label }}</label>{{ field }}
+        {% if field.errors %}<div style="color:var(--institucional-rojo);font-size:12px;">{{ field.errors|join:", " }}</div>{% endif %}
+      </div>
+      {% endfor %}
+      <button type="submit" class="btn-institucional w-100" style="justify-content:center;margin-top:8px;">🔐 Actualizar Contraseña</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Inactivar Usuario{% endblock %}
+{% block page_title %}Inactivar Usuario{% endblock %}
+{% block content %}
+<div class="card" style="max-width:500px;margin:0 auto;">
+  <div class="card-header" style="background:var(--institucional-rojo);color:#fff;">⚠️ Inactivar Usuario</div>
+  <div class="card-body">
+    <div class="alert-resp alert-warning">Se inactivará a: <strong>{{ usuario.get_full_name }}</strong> ({{ usuario.email }})</div>
+    <form method="post">{% csrf_token %}
+      <div style="margin-bottom:16px;"><label class="form-label">Motivo de inactivación *</label>
+        <textarea name="motivo" class="form-control" rows="3" required placeholder="Describa el motivo..."></textarea>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button type="submit" class="btn-rojo">Confirmar</button>
+        <a href="{% url 'usuario_list' %}" class="btn-outline">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

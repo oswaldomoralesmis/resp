@@ -1,0 +1,82 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}RESP{% endblock %} — Registro Estatal de Servidores Públicos</title>
+  <link rel="stylesheet" href="{% static 'css/resp.css' %}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="login-escudo" style="width:48px;height:48px;font-size:22px;margin:0 auto 8px;">🏛️</div>
+    <div class="sidebar-logo">RESP<small>Gobierno del Estado de Tabasco</small></div>
+  </div>
+  <nav class="sidebar-nav">
+    <span class="nav-section">Principal</span>
+    <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"><span class="nav-icon">📊</span> Dashboard</a>
+    <span class="nav-section">Servidores Públicos</span>
+    <a href="{% url 'servidor_list' %}" class="nav-link {% if 'servidor' in request.resolver_match.url_name|default:'' %}active{% endif %}"><span class="nav-icon">👤</span> Padrón</a>
+    <a href="{% url 'info_basica_list' %}" class="nav-link {% if 'info_basica' in request.resolver_match.url_name|default:'' %}active{% endif %}"><span class="nav-icon">📋</span> Inf. Básica Quincenal</a>
+    <span class="nav-section">Carga de Información</span>
+    <a href="{% url 'carga_new' %}" class="nav-link {% if request.resolver_match.url_name == 'carga_new' %}active{% endif %}"><span class="nav-icon">📤</span> Cargar Layout</a>
+    <a href="{% url 'carga_list' %}" class="nav-link {% if request.resolver_match.url_name == 'carga_list' %}active{% endif %}"><span class="nav-icon">📁</span> Historial Cargas</a>
+    <a href="{% url 'calendario_cargas' %}" class="nav-link {% if request.resolver_match.url_name == 'calendario_cargas' %}active{% endif %}"><span class="nav-icon">📅</span> Calendario</a>
+    <span class="nav-section">Reportes</span>
+    <a href="{% url 'reporte_padron' %}" class="nav-link"><span class="nav-icon">📄</span> Padrón General</a>
+    <a href="{% url 'reporte_declaracion' %}" class="nav-link"><span class="nav-icon">⚖️</span> Declaración Patrimonial</a>
+    <a href="{% url 'reporte_entrega_recepcion' %}" class="nav-link"><span class="nav-icon">🤝</span> Entrega-Recepción</a>
+    <a href="{% url 'reporte_bajas' %}" class="nav-link"><span class="nav-icon">🚫</span> Bajas</a>
+    <a href="{% url 'reporte_compatibilidad' %}" class="nav-link"><span class="nav-icon">🔄</span> Compatibilidad</a>
+    <a href="{% url 'reporte_estadisticas' %}" class="nav-link"><span class="nav-icon">📈</span> Estadísticas</a>
+    <span class="nav-section">Administración</span>
+    <a href="{% url 'catalogo_index' %}" class="nav-link"><span class="nav-icon">🗂️</span> Catálogos</a>
+    <a href="{% url 'usuario_list' %}" class="nav-link"><span class="nav-icon">👥</span> Usuarios</a>
+    <a href="{% url 'periodo_list' %}" class="nav-link"><span class="nav-icon">⚙️</span> Períodos de Carga</a>
+  </nav>
+  <div class="sidebar-footer">
+    <div>RESP v1.0 &mdash; {% now "Y" %}</div>
+    <div style="margin-top:4px;"><a href="{% url 'perfil' %}">Mi perfil</a> &bull; 
+      <form method="post" action="{% url 'logout' %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" style="background:none;border:none;cursor:pointer;
+          color:rgba(255,255,255,.70);font-size:12px;padding:0;font-family:inherit;">
+          Cerrar sesión
+        </button>
+      </form>      
+    </div>
+  </div>
+</aside>
+
+<header class="topbar">
+  <div class="topbar-title">{% block page_title %}RESP{% endblock %}</div>
+  <div class="topbar-actions">
+    {% if request.user.is_authenticated and request.user.contrasena_temporal %}
+    <a href="{% url 'cambiar_contrasena' %}" class="badge-pendiente" style="text-decoration:none;">⚠️ Cambiar contraseña temporal</a>
+    {% endif %}
+    {% if request.user.is_authenticated %}
+    <a href="{% url 'perfil' %}" class="user-pill">
+      <div class="user-avatar">{{ request.user.first_name|first|upper }}{{ request.user.last_name|first|upper }}</div>
+      {{ request.user.get_full_name|default:request.user.email|truncatechars:22 }}
+      <span class="badge-blue" style="margin-left:4px;">{{ request.user.get_rol_display }}</span>
+    </a>
+    {% endif %}
+  </div>
+</header>
+
+<main class="main-content">
+  {% if messages %}
+    {% for msg in messages %}
+    <div class="alert-resp {% if msg.tags == 'error' %}alert-danger{% else %}alert-{{ msg.tags }}{% endif %}">
+      {% if 'success' in msg.tags %}✅{% elif 'error' in msg.tags or 'danger' in msg.tags %}❌{% else %}ℹ️{% endif %}
+      {{ msg }}
+    </div>
+    {% endfor %}
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

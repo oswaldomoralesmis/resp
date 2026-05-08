@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}{{ servidor.nombre_completo }}{% endblock %}
+{% block page_title %}Detalle del Servidor Público{% endblock %}
+{% block content %}
+<div class="breadcrumb-resp">
+  <a href="{% url 'dashboard' %}">🏠</a><span class="sep">›</span>
+  <a href="{% url 'servidor_list' %}">Padrón</a><span class="sep">›</span>
+  <span>{{ servidor.primer_apellido }} {{ servidor.nombre }}</span>
+</div>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+  <div>
+    <h2 style="margin:0;color:var(--institucional-azul);">{{ servidor.nombre }} {{ servidor.primer_apellido }} {{ servidor.segundo_apellido }}</h2>
+    <div class="text-muted">Expediente: <strong>{{ servidor.expediente }}</strong> &bull; RFC: <strong>{{ servidor.rfc }}</strong> &bull; CURP: <strong>{{ servidor.curp }}</strong></div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a href="{% url 'servidor_update' servidor.pk %}" class="btn-institucional btn-sm">✏️ Editar</a>
+    <a href="{% url 'hoja_resp' servidor.pk %}" class="btn-verde btn-sm">🖨️ Hoja RESP</a>
+    {% if servidor.activo %}<a href="{% url 'servidor_baja' servidor.pk %}" class="btn-rojo btn-sm">🚫 Registrar Baja</a>{% endif %}
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">👤 Datos Personales</div>
+    <div class="card-body">
+      <div class="grid-2">
+        <div><div class="form-label">Nombre(s)</div><div>{{ servidor.nombre }}</div></div>
+        <div><div class="form-label">Primer Apellido</div><div>{{ servidor.primer_apellido }}</div></div>
+        <div><div class="form-label">Segundo Apellido</div><div>{{ servidor.segundo_apellido|default:"—" }}</div></div>
+        <div><div class="form-label">Fecha de Nacimiento</div><div>{{ servidor.fecha_nacimiento }}</div></div>
+        <div><div class="form-label">Sexo</div><div>{{ servidor.sexo }}</div></div>
+        <div><div class="form-label">Estado Civil</div><div>{{ servidor.estado_civil|default:"—" }}</div></div>
+        <div><div class="form-label">Entidad Nacimiento</div><div>{{ servidor.entidad_nacimiento|default:"—" }}</div></div>
+        <div><div class="form-label">País de Nacimiento</div><div>{{ servidor.pais_nacimiento|default:"—" }}</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">🏛️ Datos Laborales</div>
+    <div class="card-body">
+      <div class="grid-2">
+        <div><div class="form-label">Correo Institucional</div><div>{{ servidor.correo_institucional|default:"—" }}</div></div>
+        <div><div class="form-label">ISS</div><div>{{ servidor.iss }}</div></div>
+        <div><div class="form-label">NSS</div><div>{{ servidor.nss|default:"—" }}</div></div>
+        <div><div class="form-label">Sindicalizado</div><div>{{ servidor.get_sindicalizado_display }}</div></div>
+        <div><div class="form-label">Sindicato</div><div>{{ servidor.sindicato|default:"—" }}</div></div>
+        <div><div class="form-label">Otra Plaza</div><div>{{ servidor.get_tiene_otra_plaza_display }}</div></div>
+        <div><div class="form-label">Estatus</div><div>{% if servidor.activo %}<span class="badge-activo">Activo</span>{% else %}<span class="badge-inactivo">Baja</span>{% endif %}</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if info_basica %}
+<div class="card">
+  <div class="card-header">📋 Información Básica — Quincena {{ info_basica.quincena }}</div>
+  <div class="card-body">
+    <div class="grid-3">
+      <div><div class="form-label">Dependencia</div><div>{{ info_basica.dependencia }}</div></div>
+      <div><div class="form-label">Unidad Administrativa</div><div>{{ info_basica.unidad }}</div></div>
+      <div><div class="form-label">ID Plaza</div><div><strong>{{ info_basica.id_plaza }}</strong></div></div>
+      <div><div class="form-label">Categoría</div><div>{{ info_basica.categoria }}</div></div>
+      <div><div class="form-label">Tipo Contratación</div><div>{{ info_basica.nombramiento }}</div></div>
+      <div><div class="form-label">Estatus Plaza</div><div>{{ info_basica.estatus_plaza }}</div></div>
+      <div><div class="form-label">Total Percepciones</div><div>${{ info_basica.total_percepciones|floatformat:2 }}</div></div>
+      <div><div class="form-label">Total Bonos</div><div>${{ info_basica.total_bonos|floatformat:2 }}</div></div>
+      <div><div class="form-label">Total Neto</div><div style="color:var(--institucional-verde);font-weight:700;">${{ info_basica.total_neto|floatformat:2 }}</div></div>
+      <div><div class="form-label">Decl. Patrimonial</div><div>{{ info_basica.get_oblig_declaracion_display }}</div></div>
+      <div><div class="form-label">Tipo Declaración</div><div>{{ info_basica.tipo_declaracion|default:"—" }}</div></div>
+      <div><div class="form-label">Entrega-Recepción</div><div>{{ info_basica.get_oblig_entrega_recepcion_display }}</div></div>
+      <div><div class="form-label">F. Ingreso Gobierno</div><div>{{ info_basica.fecha_ingreso_gobierno|default:"—" }}</div></div>
+      <div><div class="form-label">F. Ingreso Dependencia</div><div>{{ info_basica.fecha_ingreso_dependencia|default:"—" }}</div></div>
+      <div><div class="form-label">F. Ingreso Puesto</div><div>{{ info_basica.fecha_ingreso_puesto|default:"—" }}</div></div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if historial %}
+<div class="card">
+  <div class="card-header">📅 Historial de Quincenas</div>
+  <div class="card-body">
+    <table class="table-resp">
+      <thead><tr><th>Quincena</th><th>Dependencia</th><th>Plaza</th><th>Estatus</th><th>Neto</th></tr></thead>
+      <tbody>
+        {% for h in historial %}
+        <tr>
+          <td>{{ h.quincena }}</td>
+          <td>{{ h.dependencia.clave }}</td>
+          <td>{{ h.id_plaza }}</td>
+          <td>{{ h.estatus_plaza }}</td>
+          <td>${{ h.total_neto|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

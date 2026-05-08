@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Historial Cargas{% endblock %}
+{% block page_title %}Historial de Cargas{% endblock %}
+{% block content %}
+<div class="breadcrumb-resp"><a href="{% url 'dashboard' %}">🏠</a><span class="sep">›</span><span>Cargas</span></div>
+<div style="display:flex;justify-content:space-between;margin-bottom:16px;">
+  <div style="display:flex;gap:8px;">
+    <a href="{% url 'carga_new' %}" class="btn-institucional">📤 Nueva Carga</a>
+    <a href="{% url 'calendario_cargas' %}" class="btn-outline">📅 Calendario</a>
+  </div>
+</div>
+<div class="card">
+  <div class="card-header">📁 Historial de Layouts Cargados</div>
+  <div class="card-body">
+    <table class="table-resp">
+      <thead><tr><th>Fecha</th><th>Período</th><th>Dependencia</th><th>Tipo</th><th>Estado</th><th>Registros</th><th>Errores</th><th>Acciones</th></tr></thead>
+      <tbody>
+        {% for c in cargas %}
+        <tr>
+          <td>{{ c.fecha_carga|date:"d/m/Y H:i" }}</td>
+          <td><span class="badge-blue">{{ c.periodo.quincena }}</span></td>
+          <td>{{ c.dependencia.clave }}</td>
+          <td>{{ c.get_tipo_display }}</td>
+          <td>
+            {% if c.estado == 'completado' %}<span class="badge-activo">✅ Completado</span>
+            {% elif c.estado == 'con_errores' %}<span class="badge-inactivo">⚠️ Con errores</span>
+            {% elif c.estado == 'procesando' %}<span class="badge-pendiente">⏳ Procesando</span>
+            {% else %}<span class="badge-pendiente">Pendiente</span>{% endif %}
+          </td>
+          <td>{{ c.registros_totales }}</td>
+          <td>{% if c.registros_error > 0 %}<span style="color:var(--institucional-rojo);font-weight:700;">{{ c.registros_error }}</span>{% else %}0{% endif %}</td>
+          <td><a href="{% url 'carga_detalle' c.pk %}" class="btn-outline btn-sm">Ver</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="text-muted text-center" style="padding:30px;">Sin cargas registradas.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

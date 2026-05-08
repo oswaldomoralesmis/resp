@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Entrega-Recepción{% endblock %}
+{% block page_title %}Padrón Entrega-Recepción{% endblock %}
+{% block content %}
+<div class="flex-between mb-3 no-print"><div></div><button onclick="window.print()" class="btn-institucional btn-sm">🖨️ Imprimir</button></div>
+<div class="card">
+  <div class="card-header">🤝 Sujetos Obligados — Acta de Entrega-Recepción</div>
+  <div class="card-body" style="padding:0;">
+    <table class="table-resp">
+      <thead><tr><th>Dependencia</th><th>Expediente</th><th>RFC</th><th>Nombre Completo</th><th>Plaza</th><th>F. Ingreso Puesto</th></tr></thead>
+      <tbody>
+        {% for r in registros %}
+        <tr>
+          <td>{{ r.dependencia.clave }}</td><td>{{ r.servidor.expediente }}</td><td><code>{{ r.servidor.rfc }}</code></td>
+          <td>{{ r.servidor.primer_apellido }} {{ r.servidor.nombre }}</td>
+          <td>{{ r.id_plaza }}</td><td>{{ r.fecha_ingreso_puesto|default:"—" }}</td>
+        </tr>
+        {% empty %}<tr><td colspan="6" class="text-muted text-center" style="padding:30px;">Sin registros.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

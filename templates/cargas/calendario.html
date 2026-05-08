@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Calendario{% endblock %}
+{% block page_title %}Calendario de Recepción de Layouts{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header" style="justify-content:space-between;">
+    <span>📅 Períodos de Carga</span>
+    <a href="{% url 'periodo_create' %}" class="btn-institucional btn-sm">➕ Nuevo Período</a>
+  </div>
+  <div class="card-body">
+    <div class="alert-resp alert-info">ℹ️ El sistema solo permite cargas durante las fechas establecidas en cada período. El administrador puede habilitar acceso individual por dependencia fuera de estas fechas.</div>
+    <table class="table-resp">
+      <thead><tr><th>Quincena</th><th>Inicio Recepción</th><th>Fin Recepción</th><th>Estado</th></tr></thead>
+      <tbody>
+        {% for p in periodos %}
+        <tr>
+          <td><span class="badge-blue">{{ p.quincena }}</span></td>
+          <td>{{ p.fecha_inicio }}</td>
+          <td>{{ p.fecha_fin }}</td>
+          <td>{% if p.activo %}<span class="badge-activo">✅ Activo</span>{% else %}<span class="badge-inactivo">Cerrado</span>{% endif %}</td>
+        </tr>
+        {% empty %}<tr><td colspan="4" class="text-muted text-center" style="padding:30px;">Sin períodos configurados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

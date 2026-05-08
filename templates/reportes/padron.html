@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Reporte Padrón{% endblock %}
+{% block page_title %}Padrón General de Servidores Públicos{% endblock %}
+{% block content %}
+<div class="flex-between mb-3 no-print">
+  <form method="get" style="display:flex;gap:8px;">
+    <select name="dependencia" class="form-select" style="max-width:250px;" onchange="this.form.submit()">
+      <option value="">Todas las dependencias</option>
+      {% for d in dependencias %}<option value="{{ d.id }}" {% if request.GET.dependencia == d.id|stringformat:"s" %}selected{% endif %}>{{ d.clave }} - {{ d.descripcion|truncatechars:25 }}</option>{% endfor %}
+    </select>
+  </form>
+  <div style="display:flex;gap:8px;">
+    <a href="{% url 'exportar_excel' 'padron' %}" class="btn-dorado btn-sm">📥 Exportar Excel</a>
+    <button onclick="window.print()" class="btn-institucional btn-sm">🖨️ Imprimir</button>
+  </div>
+</div>
+<div class="card">
+  <div class="card-header">📄 Padrón — {{ total }} registro(s)</div>
+  <div class="card-body" style="padding:0;">
+    <div style="overflow-x:auto;">
+      <table class="table-resp">
+        <thead><tr><th>Expediente</th><th>RFC</th><th>Nombre</th><th>Primer Apellido</th><th>Segundo Apellido</th><th>F. Nacimiento</th><th>Sexo</th><th>ISS</th></tr></thead>
+        <tbody>
+          {% for s in servidores %}
+          <tr>
+            <td>{{ s.expediente }}</td><td><code>{{ s.rfc }}</code></td>
+            <td>{{ s.nombre }}</td><td>{{ s.primer_apellido }}</td><td>{{ s.segundo_apellido|default:"—" }}</td>
+            <td>{{ s.fecha_nacimiento }}</td><td>{{ s.sexo }}</td><td>{{ s.iss }}</td>
+          </tr>
+          {% empty %}<tr><td colspan="8" class="text-muted text-center" style="padding:30px;">Sin registros.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

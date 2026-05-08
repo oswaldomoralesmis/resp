@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="breadcrumb-resp">
+  <a href="{% url 'catalogo_index' %}">&#127968; Cat&aacute;logos</a><span class="sep">&#8250;</span><span>{{ titulo }}</span>
+</div>
+<div class="card">
+  <div class="card-header" style="justify-content:space-between;">
+    <span>{{ titulo }}{% if page_obj %} &mdash; <span class="badge-blue">{{ page_obj.paginator.count }} registros</span>{% endif %}</span>
+    <a href="nueva/" class="btn-institucional btn-sm">&#10133; Nuevo</a>
+  </div>
+  <div class="card-body">
+    <form method="get" class="mb-3">
+      <div class="row g-2 align-items-center">
+        <div class="col-md-5">
+          <div class="search-bar">
+            <span>&#128269;</span>
+            <input type="text" name="q" value="{{ q }}" placeholder="Buscar...">
+            <button type="submit">Buscar</button>
+          </div>
+        </div>
+        {% if entidades %}
+        <div class="col-md-4">
+          <select name="ent" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">Todas las entidades</option>
+            {% for e in entidades %}<option value="{{ e.id }}" {% if ent_sel == e.id|stringformat:"s" %}selected{% endif %}>{{ e.nombre }}</option>{% endfor %}
+          </select>
+        </div>
+        {% endif %}
+        {% if dependencias %}
+        <div class="col-md-4">
+          <select name="dep" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">Todas las dependencias</option>
+            {% for d in dependencias %}<option value="{{ d.id }}" {% if dep_sel == d.id|stringformat:"s" %}selected{% endif %}>{{ d.clave }} - {{ d.descripcion|truncatechars:25 }}</option>{% endfor %}
+          </select>
+        </div>
+        {% endif %}
+        {% if q %}<div class="col-auto"><a href="." class="btn-outline btn-sm">&#10005; Limpiar</a></div>{% endif %}
+      </div>
+    </form>
+
+    <div style="overflow-x:auto;">
+      <table class="table-resp">
+        <thead><tr>
+          {% if registros.0.clave is not None or registros.0.clave == "" %}<th>Clave</th>{% endif %}
+          <th>Descripci&oacute;n / Nombre</th>
+          <th style="width:90px;">Acciones</th>
+        </tr></thead>
+        <tbody>
+          {% for r in registros %}
+          <tr>
+            {% if r.clave is not None %}<td><strong>{{ r.clave }}</strong></td>{% endif %}
+            <td>{{ r }}</td>
+            <td><a href="{{ r.pk }}/editar/" class="btn-institucional btn-sm">Editar</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3" class="text-muted text-center" style="padding:28px;">Sin registros.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if is_paginated %}
+    <div class="pagination-resp mt-3">
+      {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&q={{ q }}" class="page-btn">&#8249;</a>{% endif %}
+      <span class="page-btn active">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&q={{ q }}" class="page-btn">&#8250;</a>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

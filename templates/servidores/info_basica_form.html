@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+
+
+
+{% block content %}
+<div class="breadcrumb-resp">
+  <a href="{% url 'dashboard' %}">&#127968;</a><span class="sep">&#8250;</span>
+  <a href="{% url 'info_basica_list' %}">Inf. B&aacute;sica</a><span class="sep">&#8250;</span>
+  <span>{{ titulo }}</span>
+</div>
+
+<form method="post" novalidate>
+{% csrf_token %}
+
+<!-- INSTITUCIÓN -->
+<div class="card mb-3">
+  <div class="card-header">&#127963;&#65039; Datos de la Instituci&oacute;n</div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-2">
+        <label for="{{ form.quincena.id_for_label }}" class="form-label fw-semibold">Quincena <span class="text-danger">*</span></label>
+        {{ form.quincena }}
+        {% if form.quincena.errors %}<div class="text-danger small mt-1">{{ form.quincena.errors|join:", " }}</div>{% endif %}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.fuente_financiamiento.id_for_label }}" class="form-label fw-semibold">Fuente Financiamiento</label>
+        {{ form.fuente_financiamiento }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.dependencia.id_for_label }}" class="form-label fw-semibold">Dependencia <span class="text-danger">*</span></label>
+        {{ form.dependencia }}
+        {% if form.dependencia.errors %}<div class="text-danger small mt-1">{{ form.dependencia.errors|join:", " }}</div>{% endif %}
+      </div>
+      <div class="col-md-4">
+        <label for="{{ form.unidad.id_for_label }}" class="form-label fw-semibold">Unidad Administrativa</label>
+        {{ form.unidad }}
+      </div>
+      <div class="col-md-4">
+        <label for="{{ form.programa.id_for_label }}" class="form-label fw-semibold">Programa</label>
+        {{ form.programa }}
+      </div>
+      <div class="col-md-4">
+        <label for="{{ form.proyecto.id_for_label }}" class="form-label fw-semibold">Proyecto</label>
+        {{ form.proyecto }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PUESTO -->
+<div class="card mb-3">
+  <div class="card-header">&#128188; Informaci&oacute;n del Puesto</div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-3">
+        <label for="{{ form.id_plaza.id_for_label }}" class="form-label fw-semibold">ID Plaza <span class="text-danger">*</span></label>
+        {{ form.id_plaza }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.categoria.id_for_label }}" class="form-label fw-semibold">Categor&iacute;a</label>
+        {{ form.categoria }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.nombramiento.id_for_label }}" class="form-label fw-semibold">Tipo Contrataci&oacute;n <span class="text-danger">*</span></label>
+        {{ form.nombramiento }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.nivel_estructura.id_for_label }}" class="form-label fw-semibold">Nivel Estructura</label>
+        {{ form.nivel_estructura }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.id_plaza_jefe.id_for_label }}" class="form-label fw-semibold">ID Plaza Jefe</label>
+        {{ form.id_plaza_jefe }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.estatus_plaza.id_for_label }}" class="form-label fw-semibold">Estatus Plaza <span class="text-danger">*</span></label>
+        {{ form.estatus_plaza }}
+      </div>
+      <div class="col-md-2">
+        <label for="{{ form.hsm.id_for_label }}" class="form-label fw-semibold">HSM</label>
+        {{ form.hsm }}
+      </div>
+      <div class="col-md-2">
+        <label for="{{ form.total_percepciones.id_for_label }}" class="form-label fw-semibold">Percepciones</label>
+        {{ form.total_percepciones }}
+      </div>
+      <div class="col-md-2">
+        <label for="{{ form.total_bonos.id_for_label }}" class="form-label fw-semibold">Bonos</label>
+        {{ form.total_bonos }}
+      </div>
+      <div class="col-md-2">
+        <label for="{{ form.total_neto.id_for_label }}" class="form-label fw-semibold">Total Neto</label>
+        {{ form.total_neto }}
+      </div>
+      <div class="col-md-2">
+        <label for="{{ form.dias_pagados.id_for_label }}" class="form-label fw-semibold">D&iacute;as Pagados</label>
+        {{ form.dias_pagados }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SERVIDOR -->
+<div class="card mb-3">
+  <div class="card-header">&#128100; Servidor P&uacute;blico</div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label for="{{ form.servidor.id_for_label }}" class="form-label fw-semibold">Servidor P&uacute;blico <span class="text-danger">*</span></label>
+        {{ form.servidor }}
+        {% if form.servidor.errors %}<div class="text-danger small mt-1">{{ form.servidor.errors|join:", " }}</div>{% endif %}
+      </div>
+      <div class="col-md-6">
+        <label for="{{ form.cct.id_for_label }}" class="form-label fw-semibold">Centro de Trabajo</label>
+        {{ form.cct }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RESPONSABILIDADES -->
+<div class="card mb-3">
+  <div class="card-header">&#9878;&#65039; Persona-Puesto y Responsabilidades</div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-3">
+        <label for="{{ form.oblig_declaracion.id_for_label }}" class="form-label fw-semibold">Decl. Patrimonial</label>
+        {{ form.oblig_declaracion }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.tipo_declaracion.id_for_label }}" class="form-label fw-semibold">Tipo Declaraci&oacute;n</label>
+        {{ form.tipo_declaracion }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.oblig_entrega_recepcion.id_for_label }}" class="form-label fw-semibold">Entrega-Recepci&oacute;n</label>
+        {{ form.oblig_entrega_recepcion }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.oblig_rendir_cuentas.id_for_label }}" class="form-label fw-semibold">Rendir Cuentas</label>
+        {{ form.oblig_rendir_cuentas }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.puesto_sensible.id_for_label }}" class="form-label fw-semibold">Puesto Sensible</label>
+        {{ form.puesto_sensible }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.area.id_for_label }}" class="form-label fw-semibold">&Aacute;rea</label>
+        {{ form.area }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.fecha_ingreso_gobierno.id_for_label }}" class="form-label fw-semibold">F. Ingreso Gobierno</label>
+        {{ form.fecha_ingreso_gobierno }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.fecha_ingreso_dependencia.id_for_label }}" class="form-label fw-semibold">F. Ingreso Dependencia</label>
+        {{ form.fecha_ingreso_dependencia }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.fecha_ingreso_puesto.id_for_label }}" class="form-label fw-semibold">F. Ingreso Puesto</label>
+        {{ form.fecha_ingreso_puesto }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.participa_contrataciones.id_for_label }}" class="form-label fw-semibold">Contrataciones</label>
+        {{ form.participa_contrataciones }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.participa_concesiones.id_for_label }}" class="form-label fw-semibold">Concesiones</label>
+        {{ form.participa_concesiones }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.participa_enajenacion.id_for_label }}" class="form-label fw-semibold">Enajenaci&oacute;n</label>
+        {{ form.participa_enajenacion }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.inmueble.id_for_label }}" class="form-label fw-semibold">Inmueble</label>
+        {{ form.inmueble }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="d-flex gap-2 mb-4">
+  <button type="submit" class="btn-institucional">&#128190; Guardar</button>
+  <a href="{% url 'info_basica_list' %}" class="btn-outline">&#10005; Cancelar</a>
+</div>
+</form>
+{% endblock %}

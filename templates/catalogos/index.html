@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Catálogos{% endblock %}
+{% block page_title %}Administración de Catálogos{% endblock %}
+
+{% block content %}
+<div class="breadcrumb-resp">
+  <a href="{% url 'dashboard' %}">&#127968; Inicio</a><span class="sep">&#8250;</span><span>Cat&aacute;logos</span>
+</div>
+
+{% for grupo in grupos %}
+<div class="card mb-3">
+  <div class="card-header">
+    {{ grupo.nombre }}
+  </div>
+  <div class="card-body pb-2">
+    <div class="row g-2">
+      {% for cat in grupo.items %}
+      <div class="col-md-3 col-sm-6">
+        <div style="border:1px solid #dee2e6;border-radius:8px;padding:12px;border-left:3px solid var(--institucional-azul);height:100%;">
+          <div style="font-size:20px;margin-bottom:4px;">{{ cat.icono }}</div>
+          <div class="fw-semibold" style="font-size:13px;color:var(--institucional-azul);margin-bottom:8px;">{{ cat.nombre }}</div>
+          <div class="d-flex gap-1 flex-wrap">
+            <a href="{% url cat.url %}" class="btn-institucional btn-sm">&#128065; Ver</a>
+            {% if cat.descarga %}
+            <a href="{% url 'descargar_catalogo' cat.descarga %}" class="btn-dorado btn-sm">&#8659; Excel</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Hoja RESP — {{ servidor.nombre_completo }}{% endblock %}
+{% block page_title %}Hoja RESP{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;margin-bottom:16px;" class="no-print">
+  <a href="{% url 'servidor_detail' servidor.pk %}" class="btn-outline btn-sm">← Regresar</a>
+  <button onclick="window.print()" class="btn-institucional btn-sm">🖨️ Imprimir</button>
+</div>
+
+<div class="hoja-resp">
+  <div class="hoja-header">
+    <div style="font-size:36px;">🏛️</div>
+    <div>
+      <h2>Hoja RESP — Registro Estatal de Servidores Públicos</h2>
+      <div style="font-size:13px;opacity:.8;">Gobierno del Estado de Tabasco</div>
+    </div>
+  </div>
+
+  <div class="hoja-section-title">DATOS DE IDENTIFICACIÓN</div>
+  <div class="hoja-row">
+    <div class="hoja-field"><label>Expediente</label><span>{{ servidor.expediente }}</span></div>
+    <div class="hoja-field"><label>RFC</label><span>{{ servidor.rfc }}</span></div>
+    <div class="hoja-field"><label>CURP</label><span>{{ servidor.curp }}</span></div>
+  </div>
+
+  <div class="hoja-section-title">NOMBRE</div>
+  <div class="hoja-row">
+    <div class="hoja-field"><label>Nombre(s)</label><span>{{ servidor.nombre }}</span></div>
+    <div class="hoja-field"><label>Primer Apellido</label><span>{{ servidor.primer_apellido }}</span></div>
+    <div class="hoja-field"><label>Segundo Apellido</label><span>{{ servidor.segundo_apellido|default:"—" }}</span></div>
+  </div>
+
+  <div class="hoja-section-title">DATOS PERSONALES</div>
+  <div class="hoja-row">
+    <div class="hoja-field"><label>Fecha de Nacimiento</label><span>{{ servidor.fecha_nacimiento }}</span></div>
+    <div class="hoja-field"><label>Sexo</label><span>{{ servidor.sexo }}</span></div>
+    <div class="hoja-field"><label>Estado Civil</label><span>{{ servidor.estado_civil|default:"—" }}</span></div>
+    <div class="hoja-field"><label>Entidad Nac.</label><span>{{ servidor.entidad_nacimiento|default:"—" }}</span></div>
+    <div class="hoja-field"><label>País Nac.</label><span>{{ servidor.pais_nacimiento|default:"—" }}</span></div>
+    <div class="hoja-field"><label>ISS</label><span>{{ servidor.iss }}</span></div>
+  </div>
+
+  {% if info %}
+  <div class="hoja-section-title">INFORMACIÓN DE PUESTO — QUINCENA {{ info.quincena }}</div>
+  <div class="hoja-row">
+    <div class="hoja-field"><label>Dependencia</label><span>{{ info.dependencia.clave }}</span></div>
+    <div class="hoja-field"><label>Unidad</label><span>{{ info.unidad.clave }}</span></div>
+    <div class="hoja-field"><label>ID Plaza</label><span>{{ info.id_plaza }}</span></div>
+    <div class="hoja-field"><label>Categoría</label><span>{{ info.categoria.clave }}</span></div>
+    <div class="hoja-field"><label>Contratación</label><span>{{ info.nombramiento }}</span></div>
+    <div class="hoja-field"><label>Estatus Plaza</label><span>{{ info.estatus_plaza }}</span></div>
+    <div class="hoja-field"><label>Percepciones</label><span>${{ info.total_percepciones|floatformat:2 }}</span></div>
+    <div class="hoja-field"><label>Bonos</label><span>${{ info.total_bonos|floatformat:2 }}</span></div>
+    <div class="hoja-field"><label>Total Neto</label><span style="font-weight:700;">${{ info.total_neto|floatformat:2 }}</span></div>
+    <div class="hoja-field"><label>Decl. Patrimonial</label><span>{{ info.get_oblig_declaracion_display }}</span></div>
+    <div class="hoja-field"><label>Tipo Declaración</label><span>{{ info.tipo_declaracion|default:"—" }}</span></div>
+    <div class="hoja-field"><label>Entrega-Recepción</label><span>{{ info.get_oblig_entrega_recepcion_display }}</span></div>
+    <div class="hoja-field"><label>F. Ingreso Gob.</label><span>{{ info.fecha_ingreso_gobierno|default:"—" }}</span></div>
+    <div class="hoja-field"><label>F. Ingreso Dep.</label><span>{{ info.fecha_ingreso_dependencia|default:"—" }}</span></div>
+    <div class="hoja-field"><label>F. Ingreso Puesto</label><span>{{ info.fecha_ingreso_puesto|default:"—" }}</span></div>
+  </div>
+  {% endif %}
+
+  <div style="padding:16px 24px;font-size:11px;color:#999;border-top:1px solid #eee;display:flex;justify-content:space-between;">
+    <span>Generado por RESP — Sistema Automatizado</span>
+    <span>Gobierno del Estado de Tabasco</span>
+  </div>
+</div>
+{% endblock %}

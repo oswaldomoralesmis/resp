@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Reportes{% endblock %}
+{% block page_title %}Reportes y Estadísticas{% endblock %}
+{% block content %}
+<div class="grid-3">
+  {% for r in reporte_items %}
+  <a href="{{ r.url }}" style="text-decoration:none;">
+    <div class="stat-card" style="flex-direction:column;align-items:flex-start;gap:8px;cursor:pointer;">
+      <div style="font-size:32px;">{{ r.icono }}</div>
+      <div style="font-weight:700;font-size:15px;color:var(--institucional-azul);">{{ r.nombre }}</div>
+      <div class="text-muted">{{ r.desc }}</div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}

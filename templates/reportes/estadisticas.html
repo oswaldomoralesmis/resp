@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Estadísticas{% endblock %}
+{% block page_title %}Estadísticas Generales del RESP{% endblock %}
+{% block content %}
+<div class="grid-2" style="margin-bottom:16px;">
+  <div class="stat-card"><div class="stat-icon verde">👤</div><div><div class="stat-number">{{ stats.total_activos }}</div><div class="stat-label">Servidores Activos</div></div></div>
+  <div class="stat-card"><div class="stat-icon rojo">🚫</div><div><div class="stat-number">{{ stats.total_bajas }}</div><div class="stat-label">Bajas Registradas</div></div></div>
+</div>
+<div class="grid-3">
+  <div class="card">
+    <div class="card-header">🏢 Por Dependencia (Top 15)</div>
+    <div class="card-body" style="padding:0;">
+      {% for d in stats.por_dependencia %}
+      <div style="display:flex;justify-content:space-between;padding:9px 16px;border-bottom:1px solid #f0f0f0;">
+        <span style="font-size:13px;">{{ d.dependencia__descripcion|truncatechars:28|default:"—" }}</span>
+        <span class="badge-blue">{{ d.total }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">📊 Por Estatus de Plaza</div>
+    <div class="card-body" style="padding:0;">
+      {% for d in stats.por_estatus %}
+      <div style="display:flex;justify-content:space-between;padding:9px 16px;border-bottom:1px solid #f0f0f0;">
+        <span style="font-size:13px;">{{ d.estatus_plaza__descripcion|default:"—" }}</span>
+        <span class="badge-blue">{{ d.total }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">📝 Por Tipo de Contratación</div>
+    <div class="card-body" style="padding:0;">
+      {% for d in stats.por_contratacion %}
+      <div style="display:flex;justify-content:space-between;padding:9px 16px;border-bottom:1px solid #f0f0f0;">
+        <span style="font-size:13px;">{{ d.nombramiento__descripcion|default:"—" }}</span>
+        <span class="badge-blue">{{ d.total }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

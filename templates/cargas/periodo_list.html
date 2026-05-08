@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Períodos{% endblock %}
+{% block page_title %}Períodos de Carga{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header" style="justify-content:space-between;">
+    <span>⚙️ Períodos de Carga</span>
+    <a href="{% url 'periodo_create' %}" class="btn-institucional btn-sm">➕ Nuevo</a>
+  </div>
+  <div class="card-body">
+    <table class="table-resp">
+      <thead><tr><th>Quincena</th><th>Inicio</th><th>Fin</th><th>Activo</th></tr></thead>
+      <tbody>
+        {% for p in periodos %}<tr><td>{{ p.quincena }}</td><td>{{ p.fecha_inicio }}</td><td>{{ p.fecha_fin }}</td><td>{% if p.activo %}<span class="badge-activo">Sí</span>{% else %}<span class="badge-inactivo">No</span>{% endif %}</td></tr>
+        {% empty %}<tr><td colspan="4" class="text-muted text-center" style="padding:20px;">Sin períodos.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Detalle Carga{% endblock %}
+{% block page_title %}Detalle de Carga{% endblock %}
+{% block content %}
+<div class="breadcrumb-resp">
+  <a href="{% url 'dashboard' %}">&#127968;</a><span class="sep">&#8250;</span>
+  <a href="{% url 'carga_list' %}">Cargas</a><span class="sep">&#8250;</span>
+  <span>Detalle #{{ carga.pk }}</span>
+</div>
+
+<div class="card">
+  <div class="card-header">&#128193; Carga #{{ carga.pk }} &mdash; {{ carga.get_tipo_display }}</div>
+  <div class="card-body">
+
+    <!-- Resumen -->
+    <div class="grid-4" style="margin-bottom:20px;">
+      <div>
+        <div class="form-label">Per&iacute;odo</div>
+        <div><span class="badge-blue" style="font-size:16px;padding:6px 14px;">{{ carga.periodo.quincena }}</span></div>
+      </div>
+      <div>
+        <div class="form-label">Dependencia</div>
+        <div style="font-weight:600;">{{ carga.dependencia.clave }} &mdash; {{ carga.dependencia.descripcion|truncatechars:30 }}</div>
+      </div>
+      <div>
+        <div class="form-label">Estado</div>
+        <div>
+          {% if carga.estado == 'completado' %}<span class="badge-activo" style="font-size:14px;padding:5px 14px;">&#10003; Completado</span>
+          {% elif carga.estado == 'con_errores' %}<span class="badge-inactivo" style="font-size:14px;padding:5px 14px;">&#9888; Con errores</span>
+          {% elif carga.estado == 'procesando' %}<span class="badge-pendiente" style="font-size:14px;padding:5px 14px;">&#8987; Procesando</span>
+          {% else %}<span class="badge-pendiente" style="font-size:14px;padding:5px 14px;">Pendiente</span>{% endif %}
+        </div>
+      </div>
+      <div>
+        <div class="form-label">Fecha de carga</div>
+        <div>{{ carga.fecha_carga|date:"d/m/Y H:i" }}</div>
+      </div>
+    </div>
+
+    <!-- Contadores -->
+    <div class="grid-3" style="margin-bottom:24px;">
+      <div class="stat-card">
+        <div class="stat-icon azul">&#128203;</div>
+        <div>
+          <div class="stat-number">{{ carga.registros_totales }}</div>
+          <div class="stat-label">Total Registros</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon verde">&#10003;</div>
+        <div>
+          <div class="stat-number" style="color:var(--institucional-verde);">{{ carga.registros_ok }}</div>
+          <div class="stat-label">Cargados al Padr&oacute;n</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon rojo">&#10007;</div>
+        <div>
+          <div class="stat-number" style="color:var(--institucional-rojo);">{{ carga.registros_error }}</div>
+          <div class="stat-label">Con Error / Omitidos</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Log detallado -->
+    {% if log_lines %}
+    <div class="form-section-title">&#128220; Detalle del Procesamiento</div>
+    <div style="overflow-x:auto;max-height:450px;overflow-y:auto;border:1px solid #eee;border-radius:6px;">
+      <table class="table-resp" style="font-size:12px;">
+        <thead style="position:sticky;top:0;">
+          <tr>
+            <th style="width:80px;">#</th>
+            <th style="width:90px;">Tipo</th>
+            <th>Descripci&oacute;n</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for l in log_lines %}
+          <tr style="
+            {% if l.tipo == 'error' %}background:#fff5f5;{% endif %}
+            {% if l.tipo == 'omitida' %}background:#fff8f0;{% endif %}
+            {% if l.tipo == 'aviso' %}background:#fffde7;{% endif %}
+          ">
+            <td style="color:#999;">{{ forloop.counter }}</td>
+            <td>
+              {% if l.tipo == 'error' %}<span class="badge-inactivo">ERROR</span>
+              {% elif l.tipo == 'omitida' %}<span class="badge-pendiente">OMITIDA</span>
+              {% elif l.tipo == 'aviso' %}<span style="background:#fff9c4;color:#856404;padding:3px 8px;border-radius:10px;font-size:11px;font-weight:700;">AVISO</span>
+              {% else %}<span class="badge-activo">OK</span>{% endif %}
+            </td>
+            <td style="font-family:monospace;">{{ l.texto }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="alert-resp alert-success">&#10003; Sin observaciones &mdash; todos los registros fueron procesados correctamente.</div>
+    {% endif %}
+
+    <div style="margin-top:20px;display:flex;gap:10px;">
+      <a href="{% url 'carga_list' %}" class="btn-outline">&#8592; Regresar</a>
+      <a href="{% url 'servidor_list' %}" class="btn-institucional">&#128100; Ver Padr&oacute;n</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
