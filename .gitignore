@@ -1,0 +1,23 @@
+# Ignorar archivos temporales de sistema
+*.log
+*.tmp
+*.docx
+*.pptx
+*.rar
+*.csv
+*.xlsx
+.DS_Store
+
+# Ignorar carpetas
+node_modules/
+dist/
+media/
+venv/
+staticfiles/
+
+.env
+
+# Excepto este archivo
+#!media/manuales/Manual_de_Usuario.pdf
+#!media/manuales/Manual_de_Adminin.pdf
+
