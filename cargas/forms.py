@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from django import forms
-from .models import CargaLayout, PeriodoCarga
+from .models import CargaLayout, PeriodoCarga, AccesoExcepcionCarga
 
 
 class CargaLayoutForm(forms.ModelForm):
@@ -45,7 +45,36 @@ class PeriodoCargaForm(forms.ModelForm):
         }
         labels = {
             'quincena':    'Clave de Quincena',
-            'fecha_inicio':'Fecha inicio de recepción',
-            'fecha_fin':   'Fecha fin de recepción',
+            'fecha_inicio':'Fecha inicio de quincena',
+            'fecha_fin':   'Fecha fin de quincena',
             'activo':      'Período activo',
         }
+
+
+class AccesoExcepcionCargaForm(forms.ModelForm):
+
+    class Meta:
+        model  = AccesoExcepcionCarga
+        fields = ['periodo', 'dependencia', 'fecha_inicio', 'fecha_fin', 'motivo']
+        widgets = {
+            'periodo':     forms.Select(attrs={'class': 'form-select'}),
+            'dependencia': forms.Select(attrs={'class': 'form-select'}),
+            'fecha_inicio':forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'fecha_fin':   forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'motivo':      forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Motivo de la excepción (opcional)'}),
+        }
+        labels = {
+            'periodo':     'Período',
+            'dependencia': 'Dependencia',
+            'fecha_inicio':'Fecha inicio de acceso',
+            'fecha_fin':   'Fecha fin de acceso',
+            'motivo':      'Motivo',
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        ini = cleaned.get('fecha_inicio')
+        fin = cleaned.get('fecha_fin')
+        if ini and fin and fin < ini:
+            raise forms.ValidationError('La fecha fin de acceso no puede ser anterior a la fecha inicio.')
+        return cleaned

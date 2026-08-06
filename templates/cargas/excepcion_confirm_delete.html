@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Eliminar Excepci&oacute;n{% endblock %}
+{% block page_title %}Eliminar Excepci&oacute;n de Acceso{% endblock %}
+{% block content %}
+<div class="breadcrumb-resp">
+  <a href="{% url 'excepcion_list' %}">&#8592; Excepciones de Acceso</a>
+</div>
+<div class="card" style="max-width:520px;">
+  <div class="card-header">&#9888;&#65039; Confirmar Eliminaci&oacute;n</div>
+  <div class="card-body">
+    <p>&#191;Eliminar la excepci&oacute;n de acceso para <strong>{{ object.dependencia }}</strong> en el per&iacute;odo <strong>{{ object.periodo.quincena }}</strong> ({{ object.fecha_inicio }} a {{ object.fecha_fin }})?</p>
+    <p class="text-muted small">A partir de este momento, esa dependencia volver&aacute; a regirse por la ventana general del per&iacute;odo.</p>
+    <form method="post">
+      {% csrf_token %}
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn-institucional" style="background:#b91c1c;">&#128465;&#65039; Eliminar</button>
+        <a href="{% url 'excepcion_list' %}" class="btn-outline">&#10005; Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

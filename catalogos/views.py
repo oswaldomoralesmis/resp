@@ -7,6 +7,7 @@ from django.views.generic import ListView, CreateView, UpdateView
 from django.urls import reverse_lazy
 from django.http import FileResponse, Http404
 from django.db.models import Q
+from django.core.files.storage import default_storage
 
 from .models import (
     FuenteFinanciamiento, Dependencia, UnidadAdministrativa,
@@ -23,7 +24,7 @@ from .forms import (
     CentroTrabajoForm, TipoDeclaracionForm, AreaForm, NivelEscolaridadForm,
     DiscapacidadForm, EnfermedadCronicaForm, PuebloForm, MotivoBajaForm,
     IdiomaForm, EstadoCivilForm, PaisForm, EntidadFederativaForm,
-    MunicipioForm, SindicatoForm, InmuebleForm,
+    MunicipioForm, SindicatoForm, InmuebleForm, ImportarExcelForm,
 )
 
 # ── Índice ────────────────────────────────────────────────────────────────────
@@ -33,7 +34,7 @@ def catalogo_index(request):
             'nombre': 'Estructura Presupuestal',
             'color':  'verde',
             'items': [
-                {'nombre': 'Fuentes de Financiamiento', 'url': 'fuente_list',    'icono': '💰', 'descarga': None},
+                {'nombre': 'Fuentes de Financiamiento', 'url': 'fuente_list',    'icono': '💰', 'descarga': 'fuente'},
                 {'nombre': 'Dependencias',               'url': 'dependencia_list','icono': '🏛️', 'descarga': None},
                 {'nombre': 'Unidades Administrativas',   'url': 'unidad_list',   'icono': '🏢', 'descarga': 'unidades'},
                 {'nombre': 'Programas',                  'url': 'programa_list', 'icono': '📋', 'descarga': 'programas'},
@@ -80,6 +81,11 @@ def catalogo_index(request):
             ]
         },
     ]
+    from .importador import IMPORTADORES
+    for grupo in grupos:
+        for item in grupo['items']:
+            item['importar'] = item['descarga'] in IMPORTADORES
+
     return render(request, 'catalogos/index.html', {
         'titulo': 'Catálogos del Sistema',
         'grupos': grupos,
@@ -155,7 +161,8 @@ def make_update_view(model, form_class, success_url, titulo_prefix, back_url, te
 
 # ── Fuente de Financiamiento ──────────────────────────────────────────────────
 FuenteListView   = make_list_view(FuenteFinanciamiento, 'catalogos/simple_list.html',
-                                  'Fuentes de Financiamiento', ['clave', 'descripcion'])
+                                  'Fuentes de Financiamiento', ['clave', 'descripcion'],
+                                  extra_ctx={'catalogo_slug': 'fuente'})
 FuenteCreateView = make_create_view(FuenteFinanciamiento, FuenteFinanciamientoForm,
                                     'fuente_list', 'Nueva Fuente de Financiamiento', 'fuente_list')
 FuenteUpdateView = make_update_view(FuenteFinanciamiento, FuenteFinanciamientoForm,
@@ -237,14 +244,14 @@ class ProyectoListView(LoginRequiredMixin, ListView):
     paginate_by         = 40
 
     def get_queryset(self):
-        qs  = Proyecto.objects.select_related('dependencia', 'unidad', 'programa')
+        qs  = Proyecto.objects.select_related('dependencia').prefetch_related('programas__unidad')
         q   = self.request.GET.get('q', '')
         dep = self.request.GET.get('dep', '')
         if q:
             qs = qs.filter(Q(clave__icontains=q) | Q(descripcion__icontains=q))
         if dep:
             qs = qs.filter(dependencia_id=dep)
-        return qs.order_by('dependencia__clave', 'programa__clave', 'clave')
+        return qs.order_by('dependencia__clave', 'clave').distinct()
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -255,9 +262,11 @@ class ProyectoListView(LoginRequiredMixin, ListView):
         return ctx
 
 ProyectoCreateView = make_create_view(Proyecto, ProyectoForm,
-                                      'proyecto_list', 'Nuevo Proyecto', 'proyecto_list')
+                                      'proyecto_list', 'Nuevo Proyecto', 'proyecto_list',
+                                      template='catalogos/proyecto_form.html')
 ProyectoUpdateView = make_update_view(Proyecto, ProyectoForm,
-                                      'proyecto_list', 'Editar Proyecto', 'proyecto_list')
+                                      'proyecto_list', 'Editar Proyecto', 'proyecto_list',
+                                      template='catalogos/proyecto_form.html')
 
 # ── Categorías ────────────────────────────────────────────────────────────────
 class CategoriaListView(LoginRequiredMixin, ListView):
@@ -408,6 +417,7 @@ InmuebleUpdateView = make_update_view(Inmueble, InmuebleForm, 'inmueble_list', '
 @login_required
 def descargar_catalogo(request, catalogo):
     nombres = {
+        'fuente':    'Catalogo_Fuente.xlsx',
         'categoria': 'Catalogo_Categoria.xlsx',
         'unidades':  'Catalogo_Unidades_Admvas.xlsx',
         'programas': 'Catalogo_Programas.xlsx',
@@ -426,3 +436,39 @@ def descargar_catalogo(request, catalogo):
     )
     response['Content-Disposition'] = f'attachment; filename="{nombre_archivo}"'
     return response
+
+
+# ── Importación de catálogos desde Excel ──────────────────────────────────────
+@login_required
+def importar_catalogo(request, catalogo):
+    from .importador import IMPORTADORES
+
+    if catalogo not in IMPORTADORES:
+        raise Http404("Catálogo no disponible para importar.")
+    funcion, url_lista, titulo = IMPORTADORES[catalogo]
+
+    resultado = None
+    if request.method == 'POST':
+        form = ImportarExcelForm(request.POST, request.FILES)
+        if form.is_valid():
+            archivo = request.FILES['archivo']
+            ruta_tmp = default_storage.save(f'tmp_importaciones/{archivo.name}', archivo)
+            ruta_abs = default_storage.path(ruta_tmp)
+            try:
+                resultado = funcion(ruta_abs)
+            except Exception as e:
+                resultado = {'creados': 0, 'actualizados': 0, 'errores': 1, 'total': 0,
+                             'log': [f'No se pudo procesar el archivo: {e}']}
+            finally:
+                default_storage.delete(ruta_tmp)
+            form = ImportarExcelForm()
+    else:
+        form = ImportarExcelForm()
+
+    return render(request, 'catalogos/importar_form.html', {
+        'form': form,
+        'titulo': f'Importar {titulo}',
+        'catalogo': catalogo,
+        'url_lista': url_lista,
+        'resultado': resultado,
+    })

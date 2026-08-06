@@ -149,10 +149,9 @@ print(f"  {c} nuevos / {resultados['Fuentes de Financiamiento']} total")
 print("Cargando Dependencias...")
 c = 0
 for row in get_rows('Dependencias'):
-    ejercicio, clave, desc = row[0], row[1], row[2]
+    _, clave, desc = row[0], row[1], row[2]
     if clave and desc:
         _, created = Dependencia.objects.get_or_create(
-            ejercicio=safe_int(ejercicio, 2025),
             clave=safe_str(clave),
             defaults={'descripcion': safe_str(desc)}
         )
@@ -484,7 +483,7 @@ c = 0
 for row in get_rows('Unidades Admvas'):
     # Cols: EJERCICIO, Depcia, Clave_Unidad, Descripcion_unidad
     row_ext = (row + (None,) * 4)[:4]
-    ejercicio, dep_clave, clave_uni, desc = row_ext
+    _, dep_clave, clave_uni, desc = row_ext
     if not clave_uni or not desc:
         continue
     dep_clave = safe_str(dep_clave)
@@ -492,10 +491,9 @@ for row in get_rows('Unidades Admvas'):
     if not dep:
         continue
     _, created = UnidadAdministrativa.objects.get_or_create(
+        dependencia=dep,
         clave=safe_str(clave_uni),
         defaults={
-            'ejercicio':   safe_int(ejercicio, 2025),
-            'dependencia': dep,
             'descripcion': safe_str(desc),
         }
     )
@@ -524,23 +522,20 @@ for _dep in Dependencia.objects.all():
         clave="DEFAULT",
         unidad=_uni,
         defaults={
-            'ejercicio':   2025,
             'dependencia': _dep,
             'descripcion': "PROGRAMA GENERAL",
         }
     )
 
     # Proyecto default 00000000
-    _, created = Proyecto.objects.get_or_create(
+    _pry_def, created = Proyecto.objects.get_or_create(
         clave=_pry_default_clave,
-        programa=_prg,
+        dependencia=_dep,
         defaults={
-            'ejercicio':   2025,
-            'dependencia': _dep,
-            'unidad':      _uni,
             'descripcion': _prg_default_desc,
         }
     )
+    _pry_def.programas.add(_prg)
     if created:
         _dep_default_count += 1
 
@@ -554,7 +549,7 @@ errores_prg = 0
 for row in get_rows('programas'):
     # Cols: EJERCICIO, ID_DEPCIA, ID_UNIDAD, CLAVE_PROGRAMA, DESCRIPCION
     row_ext = (row + (None,) * 5)[:5]
-    ejercicio, dep_clave, uni_clave, clave_prg, desc = row_ext
+    _, dep_clave, uni_clave, clave_prg, desc = row_ext
     if not clave_prg or not desc:
         continue
     dep = Dependencia.objects.filter(clave=safe_str(dep_clave)).first()
@@ -566,7 +561,6 @@ for row in get_rows('programas'):
         clave=safe_str(clave_prg),
         unidad=uni,
         defaults={
-            'ejercicio':   safe_int(ejercicio, 2025),
             'dependencia': dep,
             'descripcion': safe_str(desc),
         }
@@ -583,7 +577,7 @@ errores_pry = 0
 for row in get_rows('proyecto'):
     # Cols: LLAVE, EJERCICIO, ID_DEPCIA, ID_UNIDAD, ID_PROGRAMA, CLAVE_PROYECTO, DESCRIPCION
     row_ext = (row + (None,) * 7)[:7]
-    _, ejercicio, dep_clave, uni_clave, prg_clave, clave_pry, desc = row_ext
+    _, _, dep_clave, uni_clave, prg_clave, clave_pry, desc = row_ext
     if not clave_pry or not desc:
         continue
     dep = Dependencia.objects.filter(clave=safe_str(dep_clave)).first()
@@ -592,16 +586,14 @@ for row in get_rows('proyecto'):
     if not dep or not uni or not prg:
         errores_pry += 1
         continue
-    _, created = Proyecto.objects.get_or_create(
+    _pry, created = Proyecto.objects.get_or_create(
         clave=safe_str(clave_pry).strip(),
-        programa=prg,
+        dependencia=dep,
         defaults={
-            'ejercicio':   safe_int(ejercicio, 2025),
-            'dependencia': dep,
-            'unidad':      uni,
             'descripcion': safe_str(desc),
         }
     )
+    _pry.programas.add(prg)
     if created:
         c += 1
 resultados['Proyectos'] = Proyecto.objects.count()

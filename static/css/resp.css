@@ -279,6 +279,60 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .form-control.is-invalid,
 .form-select.is-invalid  { border-color: var(--rojo); }
 
+/* ── CHIP PICKER (buscador con chips: unidades/programas del proyecto) ── */
+.chip-picker { position: relative; z-index: 1; }
+.chip-picker:focus-within { z-index: 1100; }
+.chip-picker-box {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 12px 14px; border: 1.5px solid #dde2ee; border-radius: 12px;
+  background: var(--blanco); transition: var(--transition);
+}
+.chip-picker-box:focus-within {
+  border-color: var(--guinda); box-shadow: 0 0 0 4px rgba(109,17,48,.10);
+}
+.chip-picker-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-picker-tags:empty { display: none; }
+.chip-tag {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 9px 5px 13px; border-radius: 20px;
+  background: var(--guinda-clar); color: var(--guinda);
+  font-size: 13px; font-weight: 600; white-space: nowrap;
+}
+.chip-tag-remove {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 50%;
+  border: none; background: rgba(109,17,48,.12); color: var(--guinda);
+  font-size: 13px; line-height: 1; cursor: pointer; padding: 0;
+}
+.chip-tag-remove:hover { background: var(--guinda); color: var(--blanco); }
+.chip-picker-search-wrap { position: relative; display: flex; align-items: center; }
+.chip-picker-search {
+  width: 100%; border: none; outline: none; font-size: 14.5px;
+  font-family: inherit; color: var(--gris-osc); padding: 3px 28px 3px 0;
+  background: transparent;
+}
+.chip-picker-search::placeholder { color: #AAB7B8; }
+.chip-picker-search-icon {
+  position: absolute; right: 0; font-size: 14px; opacity: .45; pointer-events: none;
+}
+.chip-picker-suggestions {
+  position: absolute; z-index: 1200; top: calc(100% + 6px); left: 0; right: 0;
+  max-height: 240px; overflow-y: auto;
+  background: var(--blanco); border: 1px solid #eceff5; border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(31,38,55,.14);
+}
+.chip-picker-suggestion {
+  padding: 12px 16px; font-size: 14px; font-weight: 500;
+  color: var(--guinda); cursor: pointer;
+}
+.chip-picker-suggestion:not(:last-child) { border-bottom: 1px solid #f3f4f8; }
+.chip-picker-suggestion:hover { background: var(--guinda-clar); }
+.chip-picker-suggestion-todos {
+  font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--guinda); background: #f7f8fb; border-bottom: 1px solid #eceff5;
+}
+.chip-picker-suggestion-todos:hover { background: var(--guinda-clar); }
+
 /* ── GRID LITE ──────────────────────────────────────────────── */
 .row { display: flex; flex-wrap: wrap; margin-right: -7px; margin-left: -7px; }
 .row.g-2 > * { padding: 4px 7px; }

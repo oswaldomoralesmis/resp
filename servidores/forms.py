@@ -1,7 +1,30 @@
 # -*- coding: utf-8 -*-
 from django import forms
-from .models import ServidorPublico, InformacionBasica, BajaServidorPublico
+from .models import ServidorPublico, InformacionBasica, BajaServidorPublico, Puesto
 from catalogos.models import Dependencia
+from catalogos.forms import UnidadSelect
+
+
+class ProgramaSelect(forms.Select):
+    """<select> de Programa con data-unidad por opción, para que el JS del
+    formulario de Puesto solo muestre los programas de la unidad elegida."""
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        instance = getattr(value, 'instance', None)
+        if instance is not None:
+            option['attrs']['data-unidad'] = instance.unidad_id
+        return option
+
+
+class ProyectoSelect(forms.Select):
+    """<select> de Proyecto con data-dependencia por opción, para que el JS del
+    formulario de Puesto solo muestre los proyectos de la dependencia elegida."""
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        instance = getattr(value, 'instance', None)
+        if instance is not None:
+            option['attrs']['data-dependencia'] = instance.dependencia_id
+        return option
 
 
 class ServidorPublicoForm(forms.ModelForm):
@@ -13,6 +36,7 @@ class ServidorPublicoForm(forms.ModelForm):
             'expediente':          forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 41471'}),
             'rfc':                 forms.TextInput(attrs={'class': 'form-control text-uppercase', 'maxlength': '13', 'placeholder': 'Ej: GOCI7509233A6'}),
             'curp':                forms.TextInput(attrs={'class': 'form-control text-uppercase', 'maxlength': '18', 'placeholder': 'Ej: GOCI750923HTCNRS04'}),
+            'determinante':        forms.TextInput(attrs={'class': 'form-control text-uppercase', 'placeholder': 'Determinante'}),
             'nombre':              forms.TextInput(attrs={'class': 'form-control text-uppercase', 'placeholder': 'Nombre(s)'}),
             'primer_apellido':     forms.TextInput(attrs={'class': 'form-control text-uppercase', 'placeholder': 'Apellido paterno'}),
             'segundo_apellido':    forms.TextInput(attrs={'class': 'form-control text-uppercase', 'placeholder': 'Apellido materno'}),
@@ -32,6 +56,7 @@ class ServidorPublicoForm(forms.ModelForm):
             'expediente':          'No. Expediente',
             'rfc':                 'RFC',
             'curp':                'CURP',
+            'determinante':        'Determinante',
             'nombre':              'Nombre(s)',
             'primer_apellido':     'Primer Apellido',
             'segundo_apellido':    'Segundo Apellido',
@@ -134,3 +159,64 @@ class BajaForm(forms.ModelForm):
             'ejercicio':    'Ejercicio',
             'periodo':      'Período (Quincena)',
         }
+
+
+class PuestoForm(forms.ModelForm):
+    dependencia = forms.ModelChoiceField(
+        queryset=Dependencia.objects.all(), required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Dependencia',
+    )
+
+    class Meta:
+        model  = Puesto
+        fields = [
+            'proyecto', 'programa', 'unidad', 'id_plaza', 'categoria',
+            'nombramiento', 'nivel_estructura', 'estatus_plaza', 'cct',
+            'hsm', 'total_percepciones', 'total_bonos', 'total_neto', 'dias_pagados',
+            'servidor_actual', 'id_plaza_jefe',
+        ]
+        widgets = {
+            'proyecto':           ProyectoSelect(attrs={'class': 'form-select'}),
+            'programa':           ProgramaSelect(attrs={'class': 'form-select'}),
+            'unidad':             UnidadSelect(attrs={'class': 'form-select'}),
+            'id_plaza':           forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 50694'}),
+            'categoria':          forms.Select(attrs={'class': 'form-select'}),
+            'nombramiento':       forms.Select(attrs={'class': 'form-select'}),
+            'nivel_estructura':   forms.Select(attrs={'class': 'form-select'}),
+            'estatus_plaza':      forms.Select(attrs={'class': 'form-select'}),
+            'cct':                forms.Select(attrs={'class': 'form-select'}),
+            'hsm':                forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '0.00', 'step': '0.01'}),
+            'total_percepciones': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '0.00', 'step': '0.01'}),
+            'total_bonos':        forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '0.00', 'step': '0.01'}),
+            'total_neto':         forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '0.00', 'step': '0.01'}),
+            'dias_pagados':       forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '15'}),
+            'servidor_actual':    forms.Select(attrs={'class': 'form-select'}),
+            'id_plaza_jefe':      forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ID de plaza del jefe inmediato'}),
+        }
+        labels = {
+            'proyecto':           'Proyecto',
+            'programa':           'Programa',
+            'unidad':             'Unidad Administrativa',
+            'id_plaza':           'ID de Plaza',
+            'categoria':          'Categoría',
+            'nombramiento':       'Tipo de Contratación',
+            'nivel_estructura':   'Nivel de Estructura',
+            'estatus_plaza':      'Estatus de Plaza',
+            'cct':                'Centro de Trabajo',
+            'hsm':                'HSM (Hora-Semana-Mes)',
+            'total_percepciones': 'Total Percepciones',
+            'total_bonos':        'Total Bonos',
+            'total_neto':         'Total Neto',
+            'dias_pagados':       'Días Pagados',
+            'servidor_actual':    'Trabajador Asignado',
+            'id_plaza_jefe':      'ID Plaza Jefe Inmediato',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields['id_plaza'].disabled = True
+            self.fields['id_plaza'].widget.attrs['class'] += ' bg-light'
+            if self.instance.proyecto_id:
+                self.fields['dependencia'].initial = self.instance.proyecto.dependencia_id

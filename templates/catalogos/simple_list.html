@@ -9,7 +9,13 @@
 <div class="card">
   <div class="card-header" style="justify-content:space-between;">
     <span>{{ titulo }}{% if page_obj %} &mdash; <span class="badge-blue">{{ page_obj.paginator.count }} registros</span>{% endif %}</span>
-    <a href="nueva/" class="btn-institucional btn-sm">&#10133; Nuevo</a>
+    <div class="d-flex gap-2">
+      {% if catalogo_slug %}
+      <a href="{% url 'descargar_catalogo' catalogo_slug %}" class="btn-dorado btn-sm">&#8659; Excel</a>
+      <a href="{% url 'importar_catalogo' catalogo_slug %}" class="btn-outline btn-sm">&#8657; Importar</a>
+      {% endif %}
+      <a href="nueva/" class="btn-institucional btn-sm">&#10133; Nuevo</a>
+    </div>
   </div>
   <div class="card-body">
     <form method="get" class="mb-3">

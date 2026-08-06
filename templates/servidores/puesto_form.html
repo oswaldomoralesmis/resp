@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="breadcrumb-resp">
+  <a href="{% url 'dashboard' %}">&#127968; Inicio</a>
+  <span class="sep">&#8250;</span>
+  <a href="{% url 'puesto_list' %}">Puestos</a>
+  <span class="sep">&#8250;</span>
+  <span>{{ titulo }}</span>
+</div>
+
+<div class="card">
+  <div class="card-header">&#9999;&#65039; {{ titulo }}</div>
+  <div class="card-body">
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      <!-- DATOS DEL PUESTO / PLAZA -->
+      <div class="form-section-title" style="margin-bottom:12px;">&#128188; Datos del Puesto / Plaza</div>
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <label for="{{ form.id_plaza.id_for_label }}" class="form-label fw-semibold">{{ form.id_plaza.label }}</label>
+          {{ form.id_plaza }}
+          <div class="form-text">El ID de plaza no se puede modificar.</div>
+        </div>
+        <div class="col-md-3">
+          <label for="{{ form.dependencia.id_for_label }}" class="form-label fw-semibold">{{ form.dependencia.label }}</label>
+          {{ form.dependencia }}
+          <div class="form-text">Filtra unidad, programa y proyecto según el catálogo.</div>
+        </div>
+        <div class="col-md-3">
+          <label for="{{ form.unidad.id_for_label }}" class="form-label fw-semibold">{{ form.unidad.label }}</label>
+          {{ form.unidad }}
+        </div>
+        <div class="col-md-3">
+          <label for="{{ form.programa.id_for_label }}" class="form-label fw-semibold">{{ form.programa.label }} <span class="text-danger">*</span></label>
+          {{ form.programa }}
+          {% if form.programa.errors %}<div class="text-danger small mt-1">{{ form.programa.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div class="col-md-3">
+          <label for="{{ form.proyecto.id_for_label }}" class="form-label fw-semibold">{{ form.proyecto.label }} <span class="text-danger">*</span></label>
+          {{ form.proyecto }}
+          {% if form.proyecto.errors %}<div class="text-danger small mt-1">{{ form.proyecto.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div class="col-md-3">
+          <label for="{{ form.categoria.id_for_label }}" class="form-label fw-semibold">{{ form.categoria.label }} <span class="text-danger">*</span></label>
+          {{ form.categoria }}
+          {% if form.categoria.errors %}<div class="text-danger small mt-1">{{ form.categoria.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div class="col-md-3">
+          <label for="{{ form.nombramiento.id_for_label }}" class="form-label fw-semibold">{{ form.nombramiento.label }}</label>
+          {{ form.nombramiento }}
+        </div>
+        <div class="col-md-3">
+          <label for="{{ form.nivel_estructura.id_for_label }}" class="form-label fw-semibold">{{ form.nivel_estructura.label }}</label>
+          {{ form.nivel_estructura }}
+        </div>
+        <div class="col-md-3">
+          <label for="{{ form.estatus_plaza.id_for_label }}" class="form-label fw-semibold">{{ form.estatus_plaza.label }}</label>
+          {{ form.estatus_plaza }}
+        </div>
+        <div class="col-md-3">
+          <label for="{{ form.cct.id_for_label }}" class="form-label fw-semibold">{{ form.cct.label }}</label>
+          {{ form.cct }}
+        </div>
+      </div>
+
+      <!-- SUELDO -->
+      <div class="form-section-title" style="margin-bottom:12px;">&#128176; Sueldo</div>
+      <div class="row g-3 mb-4">
+        <div class="col-md-2">
+          <label for="{{ form.hsm.id_for_label }}" class="form-label fw-semibold">{{ form.hsm.label }}</label>
+          {{ form.hsm }}
+        </div>
+        <div class="col-md-2">
+          <label for="{{ form.total_percepciones.id_for_label }}" class="form-label fw-semibold">{{ form.total_percepciones.label }}</label>
+          {{ form.total_percepciones }}
+        </div>
+        <div class="col-md-2">
+          <label for="{{ form.total_bonos.id_for_label }}" class="form-label fw-semibold">{{ form.total_bonos.label }}</label>
+          {{ form.total_bonos }}
+        </div>
+        <div class="col-md-2">
+          <label for="{{ form.total_neto.id_for_label }}" class="form-label fw-semibold">{{ form.total_neto.label }}</label>
+          {{ form.total_neto }}
+        </div>
+        <div class="col-md-2">
+          <label for="{{ form.dias_pagados.id_for_label }}" class="form-label fw-semibold">{{ form.dias_pagados.label }}</label>
+          {{ form.dias_pagados }}
+        </div>
+      </div>
+
+      <!-- SERVIDOR PÚBLICO ASIGNADO -->
+      <div class="form-section-title" style="margin-bottom:12px;">&#128100; Servidor Público Asignado</div>
+      <div class="row g-3 mb-4">
+        <div class="col-md-6">
+          <label for="{{ form.servidor_actual.id_for_label }}" class="form-label fw-semibold">{{ form.servidor_actual.label }}</label>
+          {{ form.servidor_actual }}
+          <div class="form-text">Dejar en blanco para marcar la plaza como vacante.</div>
+        </div>
+      </div>
+
+      <!-- JEFE INMEDIATO -->
+      <div class="form-section-title" style="margin-bottom:12px;">&#128481; Jefe Inmediato</div>
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <label for="{{ form.id_plaza_jefe.id_for_label }}" class="form-label fw-semibold">{{ form.id_plaza_jefe.label }}</label>
+          {{ form.id_plaza_jefe }}
+        </div>
+        <div class="col-md-8">
+          <label class="form-label fw-semibold">Nombre del Jefe</label>
+          <input type="text" class="form-control" value="{% if puesto.jefe_actual %}{{ puesto.jefe_actual.nombre_completo }}{% else %}—{% endif %}" disabled>
+          <div class="form-text">Se calcula automáticamente según quién ocupa el ID de plaza jefe.</div>
+        </div>
+      </div>
+
+      <hr class="mt-2 mb-3">
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn-institucional">&#128190; Guardar</button>
+        <a href="{% url 'puesto_list' %}" class="btn-outline">&#10005; Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Encadena un <select> hijo a su <select> padre: solo deja visibles las
+// opciones del hijo cuyo data-<dataAttr> coincida con el valor elegido en el
+// padre (p.ej. unidad->dependencia, programa->unidad, proyecto->dependencia).
+function encadenarSelects(hijoId, padreId, dataAttr) {
+  const hijo = document.getElementById(hijoId);
+  const padre = document.getElementById(padreId);
+  if (!hijo || !padre) return;
+
+  function filtrar(conservarSeleccion) {
+    const valorPadre = padre.value;
+    const seleccionActual = hijo.value;
+    let hayCoincidencia = false;
+    Array.from(hijo.options).forEach(opt => {
+      if (!opt.value) { opt.hidden = false; return; }
+      const coincide = !valorPadre || opt.dataset[dataAttr] === valorPadre;
+      opt.hidden = !coincide;
+      if (coincide && opt.value === seleccionActual) hayCoincidencia = true;
+    });
+    if (!conservarSeleccion || !hayCoincidencia) {
+      hijo.value = '';
+    }
+  }
+
+  padre.addEventListener('change', () => filtrar(false));
+  filtrar(true);  // al cargar la página respeta la selección actual (modo edición)
+}
+
+encadenarSelects('id_unidad', 'id_dependencia', 'dependencia');
+encadenarSelects('id_programa', 'id_unidad', 'unidad');
+encadenarSelects('id_proyecto', 'id_dependencia', 'dependencia');
+</script>
+{% endblock %}

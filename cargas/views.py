@@ -1,14 +1,21 @@
 # -*- coding: utf-8 -*-
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import ListView, CreateView
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.views.generic import ListView, CreateView, DeleteView
 from django.urls import reverse_lazy
 from django.contrib import messages
+from django.utils import timezone
 
-from .models import CargaLayout, PeriodoCarga
-from .forms import CargaLayoutForm, PeriodoCargaForm
+from .models import CargaLayout, PeriodoCarga, AccesoExcepcionCarga, ventana_permitida
+from .forms import CargaLayoutForm, PeriodoCargaForm, AccesoExcepcionCargaForm
 from .procesador import procesar_layout_basica
+
+
+class AdministradorRequiredMixin(UserPassesTestMixin):
+    """Restringe la vista a usuarios con rol='administrador'."""
+    def test_func(self):
+        return self.request.user.is_authenticated and self.request.user.rol == 'administrador'
 
 
 class CargaListView(LoginRequiredMixin, ListView):
@@ -29,6 +36,18 @@ def carga_layout(request):
         form = CargaLayoutForm(request.POST, request.FILES)
         if form.is_valid():
             carga = form.save(commit=False)
+
+            hoy = timezone.localdate()
+            ini, fin = ventana_permitida(carga.periodo, carga.dependencia)
+            if not (ini <= hoy <= fin):
+                messages.error(
+                    request,
+                    f'Fuera de la ventana de carga para {carga.dependencia}: '
+                    f'del {ini} al {fin}. Si necesita cargar fuera de estas fechas, '
+                    f'solicite al administrador una excepción de acceso.'
+                )
+                return render(request, 'cargas/form.html', {'form': form, 'titulo': 'Cargar Layout'})
+
             carga.usuario_carga = request.user
             carga.estado = 'procesando'
             carga.save()
@@ -127,6 +146,42 @@ class PeriodoCargaCreateView(LoginRequiredMixin, CreateView):
     form_class = PeriodoCargaForm
     template_name = 'cargas/periodo_form.html'
     success_url = reverse_lazy('periodo_list')
+
+
+class AccesoExcepcionListView(AdministradorRequiredMixin, ListView):
+    model = AccesoExcepcionCarga
+    template_name = 'cargas/excepcion_list.html'
+    context_object_name = 'excepciones'
+
+    def get_queryset(self):
+        return AccesoExcepcionCarga.objects.select_related('periodo', 'dependencia', 'autorizado_por')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['titulo'] = 'Excepciones de Acceso'
+        return ctx
+
+
+class AccesoExcepcionCreateView(AdministradorRequiredMixin, CreateView):
+    model = AccesoExcepcionCarga
+    form_class = AccesoExcepcionCargaForm
+    template_name = 'cargas/excepcion_form.html'
+    success_url = reverse_lazy('excepcion_list')
+
+    def form_valid(self, form):
+        form.instance.autorizado_por = self.request.user
+        return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['titulo'] = 'Nueva Excepción de Acceso'
+        return ctx
+
+
+class AccesoExcepcionDeleteView(AdministradorRequiredMixin, DeleteView):
+    model = AccesoExcepcionCarga
+    template_name = 'cargas/excepcion_confirm_delete.html'
+    success_url = reverse_lazy('excepcion_list')
 
 
 @login_required

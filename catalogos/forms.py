@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 from django import forms
+from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from .models import (
     FuenteFinanciamiento, Dependencia, UnidadAdministrativa,
     Programa, Proyecto, Categoria, TipoContratacion, TipoPersonal,
@@ -12,6 +14,64 @@ from .models import (
 FC  = 'form-control'
 FS  = 'form-select'
 FCU = 'form-control text-uppercase'
+
+
+class ImportarExcelForm(forms.Form):
+    archivo = forms.FileField(
+        label='Archivo Excel',
+        widget=forms.ClearableFileInput(attrs={'class': FC, 'accept': '.xlsx,.xls'}),
+    )
+
+    def clean_archivo(self):
+        archivo = self.cleaned_data['archivo']
+        if not archivo.name.lower().endswith(('.xlsx', '.xls')):
+            raise forms.ValidationError('Solo se permiten archivos Excel (.xlsx o .xls).')
+        if archivo.size > 10 * 1024 * 1024:
+            raise forms.ValidationError('El archivo no debe superar 10 MB.')
+        return archivo
+
+
+class UnidadSelect(forms.Select):
+    """<select> de Unidad Administrativa con data-dependencia por opción, para
+    que el JS del formulario solo muestre las unidades de la dependencia elegida."""
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        instance = getattr(value, 'instance', None)
+        if instance is not None:
+            option['attrs']['data-dependencia'] = instance.dependencia_id
+        return option
+
+
+class ProgramaChipWidget(forms.SelectMultiple):
+    """<select multiple> oculto: es la fuente real de datos que Django lee al
+    enviar el formulario. Cada <option> lleva data-unidad/data-unidad-nombre.
+    El JS del template arma con esto dos buscadores tipo chip (uno de
+    Unidades Administrativas, deducidas de las opciones, y otro de Programas
+    filtrado por las unidades elegidas) y mantiene este <select> sincronizado."""
+
+    def render(self, name, value, attrs=None, renderer=None):
+        value = value or []
+        value_strs = {str(v) for v in value}
+
+        opciones_html = []
+        for opt_value, opt_label in self.choices:
+            programa = getattr(opt_value, 'instance', None)
+            if programa is None:
+                continue
+            v = str(programa.pk)
+            opciones_html.append(format_html(
+                '<option value="{}" data-clave="{}" data-dependencia="{}" data-unidad="{}" '
+                'data-unidad-clave="{}" data-unidad-nombre="{}"{}>{}</option>',
+                v, programa.clave, programa.unidad.dependencia_id, programa.unidad_id,
+                programa.unidad.clave, str(programa.unidad),
+                ' selected' if v in value_strs else '', str(programa),
+            ))
+
+        widget_id = (attrs or {}).get('id', f'id_{name}')
+        return format_html(
+            '<select multiple name="{}" id="{}" style="display:none">{}</select>',
+            name, widget_id, mark_safe(''.join(opciones_html)),
+        )
 
 
 class FuenteFinanciamientoForm(forms.ModelForm):
@@ -31,13 +91,12 @@ class FuenteFinanciamientoForm(forms.ModelForm):
 class DependenciaForm(forms.ModelForm):
     class Meta:
         model  = Dependencia
-        fields = ['ejercicio', 'clave', 'descripcion']
+        fields = ['clave', 'descripcion']
         widgets = {
-            'ejercicio':   forms.NumberInput(attrs={'class': FC, 'placeholder': '2025'}),
             'clave':       forms.TextInput(attrs={'class': FCU, 'placeholder': 'Ej: 21', 'maxlength': '5'}),
             'descripcion': forms.TextInput(attrs={'class': FC,  'placeholder': 'Nombre de la dependencia'}),
         }
-        labels = {'ejercicio': 'Ejercicio', 'clave': 'Clave', 'descripcion': 'Descripción'}
+        labels = {'clave': 'Clave', 'descripcion': 'Descripción'}
 
     def clean_clave(self):
         return self.cleaned_data.get('clave', '').upper().strip()
@@ -46,15 +105,13 @@ class DependenciaForm(forms.ModelForm):
 class UnidadAdministrativaForm(forms.ModelForm):
     class Meta:
         model  = UnidadAdministrativa
-        fields = ['ejercicio', 'dependencia', 'clave', 'descripcion']
+        fields = ['dependencia', 'clave', 'descripcion']
         widgets = {
-            'ejercicio':   forms.NumberInput(attrs={'class': FC, 'placeholder': '2025'}),
             'dependencia': forms.Select(attrs={'class': FS}),
             'clave':       forms.TextInput(attrs={'class': FCU, 'placeholder': 'Ej: 21060301', 'maxlength': '10'}),
             'descripcion': forms.TextInput(attrs={'class': FC,  'placeholder': 'Nombre de la unidad administrativa'}),
         }
         labels = {
-            'ejercicio':   'Ejercicio',
             'dependencia': 'Dependencia',
             'clave':       'Clave Unidad (8 dígitos)',
             'descripcion': 'Descripción',
@@ -67,16 +124,14 @@ class UnidadAdministrativaForm(forms.ModelForm):
 class ProgramaForm(forms.ModelForm):
     class Meta:
         model  = Programa
-        fields = ['ejercicio', 'dependencia', 'unidad', 'clave', 'descripcion']
+        fields = ['dependencia', 'unidad', 'clave', 'descripcion']
         widgets = {
-            'ejercicio':   forms.NumberInput(attrs={'class': FC, 'placeholder': '2025'}),
             'dependencia': forms.Select(attrs={'class': FS}),
-            'unidad':      forms.Select(attrs={'class': FS}),
+            'unidad':      UnidadSelect(attrs={'class': FS}),
             'clave':       forms.TextInput(attrs={'class': FCU, 'placeholder': 'Ej: E054', 'maxlength': '10'}),
             'descripcion': forms.TextInput(attrs={'class': FC,  'placeholder': 'Descripción del programa'}),
         }
         labels = {
-            'ejercicio':   'Ejercicio',
             'dependencia': 'Dependencia',
             'unidad':      'Unidad Administrativa',
             'clave':       'Clave Programa',
@@ -90,23 +145,25 @@ class ProgramaForm(forms.ModelForm):
 class ProyectoForm(forms.ModelForm):
     class Meta:
         model  = Proyecto
-        fields = ['ejercicio', 'dependencia', 'unidad', 'programa', 'clave', 'descripcion']
+        fields = ['dependencia', 'clave', 'descripcion', 'programas']
         widgets = {
-            'ejercicio':   forms.NumberInput(attrs={'class': FC, 'placeholder': '2025'}),
             'dependencia': forms.Select(attrs={'class': FS}),
-            'unidad':      forms.Select(attrs={'class': FS}),
-            'programa':    forms.Select(attrs={'class': FS}),
             'clave':       forms.TextInput(attrs={'class': FCU, 'placeholder': 'Ej: 04000127', 'maxlength': '20'}),
             'descripcion': forms.TextInput(attrs={'class': FC,  'placeholder': 'Descripción del proyecto'}),
+            'programas':   ProgramaChipWidget(),
         }
         labels = {
-            'ejercicio':   'Ejercicio',
             'dependencia': 'Dependencia',
-            'unidad':      'Unidad Administrativa',
-            'programa':    'Programa',
             'clave':       'Clave Proyecto',
             'descripcion': 'Descripción',
+            'programas':   'Programas',
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['programas'].queryset = Programa.objects.select_related('unidad').order_by(
+            'unidad__clave', 'clave'
+        )
 
     def clean_clave(self):
         return self.cleaned_data.get('clave', '').upper().strip()

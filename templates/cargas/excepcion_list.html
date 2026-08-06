@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Excepciones de Acceso{% endblock %}
+{% block page_title %}Excepciones de Acceso por Dependencia{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header" style="justify-content:space-between;">
+    <span>🔓 Excepciones de Acceso</span>
+    <a href="{% url 'excepcion_create' %}" class="btn-institucional btn-sm">➕ Nueva Excepción</a>
+  </div>
+  <div class="card-body">
+    <div class="alert-resp alert-info">ℹ️ Una excepción abre una ventana de fechas propia para que una dependencia cargue layouts de un período fuera de la fecha de cierre general.</div>
+    <table class="table-resp">
+      <thead><tr><th>Período</th><th>Dependencia</th><th>Inicio</th><th>Fin</th><th>Motivo</th><th>Autorizó</th><th>Acciones</th></tr></thead>
+      <tbody>
+        {% for e in excepciones %}
+        <tr>
+          <td><span class="badge-blue">{{ e.periodo.quincena }}</span></td>
+          <td>{{ e.dependencia.clave }} - {{ e.dependencia.descripcion }}</td>
+          <td>{{ e.fecha_inicio }}</td>
+          <td>{{ e.fecha_fin }}</td>
+          <td>{{ e.motivo|default:"—" }}</td>
+          <td>{{ e.autorizado_por }}</td>
+          <td><a href="{% url 'excepcion_delete' e.pk %}" class="btn-outline btn-sm">Eliminar</a></td>
+        </tr>
+        {% empty %}<tr><td colspan="7" class="text-muted text-center" style="padding:30px;">Sin excepciones registradas.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

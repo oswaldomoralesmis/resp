@@ -19,6 +19,7 @@ class ServidorPublico(models.Model):
     expediente = models.CharField(max_length=20, unique=True, verbose_name='No. Expediente')
     rfc = models.CharField(max_length=13, unique=True, verbose_name='RFC')
     curp = models.CharField(max_length=18, unique=True, verbose_name='CURP')
+    determinante = models.CharField(max_length=20, blank=True, verbose_name='Determinante')
     nombre = models.CharField(max_length=50, verbose_name='Nombre(s)')
     primer_apellido = models.CharField(max_length=50, verbose_name='Primer Apellido')
     segundo_apellido = models.CharField(max_length=50, blank=True, null=True, verbose_name='Segundo Apellido')
@@ -100,6 +101,114 @@ class IdiomaServidor(models.Model):
 
     class Meta:
         unique_together = ['servidor', 'idioma']
+
+
+class Puesto(models.Model):
+    """Plaza dentro de la estructura Dependencia-Unidad-Programa-Proyecto.
+    Un proyecto puede abarcar varios programas (y por lo tanto varias unidades
+    administrativas), así que cada puesto guarda su propio 'programa' además
+    del 'proyecto' para saber exactamente en cuál unidad/programa está.
+    id_plaza es la llave única de la plaza en todo el gobierno, independiente
+    del proyecto al que esté asignada hoy. El estatus se calcula solo a partir
+    de si tiene un servidor asignado."""
+    ESTATUS_VACANTE = 'vacante'
+    ESTATUS_OCUPADA = 'ocupada'
+    ESTATUS_CHOICES = [
+        (ESTATUS_VACANTE, 'Vacante'),
+        (ESTATUS_OCUPADA, 'Ocupada'),
+    ]
+
+    proyecto = models.ForeignKey(Proyecto, on_delete=models.PROTECT, related_name='puestos', verbose_name='Proyecto')
+    programa = models.ForeignKey(Programa, on_delete=models.PROTECT, related_name='puestos', verbose_name='Programa')
+    unidad = models.ForeignKey(UnidadAdministrativa, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Unidad Administrativa')
+    id_plaza = models.CharField(max_length=20, unique=True, verbose_name='ID de Plaza')
+    categoria = models.ForeignKey(Categoria, on_delete=models.PROTECT, verbose_name='Categoría')
+    nombramiento = models.ForeignKey(TipoContratacion, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Tipo de Contratación')
+    nivel_estructura = models.ForeignKey(NivelEstructura, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Nivel de Estructura')
+    estatus_plaza = models.ForeignKey(EstatusPlaza, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Estatus de Plaza')
+    cct = models.ForeignKey(CentroTrabajo, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Centro de Trabajo')
+    hsm = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, verbose_name='HSM (Hora-Semana-Mes)')
+    total_percepciones = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='Total Percepciones')
+    total_bonos = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='Total Bonos')
+    total_neto = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='Total Neto')
+    dias_pagados = models.IntegerField(default=0, verbose_name='Días Pagados')
+    id_plaza_jefe = models.CharField(max_length=20, blank=True, verbose_name='ID Plaza Jefe Inmediato')
+    servidor_actual = models.ForeignKey(
+        ServidorPublico, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='puestos_ocupados', verbose_name='Trabajador Asignado'
+    )
+    estatus = models.CharField(
+        max_length=10, choices=ESTATUS_CHOICES, default=ESTATUS_VACANTE,
+        editable=False, verbose_name='Estatus'
+    )
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Puesto'
+        verbose_name_plural = 'Puestos'
+        ordering = ['proyecto', 'id_plaza']
+
+    def save(self, *args, **kwargs):
+        self.estatus = self.ESTATUS_OCUPADA if self.servidor_actual_id else self.ESTATUS_VACANTE
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.id_plaza} - {self.categoria} ({self.get_estatus_display()})"
+
+    @property
+    def jefe_actual(self):
+        """Servidor que ocupa la plaza registrada en id_plaza_jefe, si existe."""
+        if not self.id_plaza_jefe:
+            return None
+        jefe = Puesto.objects.filter(id_plaza=self.id_plaza_jefe).select_related('servidor_actual').first()
+        return jefe.servidor_actual if jefe else None
+
+
+def sincronizar_puesto(proyecto, programa, id_plaza, categoria, servidor, **datos_plaza):
+    """Crea o actualiza el Puesto identificado por id_plaza (llave única) y lo
+    marca ocupado por 'servidor'. Se llama desde la carga de layout y desde el
+    alta manual de Información Básica, para que la tabla de puestos siempre
+    refleje quién ocupa cada plaza y con qué datos (unidad, sueldo, etc.).
+
+    'datos_plaza' acepta los campos propios de la plaza en Puesto: unidad,
+    nombramiento, nivel_estructura, estatus_plaza, cct, hsm,
+    total_percepciones, total_bonos, total_neto, dias_pagados. Lo que traiga
+    el Excel siempre gana sobre ediciones manuales previas."""
+    campos = {'proyecto': proyecto, 'programa': programa, 'categoria': categoria, 'servidor_actual': servidor, **datos_plaza}
+    puesto, creado = Puesto.objects.get_or_create(id_plaza=id_plaza, defaults=campos)
+    if not creado:
+        cambios = False
+        for campo, valor in campos.items():
+            if getattr(puesto, campo) != valor:
+                setattr(puesto, campo, valor)
+                cambios = True
+        if cambios:
+            puesto.save()
+    return puesto
+
+
+def reportar_puesto_vacante(id_plaza, proyecto=None, programa=None, categoria=None):
+    """Registra que la plaza id_plaza (llave única) no tiene trabajador asignado.
+    Si el puesto ya existe, lo libera; si no existe y se cuenta con proyecto,
+    programa y categoría (columnas de institución/puesto de la fila), lo da de
+    alta ya vacante. Devuelve None solo si no hay datos suficientes para darlo
+    de alta."""
+    puesto = Puesto.objects.filter(id_plaza=id_plaza).first()
+    if puesto:
+        if puesto.servidor_actual_id is not None:
+            puesto.servidor_actual = None
+            puesto.save()
+        return puesto
+    if proyecto and programa and categoria:
+        return Puesto.objects.create(proyecto=proyecto, programa=programa, id_plaza=id_plaza, categoria=categoria)
+    return None
+
+
+def liberar_puestos_de(servidor):
+    """Deja vacantes todos los puestos que ocupaba 'servidor' (p.ej. al darlo de baja)."""
+    Puesto.objects.filter(servidor_actual=servidor).update(
+        servidor_actual=None, estatus=Puesto.ESTATUS_VACANTE
+    )
 
 
 class InformacionBasica(models.Model):

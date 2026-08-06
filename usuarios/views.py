@@ -8,7 +8,7 @@ from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib import messages
 from .models import UsuarioRESP
-from .forms import UsuarioRESPForm
+from .forms import UsuarioRESPForm, UsuarioRESPEditForm
 
 
 class UsuarioListView(LoginRequiredMixin, ListView):
@@ -37,9 +37,14 @@ class UsuarioCreateView(LoginRequiredMixin, CreateView):
 
 class UsuarioUpdateView(LoginRequiredMixin, UpdateView):
     model = UsuarioRESP
-    form_class = UsuarioRESPForm
+    form_class = UsuarioRESPEditForm
     template_name = 'usuarios/form.html'
     success_url = reverse_lazy('usuario_list')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['titulo'] = 'Editar Usuario'
+        return ctx
 
 
 @login_required

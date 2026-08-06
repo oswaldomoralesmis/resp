@@ -9,6 +9,7 @@
     <span>&#127962;&#65039; Unidades Administrativas{% if page_obj %} <span class="badge-blue">{{ page_obj.paginator.count }}</span>{% endif %}</span>
     <div class="d-flex gap-2">
       <a href="{% url 'descargar_catalogo' 'unidades' %}" class="btn-dorado btn-sm">&#8659; Excel</a>
+      <a href="{% url 'importar_catalogo' 'unidades' %}" class="btn-outline btn-sm">&#8657; Importar</a>
       <a href="{% url 'unidad_create' %}" class="btn-institucional btn-sm">&#10133; Nueva</a>
     </div>
   </div>
@@ -22,15 +23,15 @@
     </form>
     <div style="overflow-x:auto;">
       <table class="table-resp">
-        <thead><tr><th>Ejercicio</th><th>Dependencia</th><th>Clave Unidad</th><th>Descripci&oacute;n</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Dependencia</th><th>Clave Unidad</th><th>Descripci&oacute;n</th><th>Acciones</th></tr></thead>
         <tbody>
           {% for r in registros %}
           <tr>
-            <td>{{ r.ejercicio }}</td><td><span class="badge-blue">{{ r.dependencia.clave }}</span></td>
+            <td><span class="badge-blue">{{ r.dependencia.clave }}</span></td>
             <td><strong>{{ r.clave }}</strong></td><td>{{ r.descripcion }}</td>
             <td><a href="{% url 'unidad_update' r.pk %}" class="btn-institucional btn-sm">Editar</a></td>
           </tr>
-          {% empty %}<tr><td colspan="5" class="text-muted text-center" style="padding:28px;">Sin registros.</td></tr>{% endfor %}
+          {% empty %}<tr><td colspan="4" class="text-muted text-center" style="padding:28px;">Sin registros.</td></tr>{% endfor %}
         </tbody>
       </table>
     </div>

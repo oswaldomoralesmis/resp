@@ -16,22 +16,19 @@ class FuenteFinanciamiento(models.Model):
 
 
 class Dependencia(models.Model):
-    ejercicio = models.IntegerField(default=2025, verbose_name='Ejercicio')
-    clave = models.CharField(max_length=5, verbose_name='Clave')
+    clave = models.CharField(max_length=5, unique=True, verbose_name='Clave')
     descripcion = models.CharField(max_length=200, verbose_name='Descripción')
 
     class Meta:
         verbose_name = 'Dependencia'
         verbose_name_plural = 'Dependencias'
         ordering = ['clave']
-        unique_together = ['ejercicio', 'clave']
 
     def __str__(self):
         return f"{self.clave} - {self.descripcion}"
 
 
 class UnidadAdministrativa(models.Model):
-    ejercicio = models.IntegerField(default=2025)
     dependencia = models.ForeignKey(Dependencia, on_delete=models.CASCADE, verbose_name='Dependencia')
     clave = models.CharField(max_length=10, verbose_name='Clave')
     descripcion = models.CharField(max_length=200, verbose_name='Descripción')
@@ -40,13 +37,13 @@ class UnidadAdministrativa(models.Model):
         verbose_name = 'Unidad Administrativa'
         verbose_name_plural = 'Unidades Administrativas'
         ordering = ['clave']
+        unique_together = ['dependencia', 'clave']
 
     def __str__(self):
         return f"{self.clave} - {self.descripcion}"
 
 
 class Programa(models.Model):
-    ejercicio = models.IntegerField(default=2025)
     dependencia = models.ForeignKey(Dependencia, on_delete=models.CASCADE)
     unidad = models.ForeignKey(UnidadAdministrativa, on_delete=models.CASCADE)
     clave = models.CharField(max_length=10, verbose_name='Clave')
@@ -55,25 +52,30 @@ class Programa(models.Model):
     class Meta:
         verbose_name = 'Programa'
         verbose_name_plural = 'Programas'
+        unique_together = ['dependencia', 'unidad', 'clave']
 
     def __str__(self):
         return f"{self.clave} - {self.descripcion}"
 
 
 class Proyecto(models.Model):
-    ejercicio = models.IntegerField(default=2025)
     dependencia = models.ForeignKey(Dependencia, on_delete=models.CASCADE)
-    unidad = models.ForeignKey(UnidadAdministrativa, on_delete=models.CASCADE)
-    programa = models.ForeignKey(Programa, on_delete=models.CASCADE)
+    programas = models.ManyToManyField(Programa, related_name='proyectos', verbose_name='Programas')
     clave = models.CharField(max_length=20, verbose_name='Clave')
     descripcion = models.CharField(max_length=300, verbose_name='Descripción')
 
     class Meta:
         verbose_name = 'Proyecto'
         verbose_name_plural = 'Proyectos'
+        unique_together = ['dependencia', 'clave']
 
     def __str__(self):
         return f"{self.clave} - {self.descripcion}"
+
+    @property
+    def unidades(self):
+        """Unidades administrativas involucradas, derivadas de los programas asignados."""
+        return UnidadAdministrativa.objects.filter(programa__in=self.programas.all()).distinct()
 
 
 class Categoria(models.Model):

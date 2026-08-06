@@ -42,3 +42,40 @@ class UsuarioRESPForm(UserCreationForm):
 
     def clean_curp(self):
         return self.cleaned_data.get('curp', '').upper().strip()
+
+
+class UsuarioRESPEditForm(forms.ModelForm):
+    """Para editar un usuario existente: sin campos de contraseña y sin el
+    clean_username de UserCreationForm, que no excluye la instancia actual
+    y por eso siempre reportaba 'el usuario ya existe' al editar."""
+
+    class Meta:
+        model  = UsuarioRESP
+        fields = ['username', 'email', 'first_name', 'last_name',
+                  'rfc', 'curp', 'rol', 'dependencia']
+        widgets = {
+            'username':    forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre de usuario'}),
+            'email':       forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'usuario@tabasco.gob.mx'}),
+            'first_name':  forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre(s)'}),
+            'last_name':   forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Apellidos'}),
+            'rfc':         forms.TextInput(attrs={'class': 'form-control text-uppercase', 'maxlength': '13', 'placeholder': 'RFC con homoclave'}),
+            'curp':        forms.TextInput(attrs={'class': 'form-control text-uppercase', 'maxlength': '18', 'placeholder': 'CURP 18 caracteres'}),
+            'rol':         forms.Select(attrs={'class': 'form-select'}),
+            'dependencia': forms.Select(attrs={'class': 'form-select'}),
+        }
+        labels = {
+            'username':    'Usuario (login)',
+            'email':       'Correo institucional',
+            'first_name':  'Nombre(s)',
+            'last_name':   'Apellidos',
+            'rfc':         'RFC',
+            'curp':        'CURP',
+            'rol':         'Rol en el sistema',
+            'dependencia': 'Dependencia',
+        }
+
+    def clean_rfc(self):
+        return self.cleaned_data.get('rfc', '').upper().strip()
+
+    def clean_curp(self):
+        return self.cleaned_data.get('curp', '').upper().strip()

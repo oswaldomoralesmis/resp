@@ -18,7 +18,7 @@
         {% for field in form %}
         <div class="
           {% if field.name in 'descripcion,nombre,domicilio' %}col-md-12
-          {% elif field.name in 'ejercicio,subcategoria,nivel,clave_num,num_exterior,num_interior,cp,tp' %}col-md-3
+          {% elif field.name in 'subcategoria,nivel,clave_num,num_exterior,num_interior,cp,tp' %}col-md-3
           {% elif field.name in 'clave,abreviatura,tipo_contrato,nivel_educativo,municipio,localidad,estado,familia_linguistica,estatus,tipo_plaza' %}col-md-4
           {% elif field.name in 'dependencia,unidad,programa,entidad,tipo_contratacion' %}col-md-6
           {% elif field.name in 'superficie_total,superficie_construida,telefono,identificador_cndh' %}col-md-4
@@ -47,5 +47,35 @@
 document.querySelectorAll('.text-uppercase').forEach(el => {
   el.addEventListener('input', () => { el.value = el.value.toUpperCase(); });
 });
+
+// Encadena un <select> hijo a su <select> padre: solo deja visibles las
+// opciones del hijo cuyo data-<dataAttr> coincida con el valor elegido en el
+// padre (p.ej. unidad->dependencia, programa->unidad).
+function encadenarSelects(hijoId, padreId, dataAttr) {
+  const hijo = document.getElementById(hijoId);
+  const padre = document.getElementById(padreId);
+  if (!hijo || !padre) return;
+
+  function filtrar(conservarSeleccion) {
+    const valorPadre = padre.value;
+    const seleccionActual = hijo.value;
+    let hayCoincidencia = false;
+    Array.from(hijo.options).forEach(opt => {
+      if (!opt.value) { opt.hidden = false; return; }
+      const coincide = !valorPadre || opt.dataset[dataAttr] === valorPadre;
+      opt.hidden = !coincide;
+      if (coincide && opt.value === seleccionActual) hayCoincidencia = true;
+    });
+    if (!conservarSeleccion || !hayCoincidencia) {
+      hijo.value = '';
+    }
+  }
+
+  padre.addEventListener('change', () => filtrar(false));
+  filtrar(true);  // al cargar la página respeta la selección actual (modo edición)
+}
+
+encadenarSelects('id_unidad', 'id_dependencia', 'dependencia');
+encadenarSelects('id_programa', 'id_unidad', 'unidad');
 </script>
 {% endblock %}

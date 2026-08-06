@@ -24,37 +24,38 @@ Columnas del Layout Básico (orden exacto del archivo oficial):
 18  EXPEDIENTE
 19  RFC
 20  CURP
-21  NOMBRE
-22  PRIMER APELLIDO
-23  SEGUNDO APELLIDO
-24  FECHA NACIMIENTO
-25  GENERO
-26  ESTADO CIVIL
-27  ENTIDAD
-28  PAIS
-29  CORREO ELECTRONICO
-30  ISS
-31  NSS
-32  CENTRO TRABAJO
-33  SINDICALIZADO
-34  SINDICATO
-35  ORDP               (Obligado Declaracion Patrimonial S/N/NULL)
-36  TIPO DECLARACION
-37  OPAAER             (Obligado Presentar Acta Entrega-Recepcion S/N/NULL)
-38  RENCTA             (Rinde Cuentas S/N/NULL)
-39  PRDMIS             (Puesto Responsabilidad Decision / Manejo Info Sensible S/N/NULL)
-40  OTRA PLAZA
-41  FECHA INGRESO GOBIERNO
-42  FECHA INGRESO DEPENDENCIA
-43  FECHA INGRESO PUESTO
-44  AREA
-45  PARCONPUB          (Participa Contrataciones Publicas S/N)
-46  CONTRATACION PUBLICA (nivel A/B/C/NULL)
-47  PARCON             (Participa Concesiones S/N)
-48  CONCESIONES        (nivel A/B/C/NULL)
-49  PARENA             (Participa Enajenacion S/N)
-50  ENAJENACION        (nivel A/B/C/NULL)
-51  INMUEBLE           (clave inmueble)
+21  DETERMINANTE
+22  NOMBRE
+23  PRIMER APELLIDO
+24  SEGUNDO APELLIDO
+25  FECHA NACIMIENTO
+26  GENERO
+27  ESTADO CIVIL
+28  ENTIDAD
+29  PAIS
+30  CORREO ELECTRONICO
+31  ISS
+32  NSS
+33  CENTRO TRABAJO
+34  SINDICALIZADO
+35  SINDICATO
+36  ORDP               (Obligado Declaracion Patrimonial S/N/NULL)
+37  TIPO DECLARACION
+38  OPAAER             (Obligado Presentar Acta Entrega-Recepcion S/N/NULL)
+39  RENCTA             (Rinde Cuentas S/N/NULL)
+40  PRDMIS             (Puesto Responsabilidad Decision / Manejo Info Sensible S/N/NULL)
+41  OTRA PLAZA
+42  FECHA INGRESO GOBIERNO
+43  FECHA INGRESO DEPENDENCIA
+44  FECHA INGRESO PUESTO
+45  AREA
+46  PARCONPUB          (Participa Contrataciones Publicas S/N)
+47  CONTRATACION PUBLICA (nivel A/B/C/NULL)
+48  PARCON             (Participa Concesiones S/N)
+49  CONCESIONES        (nivel A/B/C/NULL)
+50  PARENA             (Participa Enajenacion S/N)
+51  ENAJENACION        (nivel A/B/C/NULL)
+52  INMUEBLE           (clave inmueble)
 """
 import logging
 from datetime import datetime, date
@@ -68,7 +69,9 @@ from catalogos.models import (
     TipoDeclaracion, Area, EntidadFederativa, Pais, Inmueble,
     EstadoCivil, Sindicato,
 )
-from servidores.models import ServidorPublico, InformacionBasica
+from servidores.models import (
+    ServidorPublico, InformacionBasica, sincronizar_puesto, reportar_puesto_vacante,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -94,37 +97,38 @@ C_ESTATUS_PLAZA  = 17
 C_EXPEDIENTE     = 18
 C_RFC            = 19
 C_CURP           = 20
-C_NOMBRE         = 21
-C_PRIMER_AP      = 22
-C_SEGUNDO_AP     = 23
-C_FECHA_NAC      = 24
-C_GENERO         = 25
-C_ESTADO_CIVIL   = 26
-C_ENTIDAD        = 27
-C_PAIS           = 28
-C_CORREO         = 29
-C_ISS            = 30
-C_NSS            = 31
-C_CCT            = 32
-C_SINDICALIZADO  = 33
-C_SINDICATO      = 34
-C_ORDP           = 35   # Obligado Declaracion Patrimonial
-C_TIPO_DECLA     = 36
-C_OPAAER         = 37   # Obligado Entrega-Recepcion
-C_RENCTA         = 38   # Rinde Cuentas
-C_PRDMIS         = 39   # Puesto Resp. Decision / Info Sensible
-C_OTRA_PLAZA     = 40
-C_F_INGOB        = 41   # Fecha Ingreso Gobierno
-C_F_INDEP        = 42   # Fecha Ingreso Dependencia
-C_F_INPUES       = 43   # Fecha Ingreso Puesto
-C_AREA           = 44
-C_PARCONPUB      = 45   # Participa Contrataciones
-C_CONTRAT_PUB    = 46   # Nivel Contrataciones
-C_PARCON         = 47   # Participa Concesiones
-C_CONCESIONES    = 48   # Nivel Concesiones
-C_PARENA         = 49   # Participa Enajenacion
-C_ENAJENACION    = 50   # Nivel Enajenacion
-C_INMUEBLE       = 51
+C_DETERMINANTE   = 21
+C_NOMBRE         = 22
+C_PRIMER_AP      = 23
+C_SEGUNDO_AP     = 24
+C_FECHA_NAC      = 25
+C_GENERO         = 26
+C_ESTADO_CIVIL   = 27
+C_ENTIDAD        = 28
+C_PAIS           = 29
+C_CORREO         = 30
+C_ISS            = 31
+C_NSS            = 32
+C_CCT            = 33
+C_SINDICALIZADO  = 34
+C_SINDICATO      = 35
+C_ORDP           = 36   # Obligado Declaracion Patrimonial
+C_TIPO_DECLA     = 37
+C_OPAAER         = 38   # Obligado Entrega-Recepcion
+C_RENCTA         = 39   # Rinde Cuentas
+C_PRDMIS         = 40   # Puesto Resp. Decision / Info Sensible
+C_OTRA_PLAZA     = 41
+C_F_INGOB        = 42   # Fecha Ingreso Gobierno
+C_F_INDEP        = 43   # Fecha Ingreso Dependencia
+C_F_INPUES       = 44   # Fecha Ingreso Puesto
+C_AREA           = 45
+C_PARCONPUB      = 46   # Participa Contrataciones
+C_CONTRAT_PUB    = 47   # Nivel Contrataciones
+C_PARCON         = 48   # Participa Concesiones
+C_CONCESIONES    = 49   # Nivel Concesiones
+C_PARENA         = 50   # Participa Enajenacion
+C_ENAJENACION    = 51   # Nivel Enajenacion
+C_INMUEBLE       = 52
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -232,8 +236,14 @@ class Cache:
         key = f'pry_{k}_{dependencia.pk if dependencia else ""}'
 
         def _buscar():
-            # Buscar proyecto exacto
-            pry = Proyecto.objects.filter(clave__iexact=k).first()
+            qs = Proyecto.objects.filter(clave__iexact=k)
+            # Un proyecto es único por dependencia-clave; puede abarcar
+            # varios programas/unidades (Proyecto.programas es M2M).
+            if dependencia:
+                pry = qs.filter(dependencia=dependencia).first()
+                if pry:
+                    return pry
+            pry = qs.first()
             if pry:
                 return pry
             # Si la clave es 00000000 o no se encontró, usar el proyecto default
@@ -372,10 +382,30 @@ def procesar_layout_basica(carga):
                 return default
 
         # ── Campos obligatorios ──────────────────────────────────────────────
-        rfc    = sv(col(C_RFC))
-        curp   = sv(col(C_CURP))
-        nombre = sd(col(C_NOMBRE, '')).upper()
-        ap_pat = sd(col(C_PRIMER_AP, '')).upper()
+        rfc      = sv(col(C_RFC))
+        curp     = sv(col(C_CURP))
+        nombre   = sd(col(C_NOMBRE, '')).upper()
+        ap_pat   = sd(col(C_PRIMER_AP, '')).upper()
+        id_plaza = sd(col(C_ID_PUESTO, ''))
+
+        # ── Fila vacía: reporta una plaza sin trabajador → liberar el puesto ──
+        if not rfc and not curp and not nombre and not ap_pat:
+            if not id_plaza:
+                errores += 1
+                log.append(f'Fila {num_fila}: OMITIDA — fila vacía sin ID de plaza')
+                continue
+            dependencia = cache.dependencia(col(C_DEPENDENCIA))
+            programa    = cache.programa(col(C_PROGRAMA))
+            proyecto    = cache.proyecto(col(C_PROYECTO), dependencia=dependencia)
+            categoria   = cache.categoria(col(C_CATEGORIA))
+            puesto = reportar_puesto_vacante(id_plaza, proyecto=proyecto, programa=programa, categoria=categoria)
+            if puesto:
+                ok += 1
+                log.append(f'Fila {num_fila}: Plaza {id_plaza} reportada VACANTE.')
+            else:
+                errores += 1
+                log.append(f'Fila {num_fila}: ERROR — plaza {id_plaza} vacante pero sin proyecto/categoría para registrarla')
+            continue
 
         if not rfc:
             errores_fila.append('RFC vacío')
@@ -400,6 +430,7 @@ def procesar_layout_basica(carga):
                 rfc=rfc,
                 defaults={
                     'curp':                  curp,
+                    'determinante':          sd(col(C_DETERMINANTE, '')),
                     'expediente':            expediente,
                     'nombre':                nombre,
                     'primer_apellido':       ap_pat,
@@ -423,10 +454,13 @@ def procesar_layout_basica(carga):
                 cambios = False
                 nuevo_correo = sd(col(C_CORREO, ''))
                 nuevo_nss    = sd(col(C_NSS, ''))
+                nueva_determinante = sd(col(C_DETERMINANTE, ''))
                 if nuevo_correo and servidor.correo_institucional != nuevo_correo:
                     servidor.correo_institucional = nuevo_correo; cambios = True
                 if nuevo_nss and servidor.nss != nuevo_nss:
                     servidor.nss = nuevo_nss; cambios = True
+                if nueva_determinante and servidor.determinante != nueva_determinante:
+                    servidor.determinante = nueva_determinante; cambios = True
                 if ap_mat and servidor.segundo_apellido != ap_mat:
                     servidor.segundo_apellido = ap_mat; cambios = True
                 ec = cache.estado_civil(col(C_ESTADO_CIVIL))
@@ -471,12 +505,15 @@ def procesar_layout_basica(carga):
             avisos.append(f'Estatus plaza "{col(C_ESTATUS_PLAZA)}" no encontrado')
         if not nombramiento:
             avisos.append(f'Tipo contratación "{col(C_TIPO_CONTRA)}" no encontrado')
+        if (proyecto and programa and proyecto.clave != '00000000'
+                and not proyecto.programas.filter(pk=programa.pk).exists()):
+            avisos.append(f'El programa "{programa.clave}" no está asignado al proyecto "{proyecto.clave}"')
 
         # ── Desactivar registro anterior de la misma plaza+quincena ──────────
         InformacionBasica.objects.filter(
             servidor=servidor,
             quincena=quincena,
-            id_plaza=sd(col(C_ID_PUESTO, '')),
+            id_plaza=id_plaza,
         ).update(activo=False)
 
         # ── Crear registro de Información Básica ─────────────────────────────
@@ -489,9 +526,9 @@ def procesar_layout_basica(carga):
                 programa                   = programa,
                 proyecto                   = proyecto,
                 # Puesto
-                id_plaza                   = sd(col(C_ID_PUESTO, '')),
+                id_plaza                   = id_plaza,
                 categoria                  = categoria,
-                puesto                     = sd(col(C_ID_PUESTO, '')),
+                puesto                     = id_plaza,
                 nombramiento               = nombramiento,
                 nivel_estructura           = nivel_est,
                 id_plaza_jefe              = sd(col(C_ID_PUESTO_JEFE, '')),
@@ -533,6 +570,21 @@ def procesar_layout_basica(carga):
                 quincena                   = quincena,
                 activo                     = True,
             )
+            sincronizar_puesto(
+                proyecto, programa, id_plaza, categoria, servidor,
+                unidad=unidad,
+                nombramiento=nombramiento,
+                nivel_estructura=nivel_est,
+                estatus_plaza=estatus,
+                cct=cct,
+                hsm=sf(col(C_HSM)),
+                total_percepciones=sf(col(C_PERCEPCIONES)),
+                total_bonos=sf(col(C_BONOS)),
+                total_neto=sf(col(C_NETO)),
+                dias_pagados=si(col(C_DIAS_PAGADOS)),
+                id_plaza_jefe=sd(col(C_ID_PUESTO_JEFE, '')),
+            )
+
             ok += 1
             accion = 'NUEVO' if creado else 'ACTUALIZADO'
             if avisos:

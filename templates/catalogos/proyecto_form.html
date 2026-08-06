@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="breadcrumb-resp">
+  <a href="{% url 'catalogo_index' %}">&#127968; Cat&aacute;logos</a>
+  <span class="sep">&#8250;</span><a href="{{ back_url }}">&#8592; Regresar</a>
+  <span class="sep">&#8250;</span><span>{{ titulo }}</span>
+</div>
+
+<div class="card" style="max-width:820px;">
+  <div class="card-header">&#9999;&#65039; {{ titulo }}</div>
+  <div class="card-body">
+    {% if form.non_field_errors %}<div class="text-danger small mb-2">{{ form.non_field_errors|join:", " }}</div>{% endif %}
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="row g-3">
+        <div class="col-md-8">
+          <label for="{{ form.dependencia.id_for_label }}" class="form-label fw-semibold">{{ form.dependencia.label }} <span class="text-danger">*</span></label>
+          {{ form.dependencia }}
+          {% if form.dependencia.errors %}<div class="text-danger small mt-1">{{ form.dependencia.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div class="col-md-4">
+          <label for="{{ form.clave.id_for_label }}" class="form-label fw-semibold">{{ form.clave.label }} <span class="text-danger">*</span></label>
+          {{ form.clave }}
+          {% if form.clave.errors %}<div class="text-danger small mt-1">{{ form.clave.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold">{{ form.descripcion.label }} <span class="text-danger">*</span></label>
+          {{ form.descripcion }}
+          {% if form.descripcion.errors %}<div class="text-danger small mt-1">{{ form.descripcion.errors|join:", " }}</div>{% endif %}
+        </div>
+
+        <div class="col-12">
+          <label class="form-label fw-semibold">Unidades Administrativas</label>
+          <div class="chip-picker" id="picker-unidades">
+            <div class="chip-picker-box">
+              <div class="chip-picker-tags"></div>
+              <div class="chip-picker-search-wrap">
+                <input type="text" class="chip-picker-search" placeholder="Buscar unidad administrativa...">
+                <span class="chip-picker-search-icon">&#128269;</span>
+              </div>
+            </div>
+            <div class="chip-picker-suggestions" hidden></div>
+          </div>
+          <div class="form-text">Opcional: ayuda a encontrar más rápido los programas de esas unidades.</div>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label fw-semibold">{{ form.programas.label }} <span class="text-danger">*</span></label>
+          {{ form.programas }}
+          <div class="chip-picker" id="picker-programas">
+            <div class="chip-picker-box">
+              <div class="chip-picker-tags"></div>
+              <div class="chip-picker-search-wrap">
+                <input type="text" class="chip-picker-search" placeholder="Buscar programa...">
+                <span class="chip-picker-search-icon">&#128269;</span>
+              </div>
+            </div>
+            <div class="chip-picker-suggestions" hidden></div>
+          </div>
+          {% if form.programas.errors %}<div class="text-danger small mt-1">{{ form.programas.errors|join:", " }}</div>{% endif %}
+        </div>
+      </div>
+      <hr class="mt-4 mb-3">
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn-institucional">&#128190; Guardar</button>
+        <a href="{{ back_url }}" class="btn-outline">&#10005; Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.text-uppercase').forEach(el => {
+  el.addEventListener('input', () => { el.value = el.value.toUpperCase(); });
+});
+
+(function () {
+  const realSelect = document.getElementById('id_programas');
+  if (!realSelect) return;
+
+  const todosLosProgramas = Array.from(realSelect.options).map(o => ({
+    value: o.value, label: o.textContent, chip: o.dataset.clave, dependencia: o.dataset.dependencia,
+    unidad: o.dataset.unidad, unidadNombre: o.dataset.unidadNombre, unidadClave: o.dataset.unidadClave,
+  }));
+
+  const unidadesMap = new Map();
+  todosLosProgramas.forEach(o => {
+    if (!unidadesMap.has(o.unidad)) unidadesMap.set(o.unidad, [o.unidadNombre, o.unidadClave, o.dependencia]);
+  });
+  const todasLasUnidades = Array.from(
+    unidadesMap, ([value, [label, chip, dependencia]]) => ({ value, label, chip, dependencia })
+  );
+
+  const depSel = document.getElementById('id_dependencia');
+
+  // ── Buscador tipo chip reutilizable: escribes, aparecen sugerencias que ya
+  // excluyen lo elegido; al hacer clic se agrega como chip removible. ──────
+  function crearChipPicker(container, obtenerOpciones, onCambio) {
+    const tagsBox = container.querySelector('.chip-picker-tags');
+    const input = container.querySelector('.chip-picker-search');
+    const sugerencias = container.querySelector('.chip-picker-suggestions');
+    const seleccionados = new Map();
+
+    function render() {
+      tagsBox.innerHTML = '';
+      seleccionados.forEach((label, value) => {
+        const chip = document.createElement('span');
+        chip.className = 'chip-tag';
+        chip.dataset.value = value;
+        chip.innerHTML = `${label} <button type="button" class="chip-tag-remove" aria-label="Quitar">&times;</button>`;
+        chip.querySelector('.chip-tag-remove').addEventListener('click', () => {
+          seleccionados.delete(value);
+          render();
+          onCambio(seleccionados);
+        });
+        tagsBox.appendChild(chip);
+      });
+    }
+
+    function elegir(o) {
+      seleccionados.set(o.value, o.chip || o.label);
+      render();
+      onCambio(seleccionados);
+    }
+
+    function mostrarSugerencias(texto) {
+      const opciones = obtenerOpciones().filter(o =>
+        !seleccionados.has(o.value) && o.label.toLowerCase().includes(texto.toLowerCase())
+      );
+      sugerencias.innerHTML = '';
+      if (opciones.length === 0) { sugerencias.hidden = true; return; }
+
+      const todos = document.createElement('div');
+      todos.className = 'chip-picker-suggestion chip-picker-suggestion-todos';
+      todos.textContent = 'TODOS';
+      todos.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        opciones.forEach(elegir);
+        input.value = '';
+        sugerencias.hidden = true;
+      });
+      sugerencias.appendChild(todos);
+
+      opciones.slice(0, 30).forEach(o => {
+        const item = document.createElement('div');
+        item.className = 'chip-picker-suggestion';
+        item.textContent = o.label;
+        item.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          elegir(o);
+          input.value = '';
+          sugerencias.hidden = true;
+        });
+        sugerencias.appendChild(item);
+      });
+      sugerencias.hidden = false;
+    }
+
+    input.addEventListener('input', () => mostrarSugerencias(input.value));
+    input.addEventListener('focus', () => mostrarSugerencias(input.value));
+    input.addEventListener('blur', () => setTimeout(() => { sugerencias.hidden = true; }, 150));
+
+    return {
+      set(pares) {
+        seleccionados.clear();
+        pares.forEach(([v, l]) => seleccionados.set(v, l));
+        render();
+      },
+      get() { return seleccionados; },
+    };
+  }
+
+  const pickerUnidades = crearChipPicker(
+    document.getElementById('picker-unidades'),
+    () => {
+      const dep = depSel ? depSel.value : '';
+      return todasLasUnidades.filter(o => !dep || o.dependencia === dep);
+    },
+    () => {} // solo ayuda a filtrar el buscador de programas, no se envía al servidor
+  );
+
+  const pickerProgramas = crearChipPicker(
+    document.getElementById('picker-programas'),
+    () => {
+      const dep = depSel ? depSel.value : '';
+      const unidadesElegidas = pickerUnidades.get();
+      return todosLosProgramas.filter(o =>
+        (!dep || o.dependencia === dep) &&
+        (unidadesElegidas.size === 0 || unidadesElegidas.has(o.unidad))
+      );
+    },
+    (seleccionProgramas) => {
+      Array.from(realSelect.options).forEach(o => {
+        o.selected = seleccionProgramas.has(o.value);
+      });
+    }
+  );
+
+  // Precarga en modo edición: chips de programas ya guardados y las
+  // unidades a las que pertenecen.
+  const seleccionInicial = todosLosProgramas.filter(o => {
+    const opt = realSelect.querySelector(`option[value="${o.value}"]`);
+    return opt && opt.selected;
+  });
+  pickerProgramas.set(seleccionInicial.map(o => [o.value, o.chip]));
+
+  const unidadesInicial = new Map();
+  seleccionInicial.forEach(o => unidadesInicial.set(o.unidad, o.unidadClave));
+  pickerUnidades.set(Array.from(unidadesInicial, ([v, c]) => [v, c]));
+})();
+</script>
+{% endblock %}

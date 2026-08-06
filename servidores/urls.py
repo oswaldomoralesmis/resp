@@ -13,5 +13,7 @@ urlpatterns = [
     path('informacion-basica/', views.InformacionBasicaListView.as_view(), name='info_basica_list'),
     path('informacion-basica/nueva/', views.InformacionBasicaCreateView.as_view(), name='info_basica_create'),
     path('informacion-basica/<int:pk>/editar/', views.InformacionBasicaUpdateView.as_view(), name='info_basica_update'),
+    path('puestos/', views.PuestoListView.as_view(), name='puesto_list'),
+    path('puestos/<int:pk>/editar/', views.PuestoUpdateView.as_view(), name='puesto_update'),
 ]
 

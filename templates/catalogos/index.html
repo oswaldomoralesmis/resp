@@ -24,6 +24,9 @@
             {% if cat.descarga %}
             <a href="{% url 'descargar_catalogo' cat.descarga %}" class="btn-dorado btn-sm">&#8659; Excel</a>
             {% endif %}
+            {% if cat.importar %}
+            <a href="{% url 'importar_catalogo' cat.descarga %}" class="btn-outline btn-sm">&#8657; Importar</a>
+            {% endif %}
           </div>
         </div>
       </div>

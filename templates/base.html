@@ -20,6 +20,7 @@
     <span class="nav-section">Servidores Públicos</span>
     <a href="{% url 'servidor_list' %}" class="nav-link {% if 'servidor' in request.resolver_match.url_name|default:'' %}active{% endif %}"><span class="nav-icon">👤</span> Padrón</a>
     <a href="{% url 'info_basica_list' %}" class="nav-link {% if 'info_basica' in request.resolver_match.url_name|default:'' %}active{% endif %}"><span class="nav-icon">📋</span> Inf. Básica Quincenal</a>
+    <a href="{% url 'puesto_list' %}" class="nav-link {% if request.resolver_match.url_name == 'puesto_list' %}active{% endif %}"><span class="nav-icon">📌</span> Puestos</a>
     <span class="nav-section">Carga de Información</span>
     <a href="{% url 'carga_new' %}" class="nav-link {% if request.resolver_match.url_name == 'carga_new' %}active{% endif %}"><span class="nav-icon">📤</span> Cargar Layout</a>
     <a href="{% url 'carga_list' %}" class="nav-link {% if request.resolver_match.url_name == 'carga_list' %}active{% endif %}"><span class="nav-icon">📁</span> Historial Cargas</a>
@@ -35,6 +36,9 @@
     <a href="{% url 'catalogo_index' %}" class="nav-link"><span class="nav-icon">🗂️</span> Catálogos</a>
     <a href="{% url 'usuario_list' %}" class="nav-link"><span class="nav-icon">👥</span> Usuarios</a>
     <a href="{% url 'periodo_list' %}" class="nav-link"><span class="nav-icon">⚙️</span> Períodos de Carga</a>
+    {% if request.user.rol == 'administrador' %}
+    <a href="{% url 'excepcion_list' %}" class="nav-link {% if 'excepcion' in request.resolver_match.url_name|default:'' %}active{% endif %}"><span class="nav-icon">🔓</span> Excepciones de Acceso</a>
+    {% endif %}
   </nav>
   <div class="sidebar-footer">
     <div>RESP v1.0 &mdash; {% now "Y" %}</div>

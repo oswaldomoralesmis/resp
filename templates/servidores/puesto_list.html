@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Puestos{% endblock %}
+{% block page_title %}Puestos{% endblock %}
+{% block content %}
+<div class="breadcrumb-resp"><a href="{% url 'dashboard' %}">🏠</a><span class="sep">›</span><span>Puestos</span></div>
+<div class="card">
+  <div class="card-header">📌 Plazas por Dependencia-Unidad-Programa-Proyecto</div>
+  <div class="card-body">
+    <form method="get" style="margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap;">
+      <div class="search-bar"><span>🔍</span>
+        <input type="text" name="q" value="{{ q }}" placeholder="ID plaza, clave proyecto, dependencia, RFC...">
+        <button type="submit">Buscar</button>
+      </div>
+      <select name="estatus" class="form-select" style="max-width:180px;" onchange="this.form.submit()">
+        <option value="">Todos los estatus</option>
+        <option value="vacante" {% if estatus == 'vacante' %}selected{% endif %}>Vacante</option>
+        <option value="ocupada" {% if estatus == 'ocupada' %}selected{% endif %}>Ocupada</option>
+      </select>
+    </form>
+    <div style="overflow-x:auto;">
+      <table class="table-resp">
+        <thead><tr><th>Dependencia</th><th>Unidad</th><th>Programa</th><th>Proyecto</th><th>ID Plaza</th><th>Categoría</th><th>Sueldo Neto</th><th>Estatus</th><th>Trabajador Asignado</th><th>Acciones</th></tr></thead>
+        <tbody>
+          {% for p in puestos %}
+          <tr>
+            <td>{{ p.proyecto.dependencia.clave }}</td>
+            <td>{{ p.unidad.clave|default:"—" }}</td>
+            <td>{{ p.programa.clave }}</td>
+            <td>{{ p.proyecto.clave }}</td>
+            <td><span class="badge-blue">{{ p.id_plaza }}</span></td>
+            <td>{{ p.categoria.clave }}</td>
+            <td>${{ p.total_neto|floatformat:2 }}</td>
+            <td>{% if p.estatus == 'ocupada' %}<span class="badge-activo">Ocupada</span>{% else %}<span class="badge-inactivo">Vacante</span>{% endif %}</td>
+            <td>{% if p.servidor_actual %}{{ p.servidor_actual.nombre_completo }}{% else %}—{% endif %}</td>
+            <td><a href="{% url 'puesto_update' p.pk %}" class="btn-institucional btn-sm">Editar</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="10" class="text-muted text-center" style="padding:30px;">Sin puestos registrados.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if is_paginated %}
+    <div class="pagination-resp">
+      {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&q={{ q }}&estatus={{ estatus }}" class="page-btn">‹</a>{% endif %}
+      <span class="page-btn active">{{ page_obj.number }}</span>
+      {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&q={{ q }}&estatus={{ estatus }}" class="page-btn">›</a>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

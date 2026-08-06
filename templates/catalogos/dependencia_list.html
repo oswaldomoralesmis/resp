@@ -15,15 +15,15 @@
     </form>
     <div style="overflow-x:auto;">
       <table class="table-resp">
-        <thead><tr><th>Ejercicio</th><th>Clave</th><th>Descripci&oacute;n</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Clave</th><th>Descripci&oacute;n</th><th>Acciones</th></tr></thead>
         <tbody>
           {% for r in registros %}
           <tr>
-            <td>{{ r.ejercicio }}</td><td><strong>{{ r.clave }}</strong></td>
+            <td><strong>{{ r.clave }}</strong></td>
             <td>{{ r.descripcion }}</td>
             <td><a href="{% url 'dependencia_update' r.pk %}" class="btn-institucional btn-sm">Editar</a></td>
           </tr>
-          {% empty %}<tr><td colspan="4" class="text-muted text-center" style="padding:28px;">Sin registros.</td></tr>{% endfor %}
+          {% empty %}<tr><td colspan="3" class="text-muted text-center" style="padding:28px;">Sin registros.</td></tr>{% endfor %}
         </tbody>
       </table>
     </div>

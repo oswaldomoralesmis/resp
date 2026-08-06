@@ -11,7 +11,7 @@
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
   <div>
     <h2 style="margin:0;color:var(--institucional-azul);">{{ servidor.nombre }} {{ servidor.primer_apellido }} {{ servidor.segundo_apellido }}</h2>
-    <div class="text-muted">Expediente: <strong>{{ servidor.expediente }}</strong> &bull; RFC: <strong>{{ servidor.rfc }}</strong> &bull; CURP: <strong>{{ servidor.curp }}</strong></div>
+    <div class="text-muted">Expediente: <strong>{{ servidor.expediente }}</strong> &bull; RFC: <strong>{{ servidor.rfc }}</strong> &bull; CURP: <strong>{{ servidor.curp }}</strong>{% if servidor.determinante %} &bull; Determinante: <strong>{{ servidor.determinante }}</strong>{% endif %}</div>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;">
     <a href="{% url 'servidor_update' servidor.pk %}" class="btn-institucional btn-sm">✏️ Editar</a>
