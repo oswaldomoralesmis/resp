@@ -1,8 +1,20 @@
 {% extends "base.html" %}
-{% block title %}Puestos{% endblock %}
-{% block page_title %}Puestos{% endblock %}
+{% block title %}Plazas{% endblock %}
+{% block page_title %}Plazas{% endblock %}
 {% block content %}
-<div class="breadcrumb-resp"><a href="{% url 'dashboard' %}">🏠</a><span class="sep">›</span><span>Puestos</span></div>
+<div class="breadcrumb-resp"><a href="{% url 'dashboard' %}">🏠</a><span class="sep">›</span><span>Plazas</span></div>
+<div class="grid-4" style="margin-bottom:20px;">
+  <div class="stat-card">
+    <div class="stat-icon azul">📌</div>
+    <div><div class="stat-number">{{ total_plazas }}</div><div class="stat-label">Total de Plazas</div></div>
+  </div>
+  {% for e in resumen_estatus %}
+  <div class="stat-card">
+    <div class="stat-icon {{ e.color }}">{{ e.icono }}</div>
+    <div><div class="stat-number">{{ e.total }}</div><div class="stat-label">{{ e.descripcion }}</div></div>
+  </div>
+  {% endfor %}
+</div>
 <div class="card">
   <div class="card-header">📌 Plazas por Dependencia-Unidad-Programa-Proyecto</div>
   <div class="card-body">
@@ -13,8 +25,9 @@
       </div>
       <select name="estatus" class="form-select" style="max-width:180px;" onchange="this.form.submit()">
         <option value="">Todos los estatus</option>
-        <option value="vacante" {% if estatus == 'vacante' %}selected{% endif %}>Vacante</option>
-        <option value="ocupada" {% if estatus == 'ocupada' %}selected{% endif %}>Ocupada</option>
+        {% for e in estatus_choices %}
+        <option value="{{ e.pk }}" {% if estatus == e.pk|stringformat:"s" %}selected{% endif %}>{{ e.descripcion }}</option>
+        {% endfor %}
       </select>
     </form>
     <div style="overflow-x:auto;">
@@ -30,12 +43,12 @@
             <td><span class="badge-blue">{{ p.id_plaza }}</span></td>
             <td>{{ p.categoria.clave }}</td>
             <td>${{ p.total_neto|floatformat:2 }}</td>
-            <td>{% if p.estatus == 'ocupada' %}<span class="badge-activo">Ocupada</span>{% else %}<span class="badge-inactivo">Vacante</span>{% endif %}</td>
+            <td>{% if p.servidor_actual %}<span class="badge-activo">{{ p.estatus_plaza.descripcion|default:"Ocupada" }}</span>{% else %}<span class="badge-inactivo">{{ p.estatus_plaza.descripcion|default:"Vacante" }}</span>{% endif %}</td>
             <td>{% if p.servidor_actual %}{{ p.servidor_actual.nombre_completo }}{% else %}—{% endif %}</td>
             <td><a href="{% url 'puesto_update' p.pk %}" class="btn-institucional btn-sm">Editar</a></td>
           </tr>
           {% empty %}
-          <tr><td colspan="10" class="text-muted text-center" style="padding:30px;">Sin puestos registrados.</td></tr>
+          <tr><td colspan="10" class="text-muted text-center" style="padding:30px;">Sin plazas registradas.</td></tr>
           {% endfor %}
         </tbody>
       </table>

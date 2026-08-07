@@ -64,18 +64,22 @@ urlpatterns = [
     path('nivel-escolaridad/',               views.NivelEscolaridadListView.as_view(),   name='nivel_escolaridad_list'),
     path('nivel-escolaridad/nuevo/',         views.NivelEscolaridadCreateView.as_view(), name='nivel_escolaridad_create'),
     path('nivel-escolaridad/<int:pk>/editar/',views.NivelEscolaridadUpdateView.as_view(),name='nivel_escolaridad_update'),
+    path('nivel-escolaridad/<int:pk>/eliminar/',views.NivelEscolaridadDeleteView.as_view(),name='nivel_escolaridad_delete'),
     # Discapacidades
     path('discapacidades/',               views.DiscapacidadListView.as_view(),   name='discapacidad_list'),
     path('discapacidades/nueva/',         views.DiscapacidadCreateView.as_view(), name='discapacidad_create'),
     path('discapacidades/<int:pk>/editar/',views.DiscapacidadUpdateView.as_view(),name='discapacidad_update'),
+    path('discapacidades/<int:pk>/eliminar/',views.DiscapacidadDeleteView.as_view(),name='discapacidad_delete'),
     # Enfermedades Crónicas
     path('enfermedades/',               views.EnfermedadListView.as_view(),   name='enfermedad_list'),
     path('enfermedades/nueva/',         views.EnfermedadCreateView.as_view(), name='enfermedad_create'),
     path('enfermedades/<int:pk>/editar/',views.EnfermedadUpdateView.as_view(),name='enfermedad_update'),
+    path('enfermedades/<int:pk>/eliminar/',views.EnfermedadDeleteView.as_view(),name='enfermedad_delete'),
     # Pueblos
     path('pueblos/',               views.PuebloListView.as_view(),   name='pueblo_list'),
     path('pueblos/nuevo/',         views.PuebloCreateView.as_view(), name='pueblo_create'),
     path('pueblos/<int:pk>/editar/',views.PuebloUpdateView.as_view(),name='pueblo_update'),
+    path('pueblos/<int:pk>/eliminar/',views.PuebloDeleteView.as_view(),name='pueblo_delete'),
     # Motivos de Baja
     path('motivos-baja/',               views.MotivoBajaListView.as_view(),   name='motivo_baja_list'),
     path('motivos-baja/nuevo/',         views.MotivoBajaCreateView.as_view(), name='motivo_baja_create'),
@@ -84,26 +88,32 @@ urlpatterns = [
     path('idiomas/',               views.IdiomaListView.as_view(),   name='idioma_list'),
     path('idiomas/nuevo/',         views.IdiomaCreateView.as_view(), name='idioma_create'),
     path('idiomas/<int:pk>/editar/',views.IdiomaUpdateView.as_view(),name='idioma_update'),
+    path('idiomas/<int:pk>/eliminar/',views.IdiomaDeleteView.as_view(),name='idioma_delete'),
     # Estados Civiles
     path('estados-civiles/',               views.EstadoCivilListView.as_view(),   name='estado_civil_list'),
     path('estados-civiles/nuevo/',         views.EstadoCivilCreateView.as_view(), name='estado_civil_create'),
     path('estados-civiles/<int:pk>/editar/',views.EstadoCivilUpdateView.as_view(),name='estado_civil_update'),
+    path('estados-civiles/<int:pk>/eliminar/',views.EstadoCivilDeleteView.as_view(),name='estado_civil_delete'),
     # Países
     path('paises/',               views.PaisListView.as_view(),   name='pais_list'),
     path('paises/nuevo/',         views.PaisCreateView.as_view(), name='pais_create'),
     path('paises/<int:pk>/editar/',views.PaisUpdateView.as_view(),name='pais_update'),
+    path('paises/<int:pk>/eliminar/',views.PaisDeleteView.as_view(),name='pais_delete'),
     # Entidades Federativas
     path('entidades/',               views.EntidadListView.as_view(),   name='entidad_list'),
     path('entidades/nueva/',         views.EntidadCreateView.as_view(), name='entidad_create'),
     path('entidades/<int:pk>/editar/',views.EntidadUpdateView.as_view(),name='entidad_update'),
+    path('entidades/<int:pk>/eliminar/',views.EntidadDeleteView.as_view(),name='entidad_delete'),
     # Municipios
     path('municipios/',               views.MunicipioListView.as_view(),   name='municipio_list'),
     path('municipios/nuevo/',         views.MunicipioCreateView.as_view(), name='municipio_create'),
     path('municipios/<int:pk>/editar/',views.MunicipioUpdateView.as_view(),name='municipio_update'),
+    path('municipios/<int:pk>/eliminar/',views.MunicipioDeleteView.as_view(),name='municipio_delete'),
     # Sindicatos
     path('sindicatos/',               views.SindicatoListView.as_view(),   name='sindicato_list'),
     path('sindicatos/nuevo/',         views.SindicatoCreateView.as_view(), name='sindicato_create'),
     path('sindicatos/<int:pk>/editar/',views.SindicatoUpdateView.as_view(),name='sindicato_update'),
+    path('sindicatos/<int:pk>/eliminar/',views.SindicatoDeleteView.as_view(),name='sindicato_delete'),
     # Inmuebles
     path('inmuebles/',               views.InmuebleListView.as_view(),   name='inmueble_list'),
     path('inmuebles/nuevo/',         views.InmuebleCreateView.as_view(), name='inmueble_create'),

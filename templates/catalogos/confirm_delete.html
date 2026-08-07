@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+{% block content %}
+<div class="breadcrumb-resp">
+  <a href="{% url 'catalogo_index' %}">&#127968; Cat&aacute;logos</a>
+  <span class="sep">&#8250;</span>
+  <a href="{{ back_url }}">Volver al listado</a>
+</div>
+<div class="card" style="max-width:520px;">
+  <div class="card-header">&#9888;&#65039; Confirmar Eliminaci&oacute;n</div>
+  <div class="card-body">
+    <p>&#191;Eliminar <strong>{{ object }}</strong>?</p>
+    {% if relacionados %}
+    <div class="alert-resp alert-warning">
+      &#9888;&#65039; Tambi&eacute;n se eliminar&aacute;n los registros relacionados:
+      <ul style="margin:6px 0 0 18px;">
+        {% for nombre, total in relacionados %}
+        <li>{{ total }} {{ nombre }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn-institucional" style="background:#b91c1c;">&#128465;&#65039; Eliminar</button>
+        <a href="{{ back_url }}" class="btn-outline">&#10005; Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

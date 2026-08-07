@@ -120,6 +120,109 @@
         </div>
       </div>
 
+      {% if form_personales %}
+      <!-- DOMICILIO -->
+      <div class="form-section-title" style="margin-bottom:12px;">&#127968; Domicilio</div>
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <label for="{{ form_personales.calle.id_for_label }}" class="form-label fw-semibold">{{ form_personales.calle.label }}</label>
+          {{ form_personales.calle }}
+        </div>
+        <div class="col-md-2">
+          <label for="{{ form_personales.num_exterior.id_for_label }}" class="form-label fw-semibold">{{ form_personales.num_exterior.label }}</label>
+          {{ form_personales.num_exterior }}
+        </div>
+        <div class="col-md-2">
+          <label for="{{ form_personales.num_interior.id_for_label }}" class="form-label fw-semibold">{{ form_personales.num_interior.label }}</label>
+          {{ form_personales.num_interior }}
+        </div>
+        <div class="col-md-4">
+          <label for="{{ form_personales.colonia.id_for_label }}" class="form-label fw-semibold">{{ form_personales.colonia.label }}</label>
+          {{ form_personales.colonia }}
+        </div>
+        <div class="col-md-3">
+          <label for="{{ form_personales.municipio.id_for_label }}" class="form-label fw-semibold">{{ form_personales.municipio.label }}</label>
+          {{ form_personales.municipio }}
+        </div>
+        <div class="col-md-3">
+          <label for="{{ form_personales.entidad.id_for_label }}" class="form-label fw-semibold">{{ form_personales.entidad.label }}</label>
+          {{ form_personales.entidad }}
+        </div>
+        <div class="col-md-3">
+          <label for="{{ form_personales.pais.id_for_label }}" class="form-label fw-semibold">{{ form_personales.pais.label }}</label>
+          {{ form_personales.pais }}
+        </div>
+        <div class="col-md-3">
+          <label for="{{ form_personales.cp.id_for_label }}" class="form-label fw-semibold">{{ form_personales.cp.label }}</label>
+          {{ form_personales.cp }}
+        </div>
+        <div class="col-md-4">
+          <label for="{{ form_personales.correo_personal.id_for_label }}" class="form-label fw-semibold">{{ form_personales.correo_personal.label }}</label>
+          {{ form_personales.correo_personal }}
+        </div>
+        <div class="col-md-2">
+          <label for="{{ form_personales.tipo_sangre.id_for_label }}" class="form-label fw-semibold">{{ form_personales.tipo_sangre.label }}</label>
+          {{ form_personales.tipo_sangre }}
+        </div>
+        <div class="col-md-2">
+          <label for="{{ form_personales.factor_rh.id_for_label }}" class="form-label fw-semibold">{{ form_personales.factor_rh.label }}</label>
+          {{ form_personales.factor_rh }}
+        </div>
+      </div>
+
+      <!-- ESCOLARIDAD Y ORIGEN -->
+      <div class="form-section-title" style="margin-bottom:12px;">&#127891; Escolaridad y Origen</div>
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <label for="{{ form_complementarios.nivel_escolaridad.id_for_label }}" class="form-label fw-semibold">{{ form_complementarios.nivel_escolaridad.label }}</label>
+          {{ form_complementarios.nivel_escolaridad }}
+        </div>
+        <div class="col-md-4">
+          <label for="{{ form_complementarios.pueblo_indigena.id_for_label }}" class="form-label fw-semibold">{{ form_complementarios.pueblo_indigena.label }}</label>
+          {{ form_complementarios.pueblo_indigena }}
+        </div>
+      </div>
+
+      <!-- DISCAPACIDADES -->
+      <div class="form-section-title" style="margin-bottom:12px;">&#9855; Discapacidades</div>
+      <div class="mb-4" style="max-height:200px;overflow-y:auto;border:1px solid #dee2e6;border-radius:6px;padding:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">
+        {% for d in discapacidades %}
+        <label style="font-weight:400;font-size:13px;display:flex;align-items:center;gap:6px;">
+          <input type="checkbox" name="discapacidades" value="{{ d.pk }}" {% if d.checked %}checked{% endif %}> {{ d.texto }}
+        </label>
+        {% empty %}
+        <span class="text-muted small">Sin catálogo de discapacidades.</span>
+        {% endfor %}
+      </div>
+
+      <!-- ENFERMEDADES CRÓNICAS -->
+      <div class="form-section-title" style="margin-bottom:12px;">&#127973; Enfermedades Crónicas</div>
+      <div class="mb-4" style="max-height:200px;overflow-y:auto;border:1px solid #dee2e6;border-radius:6px;padding:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">
+        {% for e in enfermedades %}
+        <label style="font-weight:400;font-size:13px;display:flex;align-items:center;gap:6px;">
+          <input type="checkbox" name="enfermedades" value="{{ e.pk }}" {% if e.checked %}checked{% endif %}> {{ e.texto }}
+        </label>
+        {% empty %}
+        <span class="text-muted small">Sin catálogo de enfermedades.</span>
+        {% endfor %}
+      </div>
+
+      <!-- IDIOMAS / LENGUAS -->
+      <div class="form-section-title" style="margin-bottom:12px;">&#128483;&#65039; Idiomas / Lenguas</div>
+      <div class="mb-4" style="max-height:280px;overflow-y:auto;border:1px solid #dee2e6;border-radius:6px;padding:10px;">
+        {% for i in idiomas %}
+        <div style="display:flex;align-items:center;gap:8px;padding:3px 0;">
+          <label style="font-weight:400;font-size:13px;display:flex;align-items:center;gap:6px;flex:1;">
+            <input type="checkbox" name="idiomas" value="{{ i.pk }}" {% if i.checked %}checked{% endif %}> {{ i.texto }}
+          </label>
+          <input type="text" name="nivel_idioma_{{ i.pk }}" value="{{ i.nivel }}" placeholder="Nivel (opcional)" class="form-control form-control-sm" style="max-width:160px;">
+        </div>
+        {% empty %}
+        <span class="text-muted small">Sin catálogo de idiomas.</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+
       <hr style="border-color:#dee2e6;margin:8px 0 20px;">
       <div class="d-flex gap-2">
         <button type="submit" class="btn-institucional">&#128190; {{ accion }}</button>

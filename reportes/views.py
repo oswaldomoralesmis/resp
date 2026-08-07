@@ -3,7 +3,7 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
 from django.http import HttpResponse
-from servidores.models import ServidorPublico, InformacionBasica, BajaServidorPublico
+from servidores.models import ServidorPublico, InformacionBasica, BajaServidorPublico, Puesto
 from catalogos.models import Dependencia
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
@@ -71,13 +71,26 @@ def reporte_compatibilidad(request):
 
 @login_required
 def reporte_estadisticas(request):
+    ocupadas = list(
+        InformacionBasica.objects.filter(activo=True).values('estatus_plaza__descripcion').annotate(total=Count('id'))
+    )
+    vacantes = list(
+        Puesto.objects.filter(servidor_actual__isnull=True).values('estatus_plaza__descripcion').annotate(total=Count('id'))
+    )
+
+    por_estatus_map = {}
+    for item in ocupadas + vacantes:
+        label = item['estatus_plaza__descripcion'] or 'Sin estatus'
+        por_estatus_map[label] = por_estatus_map.get(label, 0) + item['total']
+
     stats = {
         'por_dependencia': InformacionBasica.objects.filter(activo=True).values(
             'dependencia__descripcion'
         ).annotate(total=Count('id')).order_by('-total')[:15],
-        'por_estatus': InformacionBasica.objects.filter(activo=True).values(
-            'estatus_plaza__descripcion'
-        ).annotate(total=Count('id')),
+        'por_estatus': [
+            {'estatus_plaza__descripcion': label, 'total': total}
+            for label, total in sorted(por_estatus_map.items(), key=lambda item: (-item[1], item[0]))
+        ],
         'por_contratacion': InformacionBasica.objects.filter(activo=True).values(
             'nombramiento__descripcion'
         ).annotate(total=Count('id')),

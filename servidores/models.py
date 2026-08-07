@@ -76,7 +76,6 @@ class DatosComplementarios(models.Model):
     """Información curricular (validada por Validador)"""
     servidor = models.OneToOneField(ServidorPublico, on_delete=models.CASCADE, related_name='datos_complementarios')
     nivel_escolaridad = models.ForeignKey(NivelEscolaridad, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Nivel de Escolaridad')
-    discapacidad = models.ForeignKey(Discapacidad, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Discapacidad')
     pueblo_indigena = models.ForeignKey(Pueblo, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Pueblo Indígena/Afromexicano')
     validado = models.BooleanField(default=False, verbose_name='Validado')
     fecha_validacion = models.DateTimeField(null=True, blank=True)
@@ -84,6 +83,14 @@ class DatosComplementarios(models.Model):
     class Meta:
         verbose_name = 'Datos Complementarios'
         verbose_name_plural = 'Datos Complementarios'
+
+
+class DiscapacidadServidor(models.Model):
+    servidor = models.ForeignKey(ServidorPublico, on_delete=models.CASCADE, related_name='discapacidades')
+    discapacidad = models.ForeignKey(Discapacidad, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ['servidor', 'discapacidad']
 
 
 class EnfermedadCronicaServidor(models.Model):
@@ -109,14 +116,8 @@ class Puesto(models.Model):
     administrativas), así que cada puesto guarda su propio 'programa' además
     del 'proyecto' para saber exactamente en cuál unidad/programa está.
     id_plaza es la llave única de la plaza en todo el gobierno, independiente
-    del proyecto al que esté asignada hoy. El estatus se calcula solo a partir
-    de si tiene un servidor asignado."""
-    ESTATUS_VACANTE = 'vacante'
-    ESTATUS_OCUPADA = 'ocupada'
-    ESTATUS_CHOICES = [
-        (ESTATUS_VACANTE, 'Vacante'),
-        (ESTATUS_OCUPADA, 'Ocupada'),
-    ]
+    del proyecto al que esté asignada hoy. El estatus de la plaza se toma del
+    catálogo Estatus Plaza (campo estatus_plaza), no de un valor fijo."""
 
     proyecto = models.ForeignKey(Proyecto, on_delete=models.PROTECT, related_name='puestos', verbose_name='Proyecto')
     programa = models.ForeignKey(Programa, on_delete=models.PROTECT, related_name='puestos', verbose_name='Programa')
@@ -137,23 +138,15 @@ class Puesto(models.Model):
         ServidorPublico, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='puestos_ocupados', verbose_name='Trabajador Asignado'
     )
-    estatus = models.CharField(
-        max_length=10, choices=ESTATUS_CHOICES, default=ESTATUS_VACANTE,
-        editable=False, verbose_name='Estatus'
-    )
     fecha_actualizacion = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = 'Puesto'
-        verbose_name_plural = 'Puestos'
+        verbose_name = 'Plaza'
+        verbose_name_plural = 'Plazas'
         ordering = ['proyecto', 'id_plaza']
 
-    def save(self, *args, **kwargs):
-        self.estatus = self.ESTATUS_OCUPADA if self.servidor_actual_id else self.ESTATUS_VACANTE
-        super().save(*args, **kwargs)
-
     def __str__(self):
-        return f"{self.id_plaza} - {self.categoria} ({self.get_estatus_display()})"
+        return f"{self.id_plaza} - {self.categoria} ({self.estatus_plaza or 'Sin estatus'})"
 
     @property
     def jefe_actual(self):
@@ -165,15 +158,11 @@ class Puesto(models.Model):
 
 
 def sincronizar_puesto(proyecto, programa, id_plaza, categoria, servidor, **datos_plaza):
-    """Crea o actualiza el Puesto identificado por id_plaza (llave única) y lo
-    marca ocupado por 'servidor'. Se llama desde la carga de layout y desde el
-    alta manual de Información Básica, para que la tabla de puestos siempre
-    refleje quién ocupa cada plaza y con qué datos (unidad, sueldo, etc.).
-
-    'datos_plaza' acepta los campos propios de la plaza en Puesto: unidad,
-    nombramiento, nivel_estructura, estatus_plaza, cct, hsm,
-    total_percepciones, total_bonos, total_neto, dias_pagados. Lo que traiga
-    el Excel siempre gana sobre ediciones manuales previas."""
+    """Crea o actualiza el Puesto identificado por id_plaza y lo alinea con el
+    estatus real de ocupación: 'Ocupada' si tiene trabajador asignado, 'Vacante'
+    si no lo tiene. Se llama desde la carga de layout y desde el alta manual de
+    Información Básica para que la tabla de puestos refleje siempre la situación
+    vigente de la plaza."""
     campos = {'proyecto': proyecto, 'programa': programa, 'categoria': categoria, 'servidor_actual': servidor, **datos_plaza}
     puesto, creado = Puesto.objects.get_or_create(id_plaza=id_plaza, defaults=campos)
     if not creado:
@@ -187,6 +176,11 @@ def sincronizar_puesto(proyecto, programa, id_plaza, categoria, servidor, **dato
     return puesto
 
 
+def _estatus_plaza_vacante():
+    """Estatus 'Vacante' del catálogo Estatus Plaza, si está dado de alta."""
+    return EstatusPlaza.objects.filter(descripcion__iexact='Vacante').first()
+
+
 def reportar_puesto_vacante(id_plaza, proyecto=None, programa=None, categoria=None):
     """Registra que la plaza id_plaza (llave única) no tiene trabajador asignado.
     Si el puesto ya existe, lo libera; si no existe y se cuenta con proyecto,
@@ -197,17 +191,21 @@ def reportar_puesto_vacante(id_plaza, proyecto=None, programa=None, categoria=No
     if puesto:
         if puesto.servidor_actual_id is not None:
             puesto.servidor_actual = None
+            puesto.estatus_plaza = _estatus_plaza_vacante()
             puesto.save()
         return puesto
     if proyecto and programa and categoria:
-        return Puesto.objects.create(proyecto=proyecto, programa=programa, id_plaza=id_plaza, categoria=categoria)
+        return Puesto.objects.create(
+            proyecto=proyecto, programa=programa, id_plaza=id_plaza, categoria=categoria,
+            estatus_plaza=_estatus_plaza_vacante(),
+        )
     return None
 
 
 def liberar_puestos_de(servidor):
     """Deja vacantes todos los puestos que ocupaba 'servidor' (p.ej. al darlo de baja)."""
     Puesto.objects.filter(servidor_actual=servidor).update(
-        servidor_actual=None, estatus=Puesto.ESTATUS_VACANTE
+        servidor_actual=None, estatus_plaza=_estatus_plaza_vacante()
     )
 
 

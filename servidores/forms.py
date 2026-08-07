@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from django import forms
-from .models import ServidorPublico, InformacionBasica, BajaServidorPublico, Puesto
+from .models import ServidorPublico, DatosPersonales, DatosComplementarios, InformacionBasica, BajaServidorPublico, Puesto
 from catalogos.models import Dependencia
 from catalogos.forms import UnidadSelect
 
@@ -88,6 +88,42 @@ class ServidorPublicoForm(forms.ModelForm):
     def clean_segundo_apellido(self):
         v = self.cleaned_data.get('segundo_apellido', '')
         return v.upper().strip() if v else v
+
+
+class DatosPersonalesForm(forms.ModelForm):
+
+    class Meta:
+        model  = DatosPersonales
+        exclude = ['servidor', 'fecha_actualizacion']
+        widgets = {
+            'calle':           forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Calle y número'}),
+            'num_exterior':    forms.TextInput(attrs={'class': 'form-control'}),
+            'num_interior':    forms.TextInput(attrs={'class': 'form-control'}),
+            'colonia':         forms.TextInput(attrs={'class': 'form-control'}),
+            'municipio':       forms.Select(attrs={'class': 'form-select'}),
+            'entidad':         forms.Select(attrs={'class': 'form-select'}),
+            'pais':            forms.Select(attrs={'class': 'form-select'}),
+            'cp':              forms.TextInput(attrs={'class': 'form-control'}),
+            'correo_personal': forms.EmailInput(attrs={'class': 'form-control'}),
+            'tipo_sangre':     forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: O+'}),
+            'factor_rh':       forms.Select(attrs={'class': 'form-select'}),
+        }
+        labels = {
+            'municipio': 'Municipio',
+            'entidad':   'Entidad Federativa',
+            'pais':      'País',
+        }
+
+
+class DatosComplementariosForm(forms.ModelForm):
+
+    class Meta:
+        model  = DatosComplementarios
+        fields = ['nivel_escolaridad', 'pueblo_indigena']
+        widgets = {
+            'nivel_escolaridad': forms.Select(attrs={'class': 'form-select'}),
+            'pueblo_indigena':   forms.Select(attrs={'class': 'form-select'}),
+        }
 
 
 class InformacionBasicaForm(forms.ModelForm):

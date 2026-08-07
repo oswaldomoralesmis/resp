@@ -20,7 +20,7 @@
     <span class="nav-section">Servidores Públicos</span>
     <a href="{% url 'servidor_list' %}" class="nav-link {% if 'servidor' in request.resolver_match.url_name|default:'' %}active{% endif %}"><span class="nav-icon">👤</span> Padrón</a>
     <a href="{% url 'info_basica_list' %}" class="nav-link {% if 'info_basica' in request.resolver_match.url_name|default:'' %}active{% endif %}"><span class="nav-icon">📋</span> Inf. Básica Quincenal</a>
-    <a href="{% url 'puesto_list' %}" class="nav-link {% if request.resolver_match.url_name == 'puesto_list' %}active{% endif %}"><span class="nav-icon">📌</span> Puestos</a>
+    <a href="{% url 'puesto_list' %}" class="nav-link {% if request.resolver_match.url_name == 'puesto_list' %}active{% endif %}"><span class="nav-icon">📌</span> Plazas</a>
     <span class="nav-section">Carga de Información</span>
     <a href="{% url 'carga_new' %}" class="nav-link {% if request.resolver_match.url_name == 'carga_new' %}active{% endif %}"><span class="nav-icon">📤</span> Cargar Layout</a>
     <a href="{% url 'carga_list' %}" class="nav-link {% if request.resolver_match.url_name == 'carga_list' %}active{% endif %}"><span class="nav-icon">📁</span> Historial Cargas</a>

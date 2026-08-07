@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 import os
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
-from django.views.generic import ListView, CreateView, UpdateView
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from django.http import FileResponse, Http404
-from django.db.models import Q
+from django.db.models import Q, ProtectedError
+from django.db.models.deletion import Collector
 from django.core.files.storage import default_storage
+from django.contrib import messages
 
 from .models import (
     FuenteFinanciamiento, Dependencia, UnidadAdministrativa,
@@ -42,9 +44,10 @@ def catalogo_index(request):
             ]
         },
         {
-            'nombre': 'Puestos y Plazas',
+            'nombre': 'Plazas',
             'color':  'azul',
             'items': [
+                {'nombre': 'Plazas',              'url': 'puesto_list',          'icono': '📌',  'descarga': 'puestos'},
                 {'nombre': 'Categorías',          'url': 'categoria_list',       'icono': '🏷️',  'descarga': 'categoria'},
                 {'nombre': 'Tipos de Contratación','url': 'tipo_contratacion_list','icono': '📝', 'descarga': None},
                 {'nombre': 'Tipos de Personal',   'url': 'tipo_personal_list',   'icono': '👤',  'descarga': None},
@@ -156,6 +159,42 @@ def make_update_view(model, form_class, success_url, titulo_prefix, back_url, te
     V.form_class   = form_class
     V.template_name      = template
     V.success_url        = reverse_lazy(success_url)
+    return V
+
+
+def make_delete_view(model, success_url, titulo_prefix, back_url, template='catalogos/confirm_delete.html'):
+    """Factoría de vistas de eliminación con confirmación. Muestra qué otros
+    registros se borrarían en cascada y evita romper la app si el catálogo
+    está protegido por alguna relación (PROTECT)."""
+    class V(LoginRequiredMixin, DeleteView):
+        def get_context_data(self, **kwargs):
+            ctx = super().get_context_data(**kwargs)
+            ctx['titulo']   = f'{titulo_prefix}: {self.object}'
+            ctx['back_url'] = reverse_lazy(back_url)
+            collector = Collector(using=self.object._state.db)
+            collector.collect([self.object])
+            ctx['relacionados'] = [
+                (rel_model._meta.verbose_name_plural, len(instancias))
+                for rel_model, instancias in collector.data.items()
+                if rel_model is not model
+            ]
+            return ctx
+
+        def form_valid(self, form):
+            descripcion = str(self.object)
+            try:
+                response = super().form_valid(form)
+            except ProtectedError:
+                messages.error(
+                    self.request,
+                    f'No se puede eliminar "{descripcion}" porque está en uso en otros registros.'
+                )
+                return redirect(reverse_lazy(success_url))
+            messages.success(self.request, f'"{descripcion}" fue eliminado.')
+            return response
+    V.model        = model
+    V.template_name = template
+    V.success_url   = reverse_lazy(success_url)
     return V
 
 
@@ -325,41 +364,57 @@ AreaListView   = make_list_view(Area,          'catalogos/simple_list.html', 'Á
 AreaCreateView = make_create_view(Area,          AreaForm,          'area_list',             'Nueva Área',                'area_list')
 AreaUpdateView = make_update_view(Area,          AreaForm,          'area_list',             'Editar',                    'area_list')
 
-NivelEscolaridadListView   = make_list_view(NivelEscolaridad, 'catalogos/simple_list.html', 'Niveles de Escolaridad', ['descripcion','estatus'])
+NivelEscolaridadListView   = make_list_view(NivelEscolaridad, 'catalogos/simple_list.html', 'Niveles de Escolaridad', ['descripcion','estatus'],
+                                            extra_ctx={'permite_eliminar': True})
 NivelEscolaridadCreateView = make_create_view(NivelEscolaridad, NivelEscolaridadForm, 'nivel_escolaridad_list', 'Nuevo Nivel Escolaridad', 'nivel_escolaridad_list')
 NivelEscolaridadUpdateView = make_update_view(NivelEscolaridad, NivelEscolaridadForm, 'nivel_escolaridad_list', 'Editar',                  'nivel_escolaridad_list')
+NivelEscolaridadDeleteView = make_delete_view(NivelEscolaridad, 'nivel_escolaridad_list', 'Eliminar Nivel de Escolaridad', 'nivel_escolaridad_list')
 
-DiscapacidadListView   = make_list_view(Discapacidad,   'catalogos/simple_list.html', 'Discapacidades',         ['tipo','descripcion'])
+DiscapacidadListView   = make_list_view(Discapacidad,   'catalogos/simple_list.html', 'Discapacidades',         ['tipo','descripcion'],
+                                        extra_ctx={'permite_eliminar': True})
 DiscapacidadCreateView = make_create_view(Discapacidad,   DiscapacidadForm,   'discapacidad_list',     'Nueva Discapacidad',         'discapacidad_list')
 DiscapacidadUpdateView = make_update_view(Discapacidad,   DiscapacidadForm,   'discapacidad_list',     'Editar',                    'discapacidad_list')
+DiscapacidadDeleteView = make_delete_view(Discapacidad,   'discapacidad_list',     'Eliminar Discapacidad',      'discapacidad_list')
 
-EnfermedadListView   = make_list_view(EnfermedadCronica,'catalogos/simple_list.html', 'Enfermedades Crónicas',  ['descripcion'])
+EnfermedadListView   = make_list_view(EnfermedadCronica,'catalogos/simple_list.html', 'Enfermedades Crónicas',  ['descripcion'],
+                                      extra_ctx={'permite_eliminar': True})
 EnfermedadCreateView = make_create_view(EnfermedadCronica,EnfermedadCronicaForm,'enfermedad_list',       'Nueva Enfermedad',           'enfermedad_list')
 EnfermedadUpdateView = make_update_view(EnfermedadCronica,EnfermedadCronicaForm,'enfermedad_list',       'Editar',                    'enfermedad_list')
+EnfermedadDeleteView = make_delete_view(EnfermedadCronica,'enfermedad_list',       'Eliminar Enfermedad',        'enfermedad_list')
 
-PuebloListView   = make_list_view(Pueblo,        'catalogos/simple_list.html', 'Pueblos Indígenas',      ['descripcion'])
+PuebloListView   = make_list_view(Pueblo,        'catalogos/simple_list.html', 'Pueblos Indígenas',      ['descripcion'],
+                                  extra_ctx={'permite_eliminar': True})
 PuebloCreateView = make_create_view(Pueblo,        PuebloForm,        'pueblo_list',           'Nuevo Pueblo',               'pueblo_list')
 PuebloUpdateView = make_update_view(Pueblo,        PuebloForm,        'pueblo_list',           'Editar',                    'pueblo_list')
+PuebloDeleteView = make_delete_view(Pueblo,        'pueblo_list',           'Eliminar Pueblo',            'pueblo_list')
 
 MotivoBajaListView   = make_list_view(MotivoBaja,    'catalogos/simple_list.html', 'Motivos de Baja',        ['clave','descripcion'])
 MotivoBajaCreateView = make_create_view(MotivoBaja,    MotivoBajaForm,    'motivo_baja_list',      'Nuevo Motivo de Baja',       'motivo_baja_list')
 MotivoBajaUpdateView = make_update_view(MotivoBaja,    MotivoBajaForm,    'motivo_baja_list',      'Editar',                    'motivo_baja_list')
 
-IdiomaListView   = make_list_view(Idioma,        'catalogos/simple_list.html', 'Idiomas / Lenguas',      ['descripcion','familia_linguistica'])
+IdiomaListView   = make_list_view(Idioma,        'catalogos/simple_list.html', 'Idiomas / Lenguas',      ['descripcion','familia_linguistica'],
+                                  extra_ctx={'permite_eliminar': True})
 IdiomaCreateView = make_create_view(Idioma,        IdiomaForm,        'idioma_list',           'Nuevo Idioma / Lengua',      'idioma_list')
 IdiomaUpdateView = make_update_view(Idioma,        IdiomaForm,        'idioma_list',           'Editar',                    'idioma_list')
+IdiomaDeleteView = make_delete_view(Idioma,        'idioma_list',           'Eliminar Idioma',            'idioma_list')
 
-EstadoCivilListView   = make_list_view(EstadoCivil,   'catalogos/simple_list.html', 'Estados Civiles',        ['clave','descripcion'])
+EstadoCivilListView   = make_list_view(EstadoCivil,   'catalogos/simple_list.html', 'Estados Civiles',        ['clave','descripcion'],
+                                       extra_ctx={'permite_eliminar': True})
 EstadoCivilCreateView = make_create_view(EstadoCivil,   EstadoCivilForm,   'estado_civil_list',     'Nuevo Estado Civil',         'estado_civil_list')
 EstadoCivilUpdateView = make_update_view(EstadoCivil,   EstadoCivilForm,   'estado_civil_list',     'Editar',                    'estado_civil_list')
+EstadoCivilDeleteView = make_delete_view(EstadoCivil,   'estado_civil_list',     'Eliminar Estado Civil',      'estado_civil_list')
 
-PaisListView   = make_list_view(Pais,          'catalogos/simple_list.html', 'Países',                 ['nombre'])
+PaisListView   = make_list_view(Pais,          'catalogos/simple_list.html', 'Países',                 ['nombre'],
+                                extra_ctx={'permite_eliminar': True})
 PaisCreateView = make_create_view(Pais,          PaisForm,          'pais_list',             'Nuevo País',                'pais_list')
 PaisUpdateView = make_update_view(Pais,          PaisForm,          'pais_list',             'Editar',                    'pais_list')
+PaisDeleteView = make_delete_view(Pais,          'pais_list',             'Eliminar País',              'pais_list')
 
-EntidadListView   = make_list_view(EntidadFederativa,'catalogos/simple_list.html', 'Entidades Federativas',  ['nombre','abreviatura'])
+EntidadListView   = make_list_view(EntidadFederativa,'catalogos/simple_list.html', 'Entidades Federativas',  ['nombre','abreviatura'],
+                                   extra_ctx={'permite_eliminar': True})
 EntidadCreateView = make_create_view(EntidadFederativa,EntidadFederativaForm,'entidad_list',          'Nueva Entidad Federativa',   'entidad_list')
 EntidadUpdateView = make_update_view(EntidadFederativa,EntidadFederativaForm,'entidad_list',          'Editar',                    'entidad_list')
+EntidadDeleteView = make_delete_view(EntidadFederativa,'entidad_list',          'Eliminar Entidad Federativa', 'entidad_list')
 
 class MunicipioListView(LoginRequiredMixin, ListView):
     model               = Municipio
@@ -381,15 +436,19 @@ class MunicipioListView(LoginRequiredMixin, ListView):
         ctx = super().get_context_data(**kwargs)
         ctx.update({'titulo': 'Municipios', 'q': self.request.GET.get('q', ''),
                     'entidades': EntidadFederativa.objects.all().order_by('nombre'),
-                    'ent_sel': self.request.GET.get('ent', '')})
+                    'ent_sel': self.request.GET.get('ent', ''),
+                    'permite_eliminar': True})
         return ctx
 
 MunicipioCreateView = make_create_view(Municipio, MunicipioForm, 'municipio_list', 'Nuevo Municipio', 'municipio_list')
 MunicipioUpdateView = make_update_view(Municipio, MunicipioForm, 'municipio_list', 'Editar Municipio', 'municipio_list')
+MunicipioDeleteView = make_delete_view(Municipio, 'municipio_list', 'Eliminar Municipio', 'municipio_list')
 
-SindicatoListView   = make_list_view(Sindicato,    'catalogos/simple_list.html', 'Sindicatos',             ['clave','descripcion'])
+SindicatoListView   = make_list_view(Sindicato,    'catalogos/simple_list.html', 'Sindicatos',             ['clave','descripcion'],
+                                     extra_ctx={'permite_eliminar': True})
 SindicatoCreateView = make_create_view(Sindicato,    SindicatoForm,    'sindicato_list',        'Nuevo Sindicato',            'sindicato_list')
 SindicatoUpdateView = make_update_view(Sindicato,    SindicatoForm,    'sindicato_list',        'Editar',                    'sindicato_list')
+SindicatoDeleteView = make_delete_view(Sindicato,    'sindicato_list',        'Eliminar Sindicato',         'sindicato_list')
 
 class InmuebleListView(LoginRequiredMixin, ListView):
     model               = Inmueble
@@ -422,6 +481,7 @@ def descargar_catalogo(request, catalogo):
         'unidades':  'Catalogo_Unidades_Admvas.xlsx',
         'programas': 'Catalogo_Programas.xlsx',
         'proyectos': 'Catalogo_Proyectos.xlsx',
+        'puestos':   'Catalogo_Plazas.xlsx',
     }
     if catalogo not in nombres:
         raise Http404("Plantilla no encontrada.")

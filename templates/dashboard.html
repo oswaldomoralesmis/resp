@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load humanize %}
 {% block title %}Dashboard{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
 {% block content %}
@@ -6,11 +7,11 @@
 <div class="grid-4" style="margin-bottom:24px;">
   <div class="stat-card">
     <div class="stat-icon azul">👤</div>
-    <div><div class="stat-number">{{ total_servidores|default:"0" }}</div><div class="stat-label">Servidores Activos</div></div>
+    <div><div class="stat-number">{{ total_servidores|default:0|intcomma }}</div><div class="stat-label">Servidores Activos</div></div>
   </div>
   <div class="stat-card">
     <div class="stat-icon verde">🏢</div>
-    <div><div class="stat-number">{{ total_dependencias|default:"0" }}</div><div class="stat-label">Dependencias</div></div>
+    <div><div class="stat-number">{{ total_dependencias|default:0|intcomma }}</div><div class="stat-label">Dependencias</div></div>
   </div>
   <div class="stat-card">
     <div class="stat-icon dorado">📅</div>
@@ -18,7 +19,7 @@
   </div>
   <div class="stat-card">
     <div class="stat-icon rojo">📊</div>
-    <div><div class="stat-number">{{ stats_estatus|length }}</div><div class="stat-label">Tipos de Estatus</div></div>
+    <div><div class="stat-number">{{ stats_estatus|length|intcomma }}</div><div class="stat-label">Tipos de Estatus</div></div>
   </div>
 </div>
 <div class="grid-2">
@@ -38,7 +39,7 @@
         {% for s in stats_estatus %}
         <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f0f0f0;">
           <span>{{ s.estatus_plaza__descripcion|default:"Sin estatus" }}</span>
-          <span class="badge-blue">{{ s.total }}</span>
+          <span class="badge-blue">{{ s.total|intcomma }}</span>
         </div>
         {% endfor %}
       {% else %}

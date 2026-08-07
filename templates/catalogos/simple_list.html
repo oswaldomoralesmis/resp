@@ -14,7 +14,7 @@
       <a href="{% url 'descargar_catalogo' catalogo_slug %}" class="btn-dorado btn-sm">&#8659; Excel</a>
       <a href="{% url 'importar_catalogo' catalogo_slug %}" class="btn-outline btn-sm">&#8657; Importar</a>
       {% endif %}
-      <a href="nueva/" class="btn-institucional btn-sm">&#10133; Nuevo</a>
+      <a href="{% url request.resolver_match.url_name|cut:'_list'|add:'_create' %}" class="btn-institucional btn-sm">&#10133; Nuevo</a>
     </div>
   </div>
   <div class="card-body">
@@ -52,14 +52,19 @@
         <thead><tr>
           {% if registros.0.clave is not None or registros.0.clave == "" %}<th>Clave</th>{% endif %}
           <th>Descripci&oacute;n / Nombre</th>
-          <th style="width:90px;">Acciones</th>
+          <th style="width:{% if permite_eliminar %}160{% else %}90{% endif %}px;">Acciones</th>
         </tr></thead>
         <tbody>
           {% for r in registros %}
           <tr>
             {% if r.clave is not None %}<td><strong>{{ r.clave }}</strong></td>{% endif %}
             <td>{{ r }}</td>
-            <td><a href="{{ r.pk }}/editar/" class="btn-institucional btn-sm">Editar</a></td>
+            <td style="white-space:nowrap;">
+              <a href="{{ r.pk }}/editar/" class="btn-institucional btn-sm">Editar</a>
+              {% if permite_eliminar %}
+              <a href="{% url request.resolver_match.url_name|cut:'_list'|add:'_delete' r.pk %}" class="btn-outline btn-sm" style="color:#b91c1c;border-color:#b91c1c;">Eliminar</a>
+              {% endif %}
+            </td>
           </tr>
           {% empty %}
           <tr><td colspan="3" class="text-muted text-center" style="padding:28px;">Sin registros.</td></tr>

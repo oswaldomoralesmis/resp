@@ -8,10 +8,15 @@ from django.db.models import Q, Count
 from django.utils import timezone
 from .models import (
     ServidorPublico, InformacionBasica, BajaServidorPublico, Puesto,
+    DatosPersonales, DatosComplementarios, DiscapacidadServidor,
+    EnfermedadCronicaServidor, IdiomaServidor,
     sincronizar_puesto, liberar_puestos_de,
 )
-from .forms import ServidorPublicoForm, InformacionBasicaForm, BajaForm, PuestoForm
-from catalogos.models import Dependencia
+from .forms import (
+    ServidorPublicoForm, DatosPersonalesForm, DatosComplementariosForm,
+    InformacionBasicaForm, BajaForm, PuestoForm,
+)
+from catalogos.models import Dependencia, EstatusPlaza, Discapacidad, EnfermedadCronica, Idioma
 from cargas.models import PeriodoCarga
 
 
@@ -98,6 +103,10 @@ class ServidorCreateView(LoginRequiredMixin, CreateView):
 
 
 class ServidorUpdateView(LoginRequiredMixin, UpdateView):
+    """Edición de un Servidor Público, incluyendo los datos de la sección
+    'Datos del Servidor Público' (domicilio, escolaridad, discapacidades,
+    pueblo indígena, enfermedades crónicas e idiomas), que solo tiene sentido
+    capturar sobre un servidor ya existente."""
     model = ServidorPublico
     form_class = ServidorPublicoForm
     template_name = 'servidores/form.html'
@@ -105,11 +114,88 @@ class ServidorUpdateView(LoginRequiredMixin, UpdateView):
     def get_success_url(self):
         return reverse_lazy('servidor_detail', kwargs={'pk': self.object.pk})
 
+    @staticmethod
+    def _checkboxes(catalogo_qs, seleccionados, niveles=None):
+        """Lista de {pk, texto, checked, nivel} para renderizar un checklist.
+        Normaliza a texto porque 'seleccionados'/'niveles' vienen a veces de
+        POST (strings) y a veces de la BD (ids)."""
+        seleccionados = {str(s) for s in seleccionados}
+        niveles = {str(k): v for k, v in (niveles or {}).items()}
+        return [
+            {
+                'pk': item.pk,
+                'texto': str(item),
+                'checked': str(item.pk) in seleccionados,
+                'nivel': niveles.get(str(item.pk), ''),
+            }
+            for item in catalogo_qs
+        ]
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['titulo'] = f'Modificar: {self.object.nombre_completo}'
         ctx['accion'] = 'Guardar cambios'
+        ctx.setdefault('form_personales', DatosPersonalesForm(instance=getattr(self.object, 'datos_personales', None)))
+        ctx.setdefault('form_complementarios', DatosComplementariosForm(instance=getattr(self.object, 'datos_complementarios', None)))
+        ctx.setdefault('discapacidades', self._checkboxes(
+            Discapacidad.objects.all(), set(self.object.discapacidades.values_list('discapacidad_id', flat=True))
+        ))
+        ctx.setdefault('enfermedades', self._checkboxes(
+            EnfermedadCronica.objects.all(), set(self.object.enfermedades.values_list('enfermedad_id', flat=True))
+        ))
+        ctx.setdefault('idiomas', self._checkboxes(
+            Idioma.objects.all(), set(self.object.idiomas.values_list('idioma_id', flat=True)),
+            niveles={r.idioma_id: r.nivel for r in self.object.idiomas.all()}
+        ))
         return ctx
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        form_personales = DatosPersonalesForm(request.POST, instance=getattr(self.object, 'datos_personales', None))
+        form_complementarios = DatosComplementariosForm(request.POST, instance=getattr(self.object, 'datos_complementarios', None))
+
+        if form.is_valid() and form_personales.is_valid() and form_complementarios.is_valid():
+            self.object = form.save()
+
+            datos_personales = form_personales.save(commit=False)
+            datos_personales.servidor = self.object
+            datos_personales.save()
+
+            datos_complementarios = form_complementarios.save(commit=False)
+            datos_complementarios.servidor = self.object
+            datos_complementarios.save()
+
+            disc_ids = request.POST.getlist('discapacidades')
+            self.object.discapacidades.all().delete()
+            DiscapacidadServidor.objects.bulk_create([
+                DiscapacidadServidor(servidor=self.object, discapacidad_id=pk) for pk in disc_ids
+            ])
+
+            enf_ids = request.POST.getlist('enfermedades')
+            self.object.enfermedades.all().delete()
+            EnfermedadCronicaServidor.objects.bulk_create([
+                EnfermedadCronicaServidor(servidor=self.object, enfermedad_id=pk) for pk in enf_ids
+            ])
+
+            idioma_ids = request.POST.getlist('idiomas')
+            self.object.idiomas.all().delete()
+            IdiomaServidor.objects.bulk_create([
+                IdiomaServidor(servidor=self.object, idioma_id=pk, nivel=request.POST.get(f'nivel_idioma_{pk}', '').strip())
+                for pk in idioma_ids
+            ])
+
+            return redirect(self.get_success_url())
+
+        niveles_post = {
+            pk: request.POST.get(f'nivel_idioma_{pk}', '').strip() for pk in request.POST.getlist('idiomas')
+        }
+        return self.render_to_response(self.get_context_data(
+            form=form, form_personales=form_personales, form_complementarios=form_complementarios,
+            discapacidades=self._checkboxes(Discapacidad.objects.all(), set(request.POST.getlist('discapacidades'))),
+            enfermedades=self._checkboxes(EnfermedadCronica.objects.all(), set(request.POST.getlist('enfermedades'))),
+            idiomas=self._checkboxes(Idioma.objects.all(), set(request.POST.getlist('idiomas')), niveles=niveles_post),
+        ))
 
 
 @login_required
@@ -167,6 +253,16 @@ class InformacionBasicaListView(LoginRequiredMixin, ListView):
         return ctx
 
 
+ICONOS_ESTATUS_PLAZA = {
+    'ocupada':     ('👤', 'verde'),
+    'vacante':     ('🪑', 'rojo'),
+    'licencia':    ('🌴', 'dorado'),
+    'comisionado': ('🔄', 'azul'),
+    'reservada':   ('🔒', 'azul'),
+    'suspendido':  ('⛔', 'rojo'),
+}
+
+
 class PuestoListView(LoginRequiredMixin, ListView):
     model = Puesto
     template_name = 'servidores/puesto_list.html'
@@ -176,7 +272,7 @@ class PuestoListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         qs = Puesto.objects.select_related(
             'proyecto', 'proyecto__dependencia', 'programa', 'programa__unidad',
-            'unidad', 'categoria', 'servidor_actual'
+            'unidad', 'categoria', 'servidor_actual', 'estatus_plaza'
         )
         q = self.request.GET.get('q', '')
         if q:
@@ -186,15 +282,25 @@ class PuestoListView(LoginRequiredMixin, ListView):
                 Q(servidor_actual__rfc__icontains=q)
             )
         estatus = self.request.GET.get('estatus', '')
-        if estatus in (Puesto.ESTATUS_VACANTE, Puesto.ESTATUS_OCUPADA):
-            qs = qs.filter(estatus=estatus)
+        if estatus:
+            qs = qs.filter(estatus_plaza_id=estatus)
         return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx['titulo'] = 'Puestos'
+        ctx['titulo'] = 'Plazas'
         ctx['q'] = self.request.GET.get('q', '')
         ctx['estatus'] = self.request.GET.get('estatus', '')
+        ctx['estatus_choices'] = EstatusPlaza.objects.all()
+
+        resumen = list(
+            Puesto.objects.values('estatus_plaza__descripcion').annotate(total=Count('id')).order_by('-total')
+        )
+        for item in resumen:
+            item['descripcion'] = item['estatus_plaza__descripcion'] or 'Sin estatus'
+            item['icono'], item['color'] = ICONOS_ESTATUS_PLAZA.get(item['descripcion'].strip().lower(), ('📌', 'azul'))
+        ctx['resumen_estatus'] = resumen
+        ctx['total_plazas'] = Puesto.objects.count()
         return ctx
 
 
@@ -206,7 +312,7 @@ class PuestoUpdateView(LoginRequiredMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx['titulo'] = f'Modificar Puesto: {self.object.id_plaza}'
+        ctx['titulo'] = f'Modificar Plaza: {self.object.id_plaza}'
         return ctx
 
 

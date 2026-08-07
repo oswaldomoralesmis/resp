@@ -6,7 +6,7 @@
 <div class="breadcrumb-resp">
   <a href="{% url 'dashboard' %}">&#127968; Inicio</a>
   <span class="sep">&#8250;</span>
-  <a href="{% url 'puesto_list' %}">Puestos</a>
+  <a href="{% url 'puesto_list' %}">Plazas</a>
   <span class="sep">&#8250;</span>
   <span>{{ titulo }}</span>
 </div>
@@ -17,8 +17,8 @@
     <form method="post" novalidate>
       {% csrf_token %}
 
-      <!-- DATOS DEL PUESTO / PLAZA -->
-      <div class="form-section-title" style="margin-bottom:12px;">&#128188; Datos del Puesto / Plaza</div>
+      <!-- DATOS DE LA PLAZA -->
+      <div class="form-section-title" style="margin-bottom:12px;">&#128188; Datos de la Plaza</div>
       <div class="row g-3 mb-4">
         <div class="col-md-3">
           <label for="{{ form.id_plaza.id_for_label }}" class="form-label fw-semibold">{{ form.id_plaza.label }}</label>
