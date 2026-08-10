@@ -11,8 +11,7 @@
 <body>
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
-    <div class="login-escudo" style="width:48px;height:48px;font-size:22px;margin:0 auto 8px;">🏛️</div>
-    <div class="sidebar-logo">RESP<small>Gobierno del Estado de Tabasco</small></div>
+    <img src="{% static 'img/logo_panel.png' %}" alt="RESP — Registro Estatal de Servidores Públicos" class="sidebar-logo-img">
   </div>
   <nav class="sidebar-nav">
     <span class="nav-section">Principal</span>
@@ -34,7 +33,9 @@
     <a href="{% url 'reporte_estadisticas' %}" class="nav-link"><span class="nav-icon">📈</span> Estadísticas</a>
     <span class="nav-section">Administración</span>
     <a href="{% url 'catalogo_index' %}" class="nav-link"><span class="nav-icon">🗂️</span> Catálogos</a>
+    {% if request.user.rol == 'administrador' %}
     <a href="{% url 'usuario_list' %}" class="nav-link"><span class="nav-icon">👥</span> Usuarios</a>
+    {% endif %}
     <a href="{% url 'periodo_list' %}" class="nav-link"><span class="nav-icon">⚙️</span> Períodos de Carga</a>
     {% if request.user.rol == 'administrador' %}
     <a href="{% url 'excepcion_list' %}" class="nav-link {% if 'excepcion' in request.resolver_match.url_name|default:'' %}active{% endif %}"><span class="nav-icon">🔓</span> Excepciones de Acceso</a>

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Restablecer Contraseña{% endblock %}
+{% block page_title %}Restablecer Contraseña{% endblock %}
+{% block content %}
+<div class="card" style="max-width:500px;margin:0 auto;">
+  <div class="card-header" style="background:var(--dorado);color:#fff;">🔑 Restablecer Contraseña</div>
+  <div class="card-body">
+    <div class="alert-resp alert-warning">
+      Se generará una contraseña temporal nueva para <strong>{{ usuario.get_full_name }}</strong> ({{ usuario.email }})
+      y la contraseña actual dejará de funcionar de inmediato.
+    </div>
+    <form method="post">{% csrf_token %}
+      <div style="display:flex;gap:10px;">
+        <button type="submit" class="btn-dorado">Confirmar</button>
+        <a href="{% url 'usuario_list' %}" class="btn-outline">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

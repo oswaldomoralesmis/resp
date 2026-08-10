@@ -3,27 +3,42 @@
 {% block page_title %}Calendario de Recepción de Layouts{% endblock %}
 {% block content %}
 <div class="card">
-  <div class="card-header" style="justify-content:space-between;">
-    <span>📅 Períodos de Carga</span>
-    <a href="{% url 'periodo_create' %}" class="btn-institucional btn-sm">➕ Nuevo Período</a>
-  </div>
   <div class="card-body">
-    <div class="alert-resp alert-info">ℹ️ Los layouts de cada período se reciben del fin de la quincena a la fecha de cierre (5 días hábiles después del fin). El administrador puede habilitar una excepción de acceso por dependencia fuera de estas fechas.</div>
-    <table class="table-resp">
-      <thead><tr><th>Quincena</th><th>Inicio Quincena</th><th>Fin Quincena</th><th>Cierre de Carga</th><th>Estado</th></tr></thead>
-      <tbody>
-        {% for p in periodos %}
-        <tr>
-          <td><span class="badge-blue">{{ p.quincena }}</span></td>
-          <td>{{ p.fecha_inicio }}</td>
-          <td>{{ p.fecha_fin }}</td>
-          <td>{{ p.fecha_cierre }}</td>
-          <td>{% if p.activo %}<span class="badge-activo">✅ Activo</span>{% else %}<span class="badge-inactivo">Cerrado</span>{% endif %}</td>
-        </tr>
-        {% empty %}<tr><td colspan="5" class="text-muted text-center" style="padding:30px;">Sin períodos configurados.</td></tr>
+    <div class="cal-nav">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div class="cal-nav-botones">
+          <a href="?anio={{ anio_anterior }}&mes={{ mes_anterior }}" class="cal-nav-btn" title="Mes anterior">‹</a>
+          <a href="?anio={{ anio_siguiente }}&mes={{ mes_siguiente }}" class="cal-nav-btn" title="Mes siguiente">›</a>
+        </div>
+        {% if not es_mes_actual %}<a href="{% url 'calendario_cargas' %}" class="cal-nav-hoy">Hoy</a>{% endif %}
+        <span class="cal-nav-titulo">{{ nombre_mes }} {{ anio }}</span>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap;font-size:12.5px;">
+      <span><span class="cal-leyenda-punto" style="background:var(--verde);"></span> Abierta ahora</span>
+      <span><span class="cal-leyenda-punto" style="background:var(--dorado-oscuro);"></span> Próxima</span>
+      <span><span class="cal-leyenda-punto" style="background:var(--rojo);"></span> Cerrada</span>
+      <span class="text-muted">Ventana de carga = fin de quincena a fecha de cierre (3 días hábiles después)</span>
+    </div>
+
+    <div class="cal-grande-wrap">
+      <div class="cal-grande">
+        {% for d in dias_semana %}
+        <div class="cal-grande-header {% if forloop.counter0 >= 5 %}cal-weekend-header{% endif %}">{{ d }}</div>
         {% endfor %}
-      </tbody>
-    </table>
+        {% for semana in semanas %}
+          {% for dia in semana %}
+          <div class="cal-celda {% if not dia.es_mes_actual %}cal-celda-otromes{% endif %}" title="{% if dia.ventana %}Quincena {{ dia.ventana.quincena }}/{{ dia.ventana.ejercicio }} — {{ dia.ventana.estado }}{% endif %}">
+            <span class="cal-num {% if dia.es_finde %}cal-finde{% endif %} {% if dia.es_hoy %}cal-hoy{% endif %}">{{ dia.numero }}</span>
+            {% if dia.ventana %}
+            <span class="cal-evento cal-evento-{{ dia.ventana.color }}">Q{{ dia.ventana.quincena }} · {{ dia.ventana.estado }}</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        {% endfor %}
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}

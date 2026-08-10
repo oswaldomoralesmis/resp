@@ -27,10 +27,15 @@
         {% csrf_token %}
 
         <div style="margin-bottom:16px;">
-          <label class="form-label">Per&iacute;odo (Quincena) <span style="color:var(--institucional-rojo);">*</span></label>
-          {{ form.periodo }}
-          {% if form.periodo.errors %}
-          <div style="color:var(--institucional-rojo);font-size:12px;margin-top:3px;">{{ form.periodo.errors|join:", " }}</div>
+          <label class="form-label">Per&iacute;odo (Quincena)</label>
+          {% if periodo_activo %}
+          <div class="form-control" style="background:var(--gris-clar);font-weight:700;">
+            Quincena {{ periodo_activo.quincena }}/{{ periodo_activo.ejercicio }}
+            <span class="text-muted" style="font-weight:400;font-size:12px;">({{ periodo_activo.fecha_inicio }} a {{ periodo_activo.fecha_fin }})</span>
+          </div>
+          <div class="text-muted" style="font-size:12px;margin-top:3px;">La carga siempre se hace contra el per&iacute;odo activo; no se puede elegir otro.</div>
+          {% else %}
+          <div class="alert-resp alert-danger" style="margin:0;">No hay un per&iacute;odo de carga activo. Solicite al administrador que configure uno antes de subir un archivo.</div>
           {% endif %}
         </div>
 
@@ -72,7 +77,7 @@
         </div>
 
         <div style="display:flex;gap:10px;">
-          <button type="submit" class="btn-verde" style="flex:1;justify-content:center;padding:11px;">
+          <button type="submit" class="btn-verde" style="flex:1;justify-content:center;padding:11px;" {% if not periodo_activo %}disabled{% endif %}>
             &#128228; Subir y Procesar
           </button>
           <a href="{% url 'carga_list' %}" class="btn-outline">&#10005; Cancelar</a>

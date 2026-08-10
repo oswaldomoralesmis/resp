@@ -18,7 +18,7 @@
         {% for c in cargas %}
         <tr>
           <td>{{ c.fecha_carga|date:"d/m/Y H:i" }}</td>
-          <td><span class="badge-blue">{{ c.periodo.quincena }}</span></td>
+          <td><span class="badge-blue">{{ c.periodo.quincena }}/{{ c.periodo.ejercicio }}</span></td>
           <td>{{ c.dependencia.clave }}</td>
           <td>{{ c.get_tipo_display }}</td>
           <td>

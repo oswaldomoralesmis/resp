@@ -340,7 +340,9 @@ class Cache:
 # ── Procesador principal ──────────────────────────────────────────────────────
 def procesar_layout_basica(carga):
     ruta     = carga.archivo.path
-    quincena = carga.periodo.quincena
+    # InformacionBasica.quincena es un identificador histórico (puede acumular
+    # varios ejercicios por servidor), por eso aquí sí se guarda con el año.
+    quincena = f'{carga.periodo.ejercicio}-{carga.periodo.quincena}'
     log      = []
     ok       = 0
     errores  = 0

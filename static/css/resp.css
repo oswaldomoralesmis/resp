@@ -4,19 +4,21 @@
    Paleta: Guinda / Vino / Dorado / Gris
    =============================================================== */
 :root {
-  /* ── Colores institucionales Tabasco ── */
-  --guinda:            #6D1130;   /* color principal — guinda oscuro */
-  --guinda-med:        #8B1A3E;   /* hover botones */
-  --guinda-clar:       #F5E6EA;   /* fondos suaves */
-  --dorado:            #C49A1A;   /* acento dorado */
-  --dorado-clar:       #FBF3D5;   /* fondo dorado suave */
-  --dorado-oscuro:     #A07C10;   /* hover dorado */
+  /* ── Colores institucionales Tabasco (paleta de marca) ──
+     4 principales: Pantone 221 C / 7716 C (guinda) + 465 C / 468 C (dorado)
+     2 complementarios: C0 M0 Y0 K90 / K70 (grises neutros) */
+  --guinda:            #991547;   /* Pantone 221 C — color principal */
+  --guinda-med:        #771139;   /* Pantone 7716 C — hover botones */
+  --guinda-clar:       #F6EAEE;   /* fondos suaves (tinte del guinda) */
+  --dorado:            #C49955;   /* Pantone 465 C — acento dorado */
+  --dorado-clar:       #DDC9A3;   /* Pantone 468 C — fondo dorado suave */
+  --dorado-oscuro:     #92723F;   /* hover dorado (tono oscurecido) */
   --verde:             #1E6B3C;   /* éxito / activo */
   --verde-clar:        #D4EDDA;
   --rojo:              #C0392B;   /* peligro / baja */
   --rojo-clar:         #FADBD8;
-  --gris-osc:          #2C3E50;
-  --gris-med:          #7F8C8D;
+  --gris-osc:          #3C3C3B;   /* C0 M0 Y0 K90 */
+  --gris-med:          #706F6F;   /* C0 M0 Y0 K70 */
   --gris-clar:         #F0F0F0;
   --borde:             #DDD;
   --blanco:            #FFFFFF;
@@ -47,7 +49,7 @@ button { cursor: pointer; font-family: inherit; }
 .sidebar {
   position: fixed; top: 0; left: 0;
   width: var(--sidebar-width); height: 100vh;
-  background: linear-gradient(180deg, var(--guinda) 0%, #3D0A1C 100%);
+  background: linear-gradient(180deg, var(--guinda) 0%, #580C29 100%);
   color: #fff;
   display: flex; flex-direction: column;
   z-index: 1000;
@@ -69,6 +71,7 @@ button { cursor: pointer; font-family: inherit; }
   font-weight: 400; font-size: 11px;
   text-transform: none; margin-top: 2px;
 }
+.sidebar-logo-img { display: block; width: 100%; height: auto; margin: 0 auto; }
 .sidebar-nav { flex: 1; overflow-y: auto; padding: 10px 0; }
 .sidebar-nav::-webkit-scrollbar { width: 3px; }
 .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 3px; }
@@ -116,7 +119,7 @@ button { cursor: pointer; font-family: inherit; }
   border-radius: 20px;
   font-size: 13px; font-weight: 600; color: var(--gris-osc);
 }
-.user-pill:hover { background: #EAD0D7; }
+.user-pill:hover { background: #EDD5DE; }
 .user-avatar {
   width: 30px; height: 30px;
   background: var(--guinda); color: #fff;
@@ -164,9 +167,9 @@ button { cursor: pointer; font-family: inherit; }
   display: flex; align-items: center; justify-content: center;
   font-size: 24px;
 }
-.stat-icon.azul   { background: rgba(109,17,48,.12);  color: var(--guinda); }
+.stat-icon.azul   { background: rgba(153,21,71,.12);  color: var(--guinda); }
 .stat-icon.verde  { background: rgba(30,107,60,.12);  color: var(--verde); }
-.stat-icon.dorado { background: rgba(196,154,26,.12); color: var(--dorado-oscuro); }
+.stat-icon.dorado { background: rgba(196,153,85,.12); color: var(--dorado-oscuro); }
 .stat-icon.rojo   { background: rgba(192,57,43,.12);  color: var(--rojo); }
 .stat-number { font-size: 28px; font-weight: 800; color: var(--gris-osc); line-height: 1; }
 .stat-label  { font-size: 12px; color: var(--gris-med); margin-top: 2px; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
@@ -197,7 +200,7 @@ button { cursor: pointer; font-family: inherit; }
 }
 .btn-institucional           { background: var(--guinda);       color: #fff !important; }
 .btn-institucional:hover     { background: var(--guinda-med);   color: #fff !important; }
-.btn-institucional:focus     { box-shadow: 0 0 0 3px rgba(109,17,48,.28); }
+.btn-institucional:focus     { box-shadow: 0 0 0 3px rgba(153,21,71,.28); }
 
 .btn-verde                   { background: var(--verde);        color: #fff !important; }
 .btn-verde:hover             { filter: brightness(1.12);        color: #fff !important; }
@@ -256,7 +259,7 @@ button { cursor: pointer; font-family: inherit; }
 .form-control:focus,
 .form-select:focus {
   border-color: var(--guinda);
-  box-shadow: 0 0 0 3px rgba(109,17,48,.13);
+  box-shadow: 0 0 0 3px rgba(153,21,71,.13);
   outline: none;
 }
 .form-control::placeholder { color: #AAB7B8; font-size: 13px; }
@@ -288,7 +291,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   background: var(--blanco); transition: var(--transition);
 }
 .chip-picker-box:focus-within {
-  border-color: var(--guinda); box-shadow: 0 0 0 4px rgba(109,17,48,.10);
+  border-color: var(--guinda); box-shadow: 0 0 0 4px rgba(153,21,71,.10);
 }
 .chip-picker-tags { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip-picker-tags:empty { display: none; }
@@ -301,7 +304,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .chip-tag-remove {
   display: inline-flex; align-items: center; justify-content: center;
   width: 16px; height: 16px; border-radius: 50%;
-  border: none; background: rgba(109,17,48,.12); color: var(--guinda);
+  border: none; background: rgba(153,21,71,.12); color: var(--guinda);
   font-size: 13px; line-height: 1; cursor: pointer; padding: 0;
 }
 .chip-tag-remove:hover { background: var(--guinda); color: var(--blanco); }
@@ -415,7 +418,7 @@ hr { border: none; border-top: 1px solid #eef0f4; margin: 14px 0; }
 .alert-success { background: var(--verde-clar); color: #155724; border: 1px solid #c3e6cb; }
 .alert-danger  { background: var(--rojo-clar);  color: #721c24; border: 1px solid #f5c6cb; }
 .alert-warning { background: var(--dorado-clar);color: #7D6608; border: 1px solid #F9E79F; }
-.alert-info    { background: var(--guinda-clar);color: var(--guinda); border: 1px solid #D5A0B0; }
+.alert-info    { background: var(--guinda-clar);color: var(--guinda); border: 1px solid #DBACBD; }
 
 /* ── PAGINATION ─────────────────────────────────────────────── */
 .pagination-resp { display: flex; gap: 4px; align-items: center; justify-content: center; padding: 16px 0 0; }
@@ -436,20 +439,84 @@ hr { border: none; border-top: 1px solid #eef0f4; margin: 14px 0; }
 @media (max-width:900px) { .grid-4,.grid-3 { grid-template-columns: repeat(2,1fr); } }
 @media (max-width:600px) { .grid-4,.grid-3,.grid-2 { grid-template-columns: 1fr; } }
 
+/* ── CALENDARIO DE PERÍODOS DE CARGA (mes único, estilo agenda grande) ── */
+.cal-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+.cal-nav-titulo { font-size: 21px; font-weight: 800; color: var(--gris-osc); }
+.cal-nav-botones { display: flex; align-items: center; gap: 4px; }
+.cal-nav-btn {
+  width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 1px solid #dde2ee; background: var(--blanco);
+  color: var(--gris-osc); font-size: 18px; line-height: 1; transition: var(--transition);
+}
+.cal-nav-btn:hover { background: var(--gris-clar); }
+.cal-nav-hoy {
+  padding: 8px 16px; border-radius: 20px; border: 1px solid #dde2ee;
+  background: var(--blanco); font-weight: 600; font-size: 13px; color: var(--gris-osc);
+}
+.cal-nav-hoy:hover { background: var(--gris-clar); }
+.cal-leyenda-punto { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; }
+
+.cal-grande-wrap { width: 100%; overflow-x: auto; }
+.cal-grande {
+  display: grid; grid-template-columns: repeat(7, minmax(110px, 1fr));
+  border-left: 1px solid #e3e6ee; border-top: 1px solid #e3e6ee; min-width: 770px;
+}
+.cal-grande-header {
+  padding: 10px 6px; text-align: center; font-size: 11.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .4px; color: var(--gris-med);
+  background: var(--gris-clar); border-right: 1px solid #e3e6ee; border-bottom: 1px solid #e3e6ee;
+}
+.cal-grande-header.cal-weekend-header { color: var(--rojo); }
+
+.cal-celda {
+  min-height: 118px; padding: 8px; background: var(--blanco);
+  border-right: 1px solid #e3e6ee; border-bottom: 1px solid #e3e6ee;
+  display: flex; flex-direction: column; gap: 5px; transition: var(--transition);
+}
+.cal-celda:hover { background: #fafbfd; }
+.cal-celda-otromes { background: #fbfbfc; }
+.cal-celda-otromes .cal-num { opacity: .4; }
+
+.cal-num {
+  font-size: 13.5px; font-weight: 700; color: var(--gris-osc);
+  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; flex-shrink: 0;
+}
+.cal-num.cal-finde { color: var(--rojo); }
+.cal-num.cal-hoy { background: var(--guinda); color: #fff; }
+
+.cal-evento {
+  font-size: 11px; font-weight: 700; color: #fff; padding: 4px 8px;
+  border-radius: 5px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cal-evento-verde  { background: var(--verde); }
+.cal-evento-dorado { background: var(--dorado-oscuro); }
+.cal-evento-rojo   { background: var(--rojo); }
+
+@media (max-width: 700px) {
+  .cal-celda { min-height: 84px; padding: 6px; }
+  .cal-grande { grid-template-columns: repeat(7, minmax(88px, 1fr)); min-width: 620px; }
+  .cal-nav-titulo { font-size: 17px; }
+}
+
 /* ── LOGIN ──────────────────────────────────────────────────── */
 .login-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, var(--guinda) 0%, #3D0A1C 50%, #5A0E28 100%);
+  background: linear-gradient(135deg, var(--guinda) 0%, #580C29 50%, #7F113B 100%);
   display: flex; align-items: center; justify-content: center;
 }
 .login-box {
   background: var(--blanco); border-radius: 14px;
   box-shadow: 0 20px 60px rgba(0,0,0,.25);
-  padding: 42px; width: 380px; max-width: 95vw;
+  padding: 42px; width: 460px; max-width: 95vw;
 }
 .login-logo { text-align: center; margin-bottom: 28px; }
+.login-logo-img { display: block; width: 100%; height: auto; margin: 0 auto; }
 .login-logo h1 { font-size: 22px; color: var(--guinda); font-weight: 800; margin: 8px 0 4px; }
 .login-logo p  { font-size: 12px; color: #888; margin: 0; }
+@media (max-width: 480px) {
+  .login-box { padding: 28px 20px; }
+}
 .login-escudo {
   width: 68px; height: 68px;
   background: var(--guinda); border-radius: 50%;

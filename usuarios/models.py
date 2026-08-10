@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
@@ -35,3 +36,14 @@ class UsuarioRESP(AbstractUser):
 
     def __str__(self):
         return f"{self.get_full_name()} ({self.email})"
+
+    @property
+    def es_administrador(self):
+        return self.rol == 'administrador'
+
+    def clean(self):
+        super().clean()
+        if not self.es_administrador and not self.dependencia_id:
+            raise ValidationError({
+                'dependencia': 'La dependencia es obligatoria para usuarios que no son administradores.'
+            })

@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
+import calendar
 import datetime
 
 from django.db import models
 from usuarios.models import UsuarioRESP
 from catalogos.models import Dependencia
 
-DIAS_HABILES_CIERRE = 5
+DIAS_HABILES_CIERRE = 3
 
 
 def sumar_dias_habiles(fecha, dias):
@@ -20,7 +21,8 @@ def sumar_dias_habiles(fecha, dias):
 
 
 class PeriodoCarga(models.Model):
-    quincena = models.CharField(max_length=7, unique=True, verbose_name='Quincena (AAAA-QQ)')
+    ejercicio = models.IntegerField(editable=False, verbose_name='Ejercicio')
+    quincena = models.CharField(max_length=2, verbose_name='Quincena')
     fecha_inicio = models.DateField(verbose_name='Fecha inicio de carga')
     fecha_fin = models.DateField(verbose_name='Fecha fin de carga')
     fecha_cierre = models.DateField(
@@ -32,14 +34,43 @@ class PeriodoCarga(models.Model):
     class Meta:
         verbose_name = 'Período de Carga'
         verbose_name_plural = 'Períodos de Carga'
-        ordering = ['-quincena']
+        unique_together = ['ejercicio', 'quincena']
+        ordering = ['-fecha_inicio']
 
     def save(self, *args, **kwargs):
+        self.ejercicio = self.fecha_inicio.year
         self.fecha_cierre = sumar_dias_habiles(self.fecha_fin, DIAS_HABILES_CIERRE)
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Quincena {self.quincena} ({self.fecha_inicio} - {self.fecha_fin})"
+        return f"Quincena {self.quincena}/{self.ejercicio} ({self.fecha_inicio} - {self.fecha_fin})"
+
+
+def generar_periodos_ejercicio(ejercicio):
+    """Crea los 24 períodos quincenales de 'ejercicio' (1-15 y 16-fin de mes
+    de cada uno de los 12 meses), sin duplicar los que ya existan. La
+    'quincena' de cada uno es solo su número (01-24); lo que la distingue
+    entre ejercicios es el campo 'ejercicio', no un prefijo de año en el texto.
+    Devuelve (creados, existentes)."""
+    creados = existentes = 0
+    num_quincena = 0
+    for mes in range(1, 13):
+        ultimo_dia = calendar.monthrange(ejercicio, mes)[1]
+        for dia_inicio, dia_fin in [(1, 15), (16, ultimo_dia)]:
+            num_quincena += 1
+            quincena = f'{num_quincena:02d}'
+            _, creado = PeriodoCarga.objects.get_or_create(
+                ejercicio=ejercicio, quincena=quincena,
+                defaults={
+                    'fecha_inicio': datetime.date(ejercicio, mes, dia_inicio),
+                    'fecha_fin': datetime.date(ejercicio, mes, dia_fin),
+                },
+            )
+            if creado:
+                creados += 1
+            else:
+                existentes += 1
+    return creados, existentes
 
 
 class AccesoExcepcionCarga(models.Model):
@@ -61,7 +92,7 @@ class AccesoExcepcionCarga(models.Model):
         ordering = ['-periodo', 'dependencia']
 
     def __str__(self):
-        return f"{self.dependencia} - {self.periodo.quincena} ({self.fecha_inicio} a {self.fecha_fin})"
+        return f"{self.dependencia} - Quincena {self.periodo.quincena}/{self.periodo.ejercicio} ({self.fecha_inicio} a {self.fecha_fin})"
 
 
 def ventana_permitida(periodo, dependencia):
@@ -105,4 +136,4 @@ class CargaLayout(models.Model):
         ordering = ['-fecha_carga']
 
     def __str__(self):
-        return f"{self.tipo} - {self.dependencia} - {self.periodo.quincena}"
+        return f"{self.tipo} - {self.dependencia} - Quincena {self.periodo.quincena}/{self.periodo.ejercicio}"

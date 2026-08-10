@@ -11,9 +11,7 @@
 <div class="login-page">
   <div class="login-box">
     <div class="login-logo">
-      <div class="login-escudo">🏛️</div>
-      <h1>RESP</h1>
-      <p>Registro Estatal de Servidores Públicos<br>Gobierno del Estado de Tabasco</p>
+      <img src="{% static 'img/logo_resp.png' %}" alt="RESP — Registro Estatal de Servidores Públicos, Gobierno del Estado de Tabasco" class="login-logo-img">
     </div>
     {% if form.errors %}
     <div class="alert-resp alert-danger">❌ Correo o contraseña incorrectos.</div>

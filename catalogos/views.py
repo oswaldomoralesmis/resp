@@ -11,6 +11,8 @@ from django.db.models.deletion import Collector
 from django.core.files.storage import default_storage
 from django.contrib import messages
 
+from usuarios.mixins import AdministradorRequiredMixin, DependenciaScopedMixin, DependenciaFormRestrictMixin, filtrar_por_dependencia, admin_requerido
+
 from .models import (
     FuenteFinanciamiento, Dependencia, UnidadAdministrativa,
     Programa, Proyecto, Categoria, TipoContratacion, TipoPersonal,
@@ -87,7 +89,7 @@ def catalogo_index(request):
     from .importador import IMPORTADORES
     for grupo in grupos:
         for item in grupo['items']:
-            item['importar'] = item['descarga'] in IMPORTADORES
+            item['importar'] = item['descarga'] in IMPORTADORES and request.user.es_administrador
 
     return render(request, 'catalogos/index.html', {
         'titulo': 'Catálogos del Sistema',
@@ -108,8 +110,9 @@ class CatalogoMixin(LoginRequiredMixin):
         return ctx
 
 
-def make_list_view(model, template, titulo, search_fields=None, paginate=30, extra_ctx=None):
-    """Factoría de ListViews para catálogos simples."""
+def make_list_view(model, template, titulo, search_fields=None, paginate=30, extra_ctx=None, dependencia_lookup=None):
+    """Factoría de ListViews para catálogos simples. 'dependencia_lookup' activa
+    el filtrado por dependencia del usuario (None = catálogo global, sin filtrar)."""
     class V(LoginRequiredMixin, ListView):
         queryset         = model.objects.all()
         template_name    = template
@@ -118,6 +121,8 @@ def make_list_view(model, template, titulo, search_fields=None, paginate=30, ext
 
         def get_queryset(self):
             qs = super().get_queryset()
+            if dependencia_lookup:
+                qs = filtrar_por_dependencia(qs, self.request.user, dependencia_lookup)
             q  = self.request.GET.get('q', '')
             if q and search_fields:
                 filtro = Q()
@@ -136,8 +141,9 @@ def make_list_view(model, template, titulo, search_fields=None, paginate=30, ext
     return V
 
 
-def make_create_view(model, form_class, success_url, titulo, back_url, template='catalogos/form_generica.html'):
-    class V(CatalogoMixin, CreateView):
+def make_create_view(model, form_class, success_url, titulo, back_url, template='catalogos/form_generica.html', mixins=()):
+    """'mixins' se insertan antes de CreateView (ej. DependenciaFormRestrictMixin)."""
+    class V(*mixins, CatalogoMixin, CreateView):
         pass
     V.model        = model
     V.form_class   = form_class
@@ -148,8 +154,9 @@ def make_create_view(model, form_class, success_url, titulo, back_url, template=
     return V
 
 
-def make_update_view(model, form_class, success_url, titulo_prefix, back_url, template='catalogos/form_generica.html'):
-    class V(LoginRequiredMixin, UpdateView):
+def make_update_view(model, form_class, success_url, titulo_prefix, back_url, template='catalogos/form_generica.html', mixins=()):
+    """'mixins' se insertan antes de UpdateView (ej. DependenciaFormRestrictMixin)."""
+    class V(*mixins, LoginRequiredMixin, UpdateView):
         def get_context_data(self, **kwargs):
             ctx = super().get_context_data(**kwargs)
             ctx['titulo']   = f'{titulo_prefix}: {self.object}'
@@ -208,12 +215,17 @@ FuenteUpdateView = make_update_view(FuenteFinanciamiento, FuenteFinanciamientoFo
                                     'fuente_list', 'Editar Fuente', 'fuente_list')
 
 # ── Dependencias ──────────────────────────────────────────────────────────────
+# Alta de nuevas dependencias (agencias de gobierno) es una acción administrativa;
+# un usuario no-admin solo puede consultar (y solo ve) la suya propia.
 DependenciaListView   = make_list_view(Dependencia, 'catalogos/simple_list.html',
-                                       'Dependencias', ['clave', 'descripcion'])
+                                       'Dependencias', ['clave', 'descripcion'],
+                                       dependencia_lookup='pk')
 DependenciaCreateView = make_create_view(Dependencia, DependenciaForm,
-                                         'dependencia_list', 'Nueva Dependencia', 'dependencia_list')
+                                         'dependencia_list', 'Nueva Dependencia', 'dependencia_list',
+                                         mixins=(AdministradorRequiredMixin,))
 DependenciaUpdateView = make_update_view(Dependencia, DependenciaForm,
-                                         'dependencia_list', 'Editar Dependencia', 'dependencia_list')
+                                         'dependencia_list', 'Editar Dependencia', 'dependencia_list',
+                                         mixins=(AdministradorRequiredMixin,))
 
 # ── Unidades Administrativas ──────────────────────────────────────────────────
 class UnidadListView(LoginRequiredMixin, ListView):
@@ -223,7 +235,9 @@ class UnidadListView(LoginRequiredMixin, ListView):
     paginate_by         = 40
 
     def get_queryset(self):
-        qs  = UnidadAdministrativa.objects.select_related('dependencia')
+        qs  = filtrar_por_dependencia(
+            UnidadAdministrativa.objects.select_related('dependencia'), self.request.user
+        )
         q   = self.request.GET.get('q', '')
         dep = self.request.GET.get('dep', '')
         if q:
@@ -235,15 +249,17 @@ class UnidadListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx.update({'titulo': 'Unidades Administrativas',
-                    'dependencias': Dependencia.objects.all().order_by('clave'),
+                    'dependencias': filtrar_por_dependencia(Dependencia.objects.all(), self.request.user, 'pk').order_by('clave'),
                     'q': self.request.GET.get('q', ''),
                     'dep_sel': self.request.GET.get('dep', '')})
         return ctx
 
 UnidadCreateView = make_create_view(UnidadAdministrativa, UnidadAdministrativaForm,
-                                    'unidad_list', 'Nueva Unidad Administrativa', 'unidad_list')
+                                    'unidad_list', 'Nueva Unidad Administrativa', 'unidad_list',
+                                    mixins=(DependenciaFormRestrictMixin,))
 UnidadUpdateView = make_update_view(UnidadAdministrativa, UnidadAdministrativaForm,
-                                    'unidad_list', 'Editar Unidad', 'unidad_list')
+                                    'unidad_list', 'Editar Unidad', 'unidad_list',
+                                    mixins=(DependenciaFormRestrictMixin, DependenciaScopedMixin))
 
 # ── Programas ─────────────────────────────────────────────────────────────────
 class ProgramaListView(LoginRequiredMixin, ListView):
@@ -253,7 +269,7 @@ class ProgramaListView(LoginRequiredMixin, ListView):
     paginate_by         = 40
 
     def get_queryset(self):
-        qs  = Programa.objects.select_related('dependencia', 'unidad')
+        qs  = filtrar_por_dependencia(Programa.objects.select_related('dependencia', 'unidad'), self.request.user)
         q   = self.request.GET.get('q', '')
         dep = self.request.GET.get('dep', '')
         if q:
@@ -265,15 +281,17 @@ class ProgramaListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx.update({'titulo': 'Programas Presupuestales',
-                    'dependencias': Dependencia.objects.all().order_by('clave'),
+                    'dependencias': filtrar_por_dependencia(Dependencia.objects.all(), self.request.user, 'pk').order_by('clave'),
                     'q': self.request.GET.get('q', ''),
                     'dep_sel': self.request.GET.get('dep', '')})
         return ctx
 
 ProgramaCreateView = make_create_view(Programa, ProgramaForm,
-                                      'programa_list', 'Nuevo Programa', 'programa_list')
+                                      'programa_list', 'Nuevo Programa', 'programa_list',
+                                      mixins=(DependenciaFormRestrictMixin,))
 ProgramaUpdateView = make_update_view(Programa, ProgramaForm,
-                                      'programa_list', 'Editar Programa', 'programa_list')
+                                      'programa_list', 'Editar Programa', 'programa_list',
+                                      mixins=(DependenciaFormRestrictMixin, DependenciaScopedMixin))
 
 # ── Proyectos ─────────────────────────────────────────────────────────────────
 class ProyectoListView(LoginRequiredMixin, ListView):
@@ -283,7 +301,9 @@ class ProyectoListView(LoginRequiredMixin, ListView):
     paginate_by         = 40
 
     def get_queryset(self):
-        qs  = Proyecto.objects.select_related('dependencia').prefetch_related('programas__unidad')
+        qs  = filtrar_por_dependencia(
+            Proyecto.objects.select_related('dependencia').prefetch_related('programas__unidad'), self.request.user
+        )
         q   = self.request.GET.get('q', '')
         dep = self.request.GET.get('dep', '')
         if q:
@@ -295,17 +315,19 @@ class ProyectoListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx.update({'titulo': 'Proyectos',
-                    'dependencias': Dependencia.objects.all().order_by('clave'),
+                    'dependencias': filtrar_por_dependencia(Dependencia.objects.all(), self.request.user, 'pk').order_by('clave'),
                     'q': self.request.GET.get('q', ''),
                     'dep_sel': self.request.GET.get('dep', '')})
         return ctx
 
 ProyectoCreateView = make_create_view(Proyecto, ProyectoForm,
                                       'proyecto_list', 'Nuevo Proyecto', 'proyecto_list',
-                                      template='catalogos/proyecto_form.html')
+                                      template='catalogos/proyecto_form.html',
+                                      mixins=(DependenciaFormRestrictMixin,))
 ProyectoUpdateView = make_update_view(Proyecto, ProyectoForm,
                                       'proyecto_list', 'Editar Proyecto', 'proyecto_list',
-                                      template='catalogos/proyecto_form.html')
+                                      template='catalogos/proyecto_form.html',
+                                      mixins=(DependenciaFormRestrictMixin, DependenciaScopedMixin))
 
 # ── Categorías ────────────────────────────────────────────────────────────────
 class CategoriaListView(LoginRequiredMixin, ListView):
@@ -457,7 +479,7 @@ class InmuebleListView(LoginRequiredMixin, ListView):
     paginate_by         = 30
 
     def get_queryset(self):
-        qs  = Inmueble.objects.select_related('dependencia')
+        qs  = filtrar_por_dependencia(Inmueble.objects.select_related('dependencia'), self.request.user)
         q   = self.request.GET.get('q', '')
         if q:
             qs = qs.filter(Q(clave__icontains=q) | Q(descripcion__icontains=q))
@@ -468,8 +490,10 @@ class InmuebleListView(LoginRequiredMixin, ListView):
         ctx.update({'titulo': 'Inmuebles', 'q': self.request.GET.get('q', '')})
         return ctx
 
-InmuebleCreateView = make_create_view(Inmueble, InmuebleForm, 'inmueble_list', 'Nuevo Inmueble', 'inmueble_list')
-InmuebleUpdateView = make_update_view(Inmueble, InmuebleForm, 'inmueble_list', 'Editar Inmueble', 'inmueble_list')
+InmuebleCreateView = make_create_view(Inmueble, InmuebleForm, 'inmueble_list', 'Nuevo Inmueble', 'inmueble_list',
+                                      mixins=(DependenciaFormRestrictMixin,))
+InmuebleUpdateView = make_update_view(Inmueble, InmuebleForm, 'inmueble_list', 'Editar Inmueble', 'inmueble_list',
+                                      mixins=(DependenciaFormRestrictMixin, DependenciaScopedMixin))
 
 
 # ── Descarga de plantillas ────────────────────────────────────────────────────
@@ -500,7 +524,10 @@ def descargar_catalogo(request, catalogo):
 
 # ── Importación de catálogos desde Excel ──────────────────────────────────────
 @login_required
+@admin_requerido
 def importar_catalogo(request, catalogo):
+    """La carga masiva de catálogos abarca claves de todo el sistema (no de
+    una sola dependencia), así que queda reservada a administradores."""
     from .importador import IMPORTADORES
 
     if catalogo not in IMPORTADORES:

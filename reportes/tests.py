@@ -18,7 +18,9 @@ from servidores.models import InformacionBasica, Puesto, ServidorPublico, sincro
 
 class EstadisticasViewTests(TestCase):
     def setUp(self):
-        self.user = get_user_model().objects.create_user(username='tester', password='secret123')
+        self.user = get_user_model().objects.create_user(
+            username='tester', password='secret123', rol='administrador'
+        )
 
         self.estatus_ocupada = EstatusPlaza.objects.create(clave='O', descripcion='Ocupada')
         self.estatus_vacante = EstatusPlaza.objects.create(clave='V', descripcion='Vacante')

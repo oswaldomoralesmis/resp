@@ -5,6 +5,7 @@ from django.db.models import Count, Q
 from django.http import HttpResponse
 from servidores.models import ServidorPublico, InformacionBasica, BajaServidorPublico, Puesto
 from catalogos.models import Dependencia
+from usuarios.mixins import filtrar_por_dependencia
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 
@@ -16,16 +17,17 @@ def reporte_index(request):
 
 @login_required
 def reporte_padron(request):
-    qs = ServidorPublico.objects.filter(activo=True).select_related(
-        'entidad_nacimiento', 'pais_nacimiento', 'sindicato'
-    )
+    qs = filtrar_por_dependencia(
+        ServidorPublico.objects.filter(activo=True).select_related('entidad_nacimiento', 'pais_nacimiento', 'sindicato'),
+        request.user, 'informacion_basica__dependencia_id',
+    ).distinct()
     dep = request.GET.get('dependencia', '')
     if dep:
         qs = qs.filter(informacion_basica__dependencia_id=dep, informacion_basica__activo=True)
     context = {
         'servidores': qs[:500],
         'total': qs.count(),
-        'dependencias': Dependencia.objects.all(),
+        'dependencias': filtrar_por_dependencia(Dependencia.objects.all(), request.user, 'pk'),
         'titulo': 'Padrón de Servidores Públicos',
     }
     return render(request, 'reportes/padron.html', context)
@@ -33,17 +35,19 @@ def reporte_padron(request):
 
 @login_required
 def reporte_bajas(request):
-    bajas = BajaServidorPublico.objects.select_related(
-        'servidor', 'dependencia', 'motivo_baja'
+    bajas = filtrar_por_dependencia(
+        BajaServidorPublico.objects.select_related('servidor', 'dependencia', 'motivo_baja'), request.user
     ).order_by('-fecha_baja')
     return render(request, 'reportes/bajas.html', {'bajas': bajas, 'titulo': 'Bajas de Servidores Públicos'})
 
 
 @login_required
 def reporte_declaracion(request):
-    registros = InformacionBasica.objects.filter(
-        activo=True, oblig_declaracion='S'
-    ).select_related('servidor', 'dependencia', 'tipo_declaracion').order_by('dependencia', 'servidor')
+    registros = filtrar_por_dependencia(
+        InformacionBasica.objects.filter(activo=True, oblig_declaracion='S')
+        .select_related('servidor', 'dependencia', 'tipo_declaracion'),
+        request.user,
+    ).order_by('dependencia', 'servidor')
     return render(request, 'reportes/declaracion.html', {
         'registros': registros, 'titulo': 'Declaración Patrimonial - Sujetos Obligados'
     })
@@ -51,9 +55,10 @@ def reporte_declaracion(request):
 
 @login_required
 def reporte_entrega_recepcion(request):
-    registros = InformacionBasica.objects.filter(
-        activo=True, oblig_entrega_recepcion='S'
-    ).select_related('servidor', 'dependencia').order_by('dependencia', 'servidor')
+    registros = filtrar_por_dependencia(
+        InformacionBasica.objects.filter(activo=True, oblig_entrega_recepcion='S').select_related('servidor', 'dependencia'),
+        request.user,
+    ).order_by('dependencia', 'servidor')
     return render(request, 'reportes/entrega_recepcion.html', {
         'registros': registros, 'titulo': 'Padrón - Acta de Entrega-Recepción'
     })
@@ -61,9 +66,10 @@ def reporte_entrega_recepcion(request):
 
 @login_required
 def reporte_compatibilidad(request):
-    servidores_doble = ServidorPublico.objects.filter(
-        activo=True, tiene_otra_plaza='S'
-    ).select_related()
+    servidores_doble = filtrar_por_dependencia(
+        ServidorPublico.objects.filter(activo=True, tiene_otra_plaza='S'),
+        request.user, 'informacion_basica__dependencia_id',
+    ).distinct()
     return render(request, 'reportes/compatibilidad.html', {
         'servidores': servidores_doble, 'titulo': 'Compatibilidad de Horarios'
     })
@@ -71,11 +77,16 @@ def reporte_compatibilidad(request):
 
 @login_required
 def reporte_estadisticas(request):
-    ocupadas = list(
-        InformacionBasica.objects.filter(activo=True).values('estatus_plaza__descripcion').annotate(total=Count('id'))
-    )
+    info_visible = filtrar_por_dependencia(InformacionBasica.objects.filter(activo=True), request.user)
+    puestos_visibles = filtrar_por_dependencia(Puesto.objects.all(), request.user, 'proyecto__dependencia')
+    servidores_visibles = filtrar_por_dependencia(
+        ServidorPublico.objects.filter(activo=True), request.user, 'informacion_basica__dependencia_id'
+    ).distinct()
+    bajas_visibles = filtrar_por_dependencia(BajaServidorPublico.objects.all(), request.user)
+
+    ocupadas = list(info_visible.values('estatus_plaza__descripcion').annotate(total=Count('id')))
     vacantes = list(
-        Puesto.objects.filter(servidor_actual__isnull=True).values('estatus_plaza__descripcion').annotate(total=Count('id'))
+        puestos_visibles.filter(servidor_actual__isnull=True).values('estatus_plaza__descripcion').annotate(total=Count('id'))
     )
 
     por_estatus_map = {}
@@ -84,18 +95,18 @@ def reporte_estadisticas(request):
         por_estatus_map[label] = por_estatus_map.get(label, 0) + item['total']
 
     stats = {
-        'por_dependencia': InformacionBasica.objects.filter(activo=True).values(
+        'por_dependencia': info_visible.values(
             'dependencia__descripcion'
         ).annotate(total=Count('id')).order_by('-total')[:15],
         'por_estatus': [
             {'estatus_plaza__descripcion': label, 'total': total}
             for label, total in sorted(por_estatus_map.items(), key=lambda item: (-item[1], item[0]))
         ],
-        'por_contratacion': InformacionBasica.objects.filter(activo=True).values(
+        'por_contratacion': info_visible.values(
             'nombramiento__descripcion'
         ).annotate(total=Count('id')),
-        'total_activos': ServidorPublico.objects.filter(activo=True).count(),
-        'total_bajas': BajaServidorPublico.objects.count(),
+        'total_activos': servidores_visibles.count(),
+        'total_bajas': bajas_visibles.count(),
     }
     return render(request, 'reportes/estadisticas.html', {'stats': stats, 'titulo': 'Estadísticas Generales'})
 
@@ -116,7 +127,10 @@ def exportar_excel(request, tipo):
             cell.fill = header_fill
             cell.font = header_font
             cell.alignment = Alignment(horizontal='center')
-        for row, s in enumerate(ServidorPublico.objects.filter(activo=True), 2):
+        servidores_export = filtrar_por_dependencia(
+            ServidorPublico.objects.filter(activo=True), request.user, 'informacion_basica__dependencia_id'
+        ).distinct()
+        for row, s in enumerate(servidores_export, 2):
             ws.cell(row=row, column=1, value=s.expediente)
             ws.cell(row=row, column=2, value=s.rfc)
             ws.cell(row=row, column=3, value=s.curp)

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Reiniciar Datos de Prueba{% endblock %}
+{% block page_title %}Reiniciar Datos de Prueba{% endblock %}
+{% block content %}
+<div class="breadcrumb-resp">
+  <a href="{% url 'dashboard' %}">🏠 Inicio</a>
+</div>
+<div class="card" style="max-width:560px;margin:0 auto;">
+  <div class="card-header" style="background:#b91c1c;color:#fff;">⚠️ Reiniciar Datos de Prueba</div>
+  <div class="card-body">
+    <div class="alert-resp alert-danger">
+      Esta acción es <strong>irreversible</strong>. Solo está disponible mientras el sistema
+      no está en producción (DEBUG activo), para limpiar el ambiente de pruebas.
+    </div>
+    <p>Se eliminará por completo:</p>
+    <table class="table-resp" style="margin-bottom:16px;">
+      <tbody>
+        {% for etiqueta, cantidad in conteos.items %}
+        <tr><td>{{ etiqueta }}</td><td style="text-align:right;"><span class="badge-inactivo">{{ cantidad }}</span></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="alert-resp alert-info">
+      ✅ Los <strong>catálogos</strong> (dependencias, categorías, estatus, etc.) y los
+      <strong>usuarios del sistema</strong> NO se modifican.
+    </div>
+    <form method="post">
+      {% csrf_token %}
+      <div style="display:flex;gap:10px;">
+        <button type="submit" class="btn-institucional" style="background:#b91c1c;">🗑️ Eliminar {{ total }} registros</button>
+        <a href="{% url 'dashboard' %}" class="btn-outline">✕ Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

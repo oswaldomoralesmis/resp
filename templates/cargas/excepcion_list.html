@@ -14,7 +14,7 @@
       <tbody>
         {% for e in excepciones %}
         <tr>
-          <td><span class="badge-blue">{{ e.periodo.quincena }}</span></td>
+          <td><span class="badge-blue">{{ e.periodo.quincena }}/{{ e.periodo.ejercicio }}</span></td>
           <td>{{ e.dependencia.clave }} - {{ e.dependencia.descripcion }}</td>
           <td>{{ e.fecha_inicio }}</td>
           <td>{{ e.fecha_fin }}</td>

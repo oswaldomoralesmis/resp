@@ -6,6 +6,7 @@ urlpatterns = [
     path('nuevo/', views.UsuarioCreateView.as_view(), name='usuario_create'),
     path('<int:pk>/editar/', views.UsuarioUpdateView.as_view(), name='usuario_update'),
     path('<int:pk>/inactivar/', views.inactivar_usuario, name='usuario_inactivar'),
+    path('<int:pk>/reset-contrasena/', views.resetear_contrasena, name='usuario_reset_contrasena'),
     path('cambiar-contrasena/', views.cambiar_contrasena, name='cambiar_contrasena'),
     path('perfil/', views.perfil, name='perfil'),
 ]

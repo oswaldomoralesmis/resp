@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import secrets
+import string
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -9,9 +11,10 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib import messages
 from .models import UsuarioRESP
 from .forms import UsuarioRESPForm, UsuarioRESPEditForm
+from .mixins import AdministradorRequiredMixin, admin_requerido
 
 
-class UsuarioListView(LoginRequiredMixin, ListView):
+class UsuarioListView(AdministradorRequiredMixin, LoginRequiredMixin, ListView):
     model = UsuarioRESP
     template_name = 'usuarios/list.html'
     context_object_name = 'usuarios'
@@ -23,7 +26,7 @@ class UsuarioListView(LoginRequiredMixin, ListView):
         return ctx
 
 
-class UsuarioCreateView(LoginRequiredMixin, CreateView):
+class UsuarioCreateView(AdministradorRequiredMixin, LoginRequiredMixin, CreateView):
     model = UsuarioRESP
     form_class = UsuarioRESPForm
     template_name = 'usuarios/form.html'
@@ -35,7 +38,7 @@ class UsuarioCreateView(LoginRequiredMixin, CreateView):
         return ctx
 
 
-class UsuarioUpdateView(LoginRequiredMixin, UpdateView):
+class UsuarioUpdateView(AdministradorRequiredMixin, LoginRequiredMixin, UpdateView):
     model = UsuarioRESP
     form_class = UsuarioRESPEditForm
     template_name = 'usuarios/form.html'
@@ -48,6 +51,7 @@ class UsuarioUpdateView(LoginRequiredMixin, UpdateView):
 
 
 @login_required
+@admin_requerido
 def inactivar_usuario(request, pk):
     usuario = get_object_or_404(UsuarioRESP, pk=pk)
     if request.method == 'POST':
@@ -59,6 +63,26 @@ def inactivar_usuario(request, pk):
         messages.success(request, f'Usuario {usuario.email} inactivado.')
         return redirect('usuario_list')
     return render(request, 'usuarios/inactivar.html', {'usuario': usuario})
+
+
+@login_required
+@admin_requerido
+def resetear_contrasena(request, pk):
+    """Genera una contraseña temporal aleatoria para el usuario y la marca
+    como 'contraseña temporal' para que la cambie en su próximo ingreso."""
+    usuario = get_object_or_404(UsuarioRESP, pk=pk)
+    if request.method == 'POST':
+        alfabeto = string.ascii_letters + string.digits
+        nueva_contrasena = ''.join(secrets.choice(alfabeto) for _ in range(12))
+        usuario.set_password(nueva_contrasena)
+        usuario.contrasena_temporal = True
+        usuario.save()
+        return render(request, 'usuarios/reset_contrasena_ok.html', {
+            'usuario': usuario, 'nueva_contrasena': nueva_contrasena, 'titulo': 'Contraseña Restablecida',
+        })
+    return render(request, 'usuarios/reset_contrasena_confirm.html', {
+        'usuario': usuario, 'titulo': 'Restablecer Contraseña',
+    })
 
 
 @login_required

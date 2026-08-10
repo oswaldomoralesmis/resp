@@ -21,6 +21,7 @@
           <td>{% if u.activo_sistema %}<span class="badge-activo">Activo</span>{% else %}<span class="badge-inactivo">Inactivo</span>{% endif %}</td>
           <td>
             <a href="{% url 'usuario_update' u.pk %}" class="btn-institucional btn-sm">Editar</a>
+            <a href="{% url 'usuario_reset_contrasena' u.pk %}" class="btn-dorado btn-sm">🔑 Reset</a>
             {% if u.activo_sistema and u.pk != request.user.pk %}
             <a href="{% url 'usuario_inactivar' u.pk %}" class="btn-rojo btn-sm">Inactivar</a>
             {% endif %}

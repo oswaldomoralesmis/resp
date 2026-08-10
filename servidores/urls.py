@@ -4,6 +4,7 @@ from . import views
 urlpatterns = [
     path('', views.redirect_to_dashboard, name='home'),
     path('dashboard/', views.dashboard, name='dashboard'),
+    path('reset-datos-prueba/', views.reset_datos_prueba, name='reset_datos_prueba'),
     path('servidores/', views.ServidorListView.as_view(), name='servidor_list'),
     path('servidores/nuevo/', views.ServidorCreateView.as_view(), name='servidor_create'),
     path('servidores/<int:pk>/', views.ServidorDetailView.as_view(), name='servidor_detail'),

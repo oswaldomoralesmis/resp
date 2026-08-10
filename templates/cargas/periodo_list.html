@@ -3,16 +3,25 @@
 {% block page_title %}Períodos de Carga{% endblock %}
 {% block content %}
 <div class="card">
-  <div class="card-header" style="justify-content:space-between;">
+  <div class="card-header" style="justify-content:space-between;flex-wrap:wrap;gap:10px;">
     <span>⚙️ Períodos de Carga</span>
-    <a href="{% url 'periodo_create' %}" class="btn-institucional btn-sm">➕ Nuevo</a>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      {% if request.user.es_administrador %}
+      <form method="post" action="{% url 'periodo_generar' %}" style="display:flex;gap:6px;align-items:center;">
+        {% csrf_token %}
+        <input type="number" name="ejercicio" class="form-control form-control-sm" style="width:100px;" value="{{ ejercicio_sugerido }}" min="2000" max="2100" required>
+        <button type="submit" class="btn-dorado btn-sm">🗓️ Generar 24 Períodos</button>
+      </form>
+      {% endif %}
+      <a href="{% url 'periodo_create' %}" class="btn-institucional btn-sm">➕ Nuevo</a>
+    </div>
   </div>
   <div class="card-body">
     <table class="table-resp">
-      <thead><tr><th>Quincena</th><th>Inicio</th><th>Fin</th><th>Cierre</th><th>Activo</th></tr></thead>
+      <thead><tr><th>Quincena</th><th>Ejercicio</th><th>Inicio</th><th>Fin</th><th>Cierre</th><th>Activo</th></tr></thead>
       <tbody>
-        {% for p in periodos %}<tr><td>{{ p.quincena }}</td><td>{{ p.fecha_inicio }}</td><td>{{ p.fecha_fin }}</td><td>{{ p.fecha_cierre }}</td><td>{% if p.activo %}<span class="badge-activo">Sí</span>{% else %}<span class="badge-inactivo">No</span>{% endif %}</td></tr>
-        {% empty %}<tr><td colspan="5" class="text-muted text-center" style="padding:20px;">Sin períodos.</td></tr>{% endfor %}
+        {% for p in periodos %}<tr><td><span class="badge-blue">{{ p.quincena }}</span></td><td>{{ p.ejercicio }}</td><td>{{ p.fecha_inicio }}</td><td>{{ p.fecha_fin }}</td><td>{{ p.fecha_cierre }}</td><td>{% if p.activo %}<span class="badge-activo">Sí</span>{% else %}<span class="badge-inactivo">No</span>{% endif %}</td></tr>
+        {% empty %}<tr><td colspan="6" class="text-muted text-center" style="padding:20px;">Sin períodos.</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>

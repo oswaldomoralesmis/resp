@@ -8,6 +8,7 @@ urlpatterns = [
     path('calendario/', views.calendario_cargas, name='calendario_cargas'),
     path('periodos/', views.PeriodoCargaListView.as_view(), name='periodo_list'),
     path('periodos/nuevo/', views.PeriodoCargaCreateView.as_view(), name='periodo_create'),
+    path('periodos/generar/', views.generar_periodos, name='periodo_generar'),
     path('excepciones/', views.AccesoExcepcionListView.as_view(), name='excepcion_list'),
     path('excepciones/nueva/', views.AccesoExcepcionCreateView.as_view(), name='excepcion_create'),
     path('excepciones/<int:pk>/eliminar/', views.AccesoExcepcionDeleteView.as_view(), name='excepcion_delete'),
