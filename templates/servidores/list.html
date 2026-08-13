@@ -24,7 +24,12 @@
         <option value="">Todas las dependencias</option>
         {% for d in dependencias %}<option value="{{ d.id }}" {% if request.GET.dependencia == d.id|stringformat:"s" %}selected{% endif %}>{{ d.clave }} - {{ d.descripcion|truncatechars:30 }}</option>{% endfor %}
       </select>
-      {% if q or request.GET.dependencia %}<a href="{% url 'servidor_list' %}" class="btn-outline btn-sm">✕ Limpiar</a>{% endif %}
+      <select name="estatus" class="form-select" style="max-width:160px;" onchange="this.form.submit()">
+        <option value="activos" {% if estatus == 'activos' %}selected{% endif %}>Activos</option>
+        <option value="inactivos" {% if estatus == 'inactivos' %}selected{% endif %}>Bajas / Inactivos</option>
+        <option value="todos" {% if estatus == 'todos' %}selected{% endif %}>Todos</option>
+      </select>
+      {% if q or request.GET.dependencia or estatus != 'activos' %}<a href="{% url 'servidor_list' %}" class="btn-outline btn-sm">✕ Limpiar</a>{% endif %}
     </form>
 
     {% if servidores %}
@@ -57,9 +62,9 @@
     </div>
     {% if is_paginated %}
     <div class="pagination-resp">
-      {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&q={{ q }}" class="page-btn">‹ Anterior</a>{% endif %}
+      {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&q={{ q }}&dependencia={{ request.GET.dependencia }}&estatus={{ estatus }}" class="page-btn">‹ Anterior</a>{% endif %}
       <span class="page-btn active">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
-      {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&q={{ q }}" class="page-btn">Siguiente ›</a>{% endif %}
+      {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&q={{ q }}&dependencia={{ request.GET.dependencia }}&estatus={{ estatus }}" class="page-btn">Siguiente ›</a>{% endif %}
     </div>
     {% endif %}
     {% else %}

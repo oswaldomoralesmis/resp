@@ -75,6 +75,19 @@ def reporte_compatibilidad(request):
     })
 
 
+SEXO_LABELS = {'MASCULINO': 'Masculino', 'FEMENINO': 'Femenino', 'OTRO': 'Otro'}
+
+
+def _distribucion(qs, campo, top=None):
+    """Cuenta registros de qs agrupados por 'campo' (ruta de FK, p.ej.
+    'programa__descripcion'), como lista de {'label': ..., 'total': ...}
+    ordenada de mayor a menor. 'top' recorta a los N más frecuentes."""
+    filas = qs.values(campo).annotate(total=Count('id')).order_by('-total')
+    if top:
+        filas = filas[:top]
+    return [{'label': f[campo] or 'Sin dato', 'total': f['total']} for f in filas]
+
+
 @login_required
 def reporte_estadisticas(request):
     info_visible = filtrar_por_dependencia(InformacionBasica.objects.filter(activo=True), request.user)
@@ -94,19 +107,54 @@ def reporte_estadisticas(request):
         label = item['estatus_plaza__descripcion'] or 'Sin estatus'
         por_estatus_map[label] = por_estatus_map.get(label, 0) + item['total']
 
+    total_info = info_visible.count()
+
+    def porcentaje_obligados(campo):
+        obligados = info_visible.filter(**{campo: 'S'}).count()
+        pct = round(obligados * 100 / total_info, 1) if total_info else 0
+        return {'total': obligados, 'porcentaje': pct}
+
+    por_sexo_raw = servidores_visibles.values('sexo').annotate(total=Count('id')).order_by('-total')
+
     stats = {
-        'por_dependencia': info_visible.values(
-            'dependencia__descripcion'
-        ).annotate(total=Count('id')).order_by('-total')[:15],
-        'por_estatus': [
-            {'estatus_plaza__descripcion': label, 'total': total}
-            for label, total in sorted(por_estatus_map.items(), key=lambda item: (-item[1], item[0]))
-        ],
-        'por_contratacion': info_visible.values(
-            'nombramiento__descripcion'
-        ).annotate(total=Count('id')),
         'total_activos': servidores_visibles.count(),
         'total_bajas': bajas_visibles.count(),
+        'total_info': total_info,
+
+        # Institucional
+        'por_dependencia': _distribucion(info_visible, 'dependencia__descripcion', top=15),
+        'por_programa': _distribucion(info_visible, 'programa__descripcion', top=15),
+        'por_fuente_financiamiento': _distribucion(info_visible, 'fuente_financiamiento__descripcion'),
+        'por_area': _distribucion(info_visible, 'area__descripcion', top=15),
+
+        # Puesto / función
+        'por_estatus': [
+            {'label': label, 'total': total}
+            for label, total in sorted(por_estatus_map.items(), key=lambda item: (-item[1], item[0]))
+        ],
+        'por_contratacion': _distribucion(info_visible, 'nombramiento__descripcion'),
+        'por_categoria': _distribucion(info_visible, 'categoria__descripcion', top=15),
+        'por_nivel_estructura': _distribucion(info_visible, 'nivel_estructura__descripcion'),
+        'por_tipo_funcion': _distribucion(info_visible, 'tipo_funcion__descripcion'),
+        'por_tipo_personal': _distribucion(info_visible, 'tipo_personal__descripcion'),
+        'por_cct': _distribucion(info_visible, 'cct__nombre', top=15),
+
+        # Personal
+        'por_sexo': [
+            {'label': SEXO_LABELS.get(f['sexo'], f['sexo'] or 'Sin dato'), 'total': f['total']}
+            for f in por_sexo_raw
+        ],
+        'por_estado_civil': _distribucion(servidores_visibles, 'estado_civil__descripcion'),
+        'por_entidad_nacimiento': _distribucion(servidores_visibles, 'entidad_nacimiento__nombre', top=15),
+        'por_sindicato': _distribucion(servidores_visibles, 'sindicato__descripcion'),
+
+        # Cumplimiento (sobre InformacionBasica activa)
+        'obligados_declaracion': porcentaje_obligados('oblig_declaracion'),
+        'obligados_entrega_recepcion': porcentaje_obligados('oblig_entrega_recepcion'),
+        'obligados_rendir_cuentas': porcentaje_obligados('oblig_rendir_cuentas'),
+
+        # Bajas
+        'por_motivo_baja': _distribucion(bajas_visibles, 'motivo_baja__descripcion'),
     }
     return render(request, 'reportes/estadisticas.html', {'stats': stats, 'titulo': 'Estadísticas Generales'})
 

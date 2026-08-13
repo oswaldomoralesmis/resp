@@ -3,43 +3,86 @@
 {% block title %}Estadísticas{% endblock %}
 {% block page_title %}Estadísticas Generales del RESP{% endblock %}
 {% block content %}
+
+<!-- Totales -->
 <div class="grid-2" style="margin-bottom:16px;">
   <div class="stat-card"><div class="stat-icon verde">👤</div><div><div class="stat-number">{{ stats.total_activos|intcomma }}</div><div class="stat-label">Servidores Activos</div></div></div>
   <div class="stat-card"><div class="stat-icon rojo">🚫</div><div><div class="stat-number">{{ stats.total_bajas|intcomma }}</div><div class="stat-label">Bajas Registradas</div></div></div>
 </div>
-<div class="grid-3">
-  <div class="card">
-    <div class="card-header">🏢 Por Dependencia (Top 15)</div>
-    <div class="card-body" style="padding:0;">
-      {% for d in stats.por_dependencia %}
-      <div style="display:flex;justify-content:space-between;padding:9px 16px;border-bottom:1px solid #f0f0f0;">
-        <span style="font-size:13px;">{{ d.dependencia__descripcion|truncatechars:28|default:"—" }}</span>
-        <span class="badge-blue">{{ d.total|intcomma }}</span>
-      </div>
-      {% endfor %}
+
+<!-- Cumplimiento -->
+<div class="grid-3" style="margin-bottom:16px;">
+  <div class="stat-card">
+    <div class="stat-icon dorado">⚖️</div>
+    <div>
+      <div class="stat-number">{{ stats.obligados_declaracion.total|intcomma }} <span style="font-size:14px;color:#999;">({{ stats.obligados_declaracion.porcentaje }}%)</span></div>
+      <div class="stat-label">Obligados a Declaración Patrimonial</div>
     </div>
   </div>
-  <div class="card">
-    <div class="card-header">📊 Por Estatus de Plaza</div>
-    <div class="card-body" style="padding:0;">
-      {% for d in stats.por_estatus %}
-      <div style="display:flex;justify-content:space-between;padding:9px 16px;border-bottom:1px solid #f0f0f0;">
-        <span style="font-size:13px;">{{ d.estatus_plaza__descripcion|default:"—" }}</span>
-        <span class="badge-blue">{{ d.total|intcomma }}</span>
-      </div>
-      {% endfor %}
+  <div class="stat-card">
+    <div class="stat-icon dorado">🤝</div>
+    <div>
+      <div class="stat-number">{{ stats.obligados_entrega_recepcion.total|intcomma }} <span style="font-size:14px;color:#999;">({{ stats.obligados_entrega_recepcion.porcentaje }}%)</span></div>
+      <div class="stat-label">Obligados Entrega-Recepción</div>
     </div>
   </div>
-  <div class="card">
-    <div class="card-header">📝 Por Tipo de Contratación</div>
-    <div class="card-body" style="padding:0;">
-      {% for d in stats.por_contratacion %}
-      <div style="display:flex;justify-content:space-between;padding:9px 16px;border-bottom:1px solid #f0f0f0;">
-        <span style="font-size:13px;">{{ d.nombramiento__descripcion|default:"—" }}</span>
-        <span class="badge-blue">{{ d.total|intcomma }}</span>
-      </div>
-      {% endfor %}
+  <div class="stat-card">
+    <div class="stat-icon dorado">📑</div>
+    <div>
+      <div class="stat-number">{{ stats.obligados_rendir_cuentas.total|intcomma }} <span style="font-size:14px;color:#999;">({{ stats.obligados_rendir_cuentas.porcentaje }}%)</span></div>
+      <div class="stat-label">Obligados a Rendir Cuentas</div>
     </div>
   </div>
 </div>
+
+<!-- Institucional -->
+<div class="form-section-title">🏛️ Institucional</div>
+<div class="grid-3" style="margin-bottom:16px;">
+  {% include "reportes/_distribucion_card.html" with icono="🏢" titulo="Por Dependencia (Top 15)" items=stats.por_dependencia %}
+  {% include "reportes/_distribucion_card.html" with icono="📁" titulo="Por Programa (Top 15)" items=stats.por_programa %}
+  {% include "reportes/_distribucion_card.html" with icono="💰" titulo="Por Fuente de Financiamiento" items=stats.por_fuente_financiamiento %}
+</div>
+<div class="grid-3" style="margin-bottom:16px;">
+  {% include "reportes/_distribucion_card.html" with icono="🗺️" titulo="Por Área (Top 15)" items=stats.por_area %}
+</div>
+
+<!-- Puesto / función -->
+<div class="form-section-title">💼 Puesto y Función</div>
+<div class="grid-3" style="margin-bottom:16px;">
+  {% include "reportes/_distribucion_card.html" with icono="📊" titulo="Por Estatus de Plaza" items=stats.por_estatus %}
+  {% include "reportes/_distribucion_card.html" with icono="📝" titulo="Por Tipo de Contratación" items=stats.por_contratacion %}
+  {% include "reportes/_distribucion_card.html" with icono="🏷️" titulo="Por Categoría (Top 15)" items=stats.por_categoria %}
+</div>
+<div class="grid-3" style="margin-bottom:16px;">
+  {% include "reportes/_distribucion_card.html" with icono="🧭" titulo="Por Nivel de Estructura" items=stats.por_nivel_estructura %}
+  {% include "reportes/_distribucion_card.html" with icono="⚙️" titulo="Por Tipo de Función" items=stats.por_tipo_funcion %}
+  {% include "reportes/_distribucion_card.html" with icono="👔" titulo="Por Tipo de Personal" items=stats.por_tipo_personal %}
+</div>
+<div class="grid-3" style="margin-bottom:16px;">
+  {% include "reportes/_distribucion_card.html" with icono="🏫" titulo="Por Centro de Trabajo (Top 15)" items=stats.por_cct %}
+</div>
+{% if not stats.por_tipo_funcion or not stats.por_tipo_personal %}
+<div class="alert-resp" style="background:#eef4fb;border:1px solid #b6d4f0;color:#31556e;padding:10px 14px;border-radius:6px;margin-bottom:16px;font-size:12.5px;">
+  ℹ️ Tipo de Función y Tipo de Personal solo se calculan a partir de las cargas de layout procesadas después de este cambio;
+  las cargas aplicadas antes no tienen ese dato.
+</div>
+{% endif %}
+
+<!-- Personal -->
+<div class="form-section-title">👥 Personal</div>
+<div class="grid-3" style="margin-bottom:16px;">
+  {% include "reportes/_distribucion_card.html" with icono="🚻" titulo="Por Sexo" items=stats.por_sexo %}
+  {% include "reportes/_distribucion_card.html" with icono="💍" titulo="Por Estado Civil" items=stats.por_estado_civil %}
+  {% include "reportes/_distribucion_card.html" with icono="✊" titulo="Por Sindicato" items=stats.por_sindicato %}
+</div>
+<div class="grid-3" style="margin-bottom:16px;">
+  {% include "reportes/_distribucion_card.html" with icono="📍" titulo="Por Entidad de Nacimiento (Top 15)" items=stats.por_entidad_nacimiento %}
+</div>
+
+<!-- Bajas -->
+<div class="form-section-title">🚫 Bajas</div>
+<div class="grid-3" style="margin-bottom:16px;">
+  {% include "reportes/_distribucion_card.html" with icono="📋" titulo="Por Motivo de Baja" items=stats.por_motivo_baja %}
+</div>
+
 {% endblock %}

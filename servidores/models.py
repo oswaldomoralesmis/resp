@@ -222,6 +222,8 @@ class InformacionBasica(models.Model):
     categoria = models.ForeignKey(Categoria, on_delete=models.PROTECT, verbose_name='Categoría')
     puesto = models.CharField(max_length=20, verbose_name='Puesto')
     nombramiento = models.ForeignKey(TipoContratacion, on_delete=models.PROTECT, verbose_name='Tipo de Contratación')
+    tipo_personal = models.ForeignKey(TipoPersonal, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Tipo de Personal')
+    tipo_funcion = models.ForeignKey(TipoFuncion, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Tipo de Función')
     nivel_estructura = models.ForeignKey(NivelEstructura, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Nivel de Estructura')
     id_plaza_jefe = models.CharField(max_length=20, blank=True, verbose_name='ID Plaza Jefe Inmediato')
     puesto_jefe = models.CharField(max_length=20, blank=True, verbose_name='Puesto Jefe Inmediato')
@@ -276,6 +278,10 @@ class BajaServidorPublico(models.Model):
     """Registro de baja del servidor público"""
     servidor = models.ForeignKey(ServidorPublico, on_delete=models.PROTECT, related_name='bajas')
     dependencia = models.ForeignKey(Dependencia, on_delete=models.PROTECT)
+    id_plaza = models.CharField(
+        max_length=20, blank=True, verbose_name='ID de Plaza',
+        help_text='Plaza que se libera con esta baja (la carga de layout la exige; el alta manual libera todas las plazas del servidor).'
+    )
     fecha_baja = models.DateField(verbose_name='Fecha de Baja')
     motivo_baja = models.ForeignKey('catalogos.MotivoBaja', on_delete=models.PROTECT, verbose_name='Motivo de Baja')
     ejercicio = models.IntegerField(verbose_name='Ejercicio')

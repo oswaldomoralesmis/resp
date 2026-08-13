@@ -82,7 +82,7 @@
   <div class="card-header">📅 Historial de Quincenas</div>
   <div class="card-body">
     <table class="table-resp">
-      <thead><tr><th>Quincena</th><th>Dependencia</th><th>Plaza</th><th>Estatus</th><th>Neto</th></tr></thead>
+      <thead><tr><th>Quincena</th><th>Dependencia</th><th>Plaza</th><th>Estatus Plaza</th><th>Neto</th><th>Vigencia</th></tr></thead>
       <tbody>
         {% for h in historial %}
         <tr>
@@ -91,6 +91,30 @@
           <td>{{ h.id_plaza }}</td>
           <td>{{ h.estatus_plaza }}</td>
           <td>${{ h.total_neto|floatformat:2 }}</td>
+          <td>{% if h.activo %}<span class="badge-activo">Vigente</span>{% else %}<span class="badge-inactivo">Dada de baja</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if bajas %}
+<div class="card">
+  <div class="card-header">🚫 Bajas Registradas</div>
+  <div class="card-body">
+    <table class="table-resp">
+      <thead><tr><th>Fecha de Baja</th><th>Plaza Liberada</th><th>Motivo</th><th>Dependencia</th><th>Período</th><th>Registrado por</th></tr></thead>
+      <tbody>
+        {% for b in bajas %}
+        <tr>
+          <td>{{ b.fecha_baja }}</td>
+          <td>{{ b.id_plaza|default:"—" }}</td>
+          <td>{{ b.motivo_baja }}</td>
+          <td>{{ b.dependencia.clave }}</td>
+          <td>{{ b.periodo }}</td>
+          <td>{{ b.registrado_por|default:"—" }}</td>
         </tr>
         {% endfor %}
       </tbody>

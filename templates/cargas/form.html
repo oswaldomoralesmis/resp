@@ -1,14 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Cargar Layout{% endblock %}
+{% block title %}{{ titulo }}{% endblock %}
 {% block page_title %}Carga de Información{% endblock %}
 
 {% block content %}
 <div class="breadcrumb-resp">
   <a href="{% url 'dashboard' %}">&#127968;</a>
   <span class="sep">&#8250;</span>
-  <a href="{% url 'carga_list' %}">Cargas</a>
+  <a href="{% url 'calendario_cargas' %}">Calendario</a>
   <span class="sep">&#8250;</span>
-  <span>Nueva Carga</span>
+  <span>{{ tipo_label }}</span>
 </div>
 
 <div class="grid-2" style="align-items:start;">
@@ -48,11 +48,10 @@
         </div>
 
         <div style="margin-bottom:16px;">
-          <label class="form-label">Tipo de Layout <span style="color:var(--institucional-rojo);">*</span></label>
-          {{ form.tipo }}
-          {% if form.tipo.errors %}
-          <div style="color:var(--institucional-rojo);font-size:12px;margin-top:3px;">{{ form.tipo.errors|join:", " }}</div>
-          {% endif %}
+          <label class="form-label">Tipo de Layout</label>
+          <div class="form-control" style="background:var(--gris-clar);font-weight:700;">{{ tipo_label }}</div>
+          <div class="text-muted" style="font-size:12px;margin-top:3px;">Elegido desde el calendario — <a href="{% url 'calendario_cargas' %}">cambiar</a>.</div>
+          <input type="hidden" name="tipo" value="{{ tipo }}">
         </div>
 
         <div style="margin-bottom:24px;">
@@ -214,15 +213,5 @@ function handleDrop(e) {
   document.getElementById('nombre-archivo').style.color = 'var(--institucional-verde)';
   document.getElementById('nombre-archivo').style.fontWeight = '600';
 }
-
-// Seleccionar tipo automáticamente según el nombre del archivo
-document.getElementById('id_archivo').addEventListener('change', function() {
-  const nombre = this.files[0] ? this.files[0].name.toLowerCase() : '';
-  const select = document.getElementById('id_tipo');
-  if (!select) return;
-  if (nombre.includes('basica') || nombre.includes('básica')) select.value = 'basica';
-  else if (nombre.includes('personal')) select.value = 'personales';
-  else if (nombre.includes('baja')) select.value = 'bajas';
-});
 </script>
 {% endblock %}

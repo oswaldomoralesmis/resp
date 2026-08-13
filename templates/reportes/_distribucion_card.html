@@ -1,0 +1,19 @@
+{% load humanize %}
+{% comment %}
+Tarjeta de distribución reutilizable. Uso:
+{% include "reportes/_distribucion_card.html" with icono="🏢" titulo="Por Dependencia" items=stats.por_dependencia %}
+Cada item debe tener 'label' y 'total'.
+{% endcomment %}
+<div class="card">
+  <div class="card-header">{{ icono }} {{ titulo }}</div>
+  <div class="card-body" style="padding:0;max-height:340px;overflow-y:auto;">
+    {% for d in items %}
+    <div style="display:flex;justify-content:space-between;gap:8px;padding:9px 16px;border-bottom:1px solid #f0f0f0;">
+      <span style="font-size:13px;">{{ d.label|truncatechars:30 }}</span>
+      <span class="badge-blue">{{ d.total|intcomma }}</span>
+    </div>
+    {% empty %}
+    <div style="padding:16px;color:#999;font-size:13px;">Sin datos.</div>
+    {% endfor %}
+  </div>
+</div>

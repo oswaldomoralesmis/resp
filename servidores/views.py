@@ -99,10 +99,22 @@ class ServidorListView(LoginRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        qs = ServidorPublico.objects.filter(activo=True)
+        qs = ServidorPublico.objects.all()
+        estatus = self.request.GET.get('estatus', 'activos')
+        if estatus == 'activos':
+            qs = qs.filter(activo=True)
+        elif estatus == 'inactivos':
+            qs = qs.filter(activo=False)
+        # 'todos': sin filtro de activo.
+
+        # Ojo: el filtro de dependencia NO exige informacion_basica__activo=True
+        # — un servidor dado de baja tiene su Información Básica desactivada,
+        # pero sigue perteneciendo históricamente a esa dependencia. Exigir
+        # activo=True aquí lo dejaría invisible incluso para su propia
+        # dependencia al buscarlo como inactivo/baja.
         user = self.request.user
         if not user.es_administrador:
-            qs = qs.filter(informacion_basica__dependencia_id=user.dependencia_id, informacion_basica__activo=True)
+            qs = qs.filter(informacion_basica__dependencia_id=user.dependencia_id)
         q = self.request.GET.get('q', '')
         if q:
             qs = qs.filter(
@@ -111,13 +123,14 @@ class ServidorListView(LoginRequiredMixin, ListView):
             )
         dep = self.request.GET.get('dependencia', '')
         if dep:
-            qs = qs.filter(informacion_basica__dependencia_id=dep, informacion_basica__activo=True)
+            qs = qs.filter(informacion_basica__dependencia_id=dep)
         return qs.distinct()
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['dependencias'] = filtrar_por_dependencia(Dependencia.objects.all(), self.request.user, 'pk')
         ctx['q'] = self.request.GET.get('q', '')
+        ctx['estatus'] = self.request.GET.get('estatus', 'activos')
         ctx['titulo'] = 'Padrón de Servidores Públicos'
         return ctx
 
@@ -139,6 +152,7 @@ class ServidorDetailView(LoginRequiredMixin, DependenciaScopedMixin, DetailView)
         ctx['historial'] = InformacionBasica.objects.filter(
             servidor=self.object
         ).order_by('-quincena')[:10]
+        ctx['bajas'] = self.object.bajas.select_related('motivo_baja', 'dependencia').order_by('-fecha_baja')
         ctx['titulo'] = f'Servidor: {self.object.nombre_completo}'
         return ctx
 

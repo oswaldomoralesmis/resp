@@ -41,6 +41,13 @@ class PeriodoCarga(models.Model):
         self.ejercicio = self.fecha_inicio.year
         self.fecha_cierre = sumar_dias_habiles(self.fecha_fin, DIAS_HABILES_CIERRE)
         super().save(*args, **kwargs)
+        # Solo puede haber un período activo a la vez: la vista de carga
+        # (carga_layout) siempre toma "el" período activo con .filter(activo=True).first(),
+        # así que si hay más de uno, la elección depende del orden y deja de
+        # tener sentido (p.ej. ignora excepciones de acceso dadas para otro
+        # período que también estaba marcado activo).
+        if self.activo:
+            PeriodoCarga.objects.exclude(pk=self.pk).update(activo=False)
 
     def __str__(self):
         return f"Quincena {self.quincena}/{self.ejercicio} ({self.fecha_inicio} - {self.fecha_fin})"
@@ -106,6 +113,25 @@ def ventana_permitida(periodo, dependencia):
     return periodo.fecha_fin, periodo.fecha_cierre
 
 
+# Segunda quincena de marzo: fija en '06' sin importar el ejercicio, porque
+# generar_periodos_ejercicio numera siempre 2 quincenas por mes en orden
+# (enero=01-02, febrero=03-04, marzo=05-06, ...).
+QUINCENA_DATOS_PERSONALES = '06'
+TIPOS_LAYOUT_SIEMPRE = ['basica', 'bajas']
+
+
+def tipos_permitidos_periodo(periodo):
+    """Tipos de layout que se pueden cargar contra 'periodo': Información
+    Básica y Bajas en cualquier quincena; Datos Personales solo una vez al
+    año, en la segunda quincena de marzo (actualización anual)."""
+    if not periodo:
+        return []
+    tipos = list(TIPOS_LAYOUT_SIEMPRE)
+    if periodo.quincena == QUINCENA_DATOS_PERSONALES:
+        tipos.append('personales')
+    return tipos
+
+
 class CargaLayout(models.Model):
     TIPO_CHOICES = [
         ('basica', 'Información Básica'),
@@ -115,8 +141,10 @@ class CargaLayout(models.Model):
     ESTADO_CHOICES = [
         ('pendiente', 'Pendiente'),
         ('procesando', 'Procesando'),
-        ('completado', 'Completado'),
         ('con_errores', 'Con Errores'),
+        ('pendiente_revision', 'Pendiente de Revisión'),
+        ('aceptado', 'Aceptado'),
+        ('rechazado', 'Rechazado'),
     ]
     periodo = models.ForeignKey(PeriodoCarga, on_delete=models.PROTECT, verbose_name='Período')
     dependencia = models.ForeignKey(Dependencia, on_delete=models.PROTECT, verbose_name='Dependencia')
@@ -127,8 +155,21 @@ class CargaLayout(models.Model):
     registros_ok = models.IntegerField(default=0)
     registros_error = models.IntegerField(default=0)
     log_errores = models.TextField(blank=True)
+    detalle_filas = models.JSONField(default=list, blank=True, verbose_name='Detalle por registro')
+    decisiones_filas = models.JSONField(
+        default=dict, blank=True, verbose_name='Decisiones de revisión por fila',
+        help_text='Para filas con error "forzable" (p.ej. RFC/CURP con formato inválido): '
+                   '{"<num_fila>": {"decision": "aceptada"|"rechazada", "motivo": str, '
+                   '"por": str, "fecha": iso8601}}',
+    )
     usuario_carga = models.ForeignKey(UsuarioRESP, on_delete=models.SET_NULL, null=True)
     fecha_carga = models.DateTimeField(auto_now_add=True)
+    revisado_por = models.ForeignKey(
+        UsuarioRESP, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='cargas_revisadas', verbose_name='Revisado por',
+    )
+    fecha_revision = models.DateTimeField(null=True, blank=True, verbose_name='Fecha de revisión')
+    motivo_rechazo = models.TextField(blank=True, verbose_name='Motivo de rechazo')
 
     class Meta:
         verbose_name = 'Carga de Layout'

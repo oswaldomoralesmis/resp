@@ -9,7 +9,7 @@
   <div class="card-header">🚫 Registro de Bajas</div>
   <div class="card-body" style="padding:0;">
     <table class="table-resp">
-      <thead><tr><th>Fecha Baja</th><th>Dependencia</th><th>Expediente</th><th>RFC</th><th>Nombre</th><th>Motivo</th></tr></thead>
+      <thead><tr><th>Fecha Baja</th><th>Dependencia</th><th>Expediente</th><th>RFC</th><th>Nombre</th><th>Motivo</th><th class="no-print">Acciones</th></tr></thead>
       <tbody>
         {% for b in bajas %}
         <tr>
@@ -19,8 +19,9 @@
           <td><code>{{ b.servidor.rfc }}</code></td>
           <td>{{ b.servidor.primer_apellido }} {{ b.servidor.nombre }}</td>
           <td>{{ b.motivo_baja }}</td>
+          <td class="no-print"><a href="{% url 'servidor_detail' b.servidor.pk %}" class="btn-outline btn-sm">Ver</a></td>
         </tr>
-        {% empty %}<tr><td colspan="6" class="text-muted text-center" style="padding:30px;">Sin bajas registradas.</td></tr>{% endfor %}
+        {% empty %}<tr><td colspan="7" class="text-muted text-center" style="padding:30px;">Sin bajas registradas.</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>

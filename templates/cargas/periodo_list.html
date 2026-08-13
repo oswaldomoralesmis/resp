@@ -18,10 +18,31 @@
   </div>
   <div class="card-body">
     <table class="table-resp">
-      <thead><tr><th>Quincena</th><th>Ejercicio</th><th>Inicio</th><th>Fin</th><th>Cierre</th><th>Activo</th></tr></thead>
+      <thead><tr><th>Quincena</th><th>Ejercicio</th><th>Inicio</th><th>Fin</th><th>Cierre</th><th>Activo</th>{% if request.user.es_administrador %}<th>Acciones</th>{% endif %}</tr></thead>
       <tbody>
-        {% for p in periodos %}<tr><td><span class="badge-blue">{{ p.quincena }}</span></td><td>{{ p.ejercicio }}</td><td>{{ p.fecha_inicio }}</td><td>{{ p.fecha_fin }}</td><td>{{ p.fecha_cierre }}</td><td>{% if p.activo %}<span class="badge-activo">Sí</span>{% else %}<span class="badge-inactivo">No</span>{% endif %}</td></tr>
-        {% empty %}<tr><td colspan="6" class="text-muted text-center" style="padding:20px;">Sin períodos.</td></tr>{% endfor %}
+        {% for p in periodos %}
+        <tr>
+          <td><span class="badge-blue">{{ p.quincena }}</span></td>
+          <td>{{ p.ejercicio }}</td>
+          <td>{{ p.fecha_inicio }}</td>
+          <td>{{ p.fecha_fin }}</td>
+          <td>{{ p.fecha_cierre }}</td>
+          <td>{% if p.activo %}<span class="badge-activo">Sí</span>{% else %}<span class="badge-inactivo">No</span>{% endif %}</td>
+          {% if request.user.es_administrador %}
+          <td>
+            {% if not p.activo %}
+            <form method="post" action="{% url 'periodo_activar' p.pk %}"
+                  onsubmit="return confirm('¿Marcar la Quincena {{ p.quincena }}/{{ p.ejercicio }} como el único período activo? El resto quedará inactivo.');">
+              {% csrf_token %}
+              <button type="submit" class="btn-outline btn-sm">Activar</button>
+            </form>
+            {% else %}
+            <span class="text-muted" style="font-size:12px;">— activo actual —</span>
+            {% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% empty %}<tr><td colspan="7" class="text-muted text-center" style="padding:20px;">Sin períodos.</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>

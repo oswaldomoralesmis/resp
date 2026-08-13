@@ -2,6 +2,42 @@
 {% block title %}Calendario{% endblock %}
 {% block page_title %}Calendario de Recepción de Layouts{% endblock %}
 {% block content %}
+
+<!-- Acciones de hoy: único punto de entrada para cargar un layout -->
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-header">📤 Acciones de Hoy</div>
+  <div class="card-body">
+    {% if not periodo_activo %}
+    <div class="alert-resp alert-danger" style="margin:0;">
+      No hay un período de carga activo. Solicite al administrador que configure uno.
+    </div>
+    {% elif ventana_abierta %}
+    <div style="margin-bottom:12px;font-size:13px;">
+      Período activo: <span class="badge-blue">Quincena {{ periodo_activo.quincena }}/{{ periodo_activo.ejercicio }}</span>
+      &mdash; ventana de carga abierta del <strong>{{ ventana_ini }}</strong> al <strong>{{ ventana_fin }}</strong>.
+      Elija qué va a cargar:
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      {% for t in tipos_disponibles %}
+      <a href="{% url 'carga_new' %}?tipo={{ t.tipo }}" class="btn-verde">📤 {{ t.label }}</a>
+      {% endfor %}
+    </div>
+    {% if periodo_activo.quincena != '06' %}
+    <div class="text-muted" style="font-size:12px;margin-top:10px;">
+      El layout de Datos Personales solo se habilita en la segunda quincena de marzo (actualización anual).
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="alert-resp alert-info" style="margin:0;">
+      No hay una ventana de carga abierta en este momento para
+      {% if request.user.es_administrador %}el período activo{% else %}{{ request.user.dependencia }}{% endif %}.
+      {% if ventana_ini %}La ventana es del <strong>{{ ventana_ini }}</strong> al <strong>{{ ventana_fin }}</strong>.{% endif %}
+      Si necesita cargar fuera de estas fechas, solicite al administrador una excepción de acceso.
+    </div>
+    {% endif %}
+  </div>
+</div>
+
 <div class="card">
   <div class="card-body">
     <div class="cal-nav">

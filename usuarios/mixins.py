@@ -25,6 +25,16 @@ def admin_requerido(view_func):
     return wrapper
 
 
+def puede_revisar_carga(user, carga):
+    """Puede aceptar/rechazar una CargaLayout: el administrador (cualquiera),
+    o un usuario con rol='validador' de la misma dependencia de la carga."""
+    if not user.is_authenticated:
+        return False
+    if user.es_administrador:
+        return True
+    return user.rol == 'validador' and user.dependencia_id == carga.dependencia_id
+
+
 def filtrar_por_dependencia(qs, user, lookup='dependencia'):
     """Limita qs a la dependencia del usuario, salvo que sea administrador
     (que ve todo). 'lookup' es la ruta del filtro, p.ej. 'dependencia',

@@ -25,7 +25,9 @@
       <div>
         <div class="form-label">Estado</div>
         <div>
-          {% if carga.estado == 'completado' %}<span class="badge-activo" style="font-size:14px;padding:5px 14px;">&#10003; Completado</span>
+          {% if carga.estado == 'aceptado' %}<span class="badge-activo" style="font-size:14px;padding:5px 14px;">&#10003; Aceptado</span>
+          {% elif carga.estado == 'rechazado' %}<span class="badge-inactivo" style="font-size:14px;padding:5px 14px;">&#128683; Rechazado</span>
+          {% elif carga.estado == 'pendiente_revision' %}<span class="badge-pendiente" style="font-size:14px;padding:5px 14px;">&#128269; Pendiente de revisi&oacute;n</span>
           {% elif carga.estado == 'con_errores' %}<span class="badge-inactivo" style="font-size:14px;padding:5px 14px;">&#9888; Con errores</span>
           {% elif carga.estado == 'procesando' %}<span class="badge-pendiente" style="font-size:14px;padding:5px 14px;">&#8987; Procesando</span>
           {% else %}<span class="badge-pendiente" style="font-size:14px;padding:5px 14px;">Pendiente</span>{% endif %}
@@ -36,6 +38,71 @@
         <div>{{ carga.fecha_carga|date:"d/m/Y H:i" }}</div>
       </div>
     </div>
+
+    {% if carga.estado == 'pendiente_revision' %}
+      {% if puede_revisar %}
+      <div class="alert-resp" style="background:#fffde7;border:1px solid #fbc02d;color:#856404;padding:14px 16px;border-radius:6px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span><strong>&#128269; Pendiente de su revisi&oacute;n.</strong> Los registros de este lote todav&iacute;a
+        NO se han aplicado al padr&oacute;n. Revise el detalle del procesamiento abajo y decida.</span>
+        <form method="post" action="{% url 'carga_revalidar' carga.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="btn-outline btn-sm" title="Vuelve a validar el mismo archivo con la lógica más reciente, sin necesidad de resubirlo">&#128260; Re-validar</button>
+        </form>
+      </div>
+      {% if pendientes_count > 0 %}
+      <div class="alert-resp" style="background:#fff5f5;border:1px solid #e57373;color:#b71c1c;padding:14px 16px;border-radius:6px;margin-bottom:16px;">
+        <strong>&#9888; No se puede aceptar todav&iacute;a.</strong> Hay {{ pendientes_count }} registro(s) con error
+        sin revisar. Ac&eacute;ptelos o rech&aacute;celos uno por uno en la tabla de abajo
+        {% if hay_no_forzables_pendientes %}(o use "Rechazar pendientes no forzables" para los que no se pueden aceptar){% endif %}.
+      </div>
+      {% elif not puede_aceptar %}
+      <div class="alert-resp" style="background:#fff5f5;border:1px solid #e57373;color:#b71c1c;padding:14px 16px;border-radius:6px;margin-bottom:16px;">
+        <strong>&#9888; No se puede aceptar.</strong> No hay ning&uacute;n registro v&aacute;lido que aplicar al padr&oacute;n.
+      </div>
+      {% endif %}
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-start;">
+        {% if puede_aceptar %}
+        <form method="post" action="{% url 'carga_aceptar' carga.pk %}"
+              onsubmit="return confirm('¿Confirma aceptar esta carga? Los registros se aplicarán de forma definitiva al padrón.');">
+          {% csrf_token %}
+          <button type="submit" class="btn-institucional">&#9989; Aceptar y aplicar al padr&oacute;n</button>
+        </form>
+        {% endif %}
+        <button type="button" class="btn-outline" onclick="document.getElementById('form-rechazo').style.display='flex';this.style.display='none';">
+          &#10060; Rechazar toda la carga
+        </button>
+        {% if hay_no_forzables_pendientes %}
+        <form method="post" action="{% url 'carga_rechazar_pendientes' carga.pk %}"
+              onsubmit="return confirm('¿Rechazar todas las filas con error que no se pueden forzar? Quedarán omitidas.');">
+          {% csrf_token %}
+          <button type="submit" class="btn-outline">&#128465; Rechazar pendientes no forzables</button>
+        </form>
+        {% endif %}
+        <form id="form-rechazo" method="post" action="{% url 'carga_rechazar' carga.pk %}"
+              style="display:none;gap:8px;align-items:flex-start;flex:1;min-width:280px;"
+              onsubmit="return confirm('¿Confirma rechazar esta carga? No se aplicará ningún cambio al padrón.');">
+          {% csrf_token %}
+          <textarea name="motivo" rows="2" required placeholder="Motivo del rechazo de TODA la carga (obligatorio)"
+                    style="flex:1;min-width:220px;padding:8px;border:1px solid #ccc;border-radius:6px;"></textarea>
+          <button type="submit" class="btn-outline" style="border-color:var(--institucional-rojo);color:var(--institucional-rojo);">Confirmar rechazo</button>
+        </form>
+      </div>
+      {% else %}
+      <div class="alert-resp" style="background:#fffde7;border:1px solid #fbc02d;color:#856404;padding:14px 16px;border-radius:6px;margin-bottom:20px;">
+        <strong>&#128269; Pendiente de revisi&oacute;n</strong> por el validador de su dependencia.
+        Los registros de este lote todav&iacute;a no se han aplicado al padr&oacute;n.
+      </div>
+      {% endif %}
+    {% elif carga.estado == 'rechazado' %}
+      <div class="alert-resp" style="background:#fff5f5;border:1px solid #e57373;color:#b71c1c;padding:14px 16px;border-radius:6px;margin-bottom:20px;">
+        <strong>&#128683; Carga rechazada</strong>{% if carga.revisado_por %} por {{ carga.revisado_por }}{% endif %}{% if carga.fecha_revision %} el {{ carga.fecha_revision|date:"d/m/Y H:i" }}{% endif %}.
+        <div style="margin-top:6px;"><strong>Motivo:</strong> {{ carga.motivo_rechazo }}</div>
+      </div>
+    {% elif carga.estado == 'aceptado' and carga.revisado_por %}
+      <div class="alert-resp alert-success" style="margin-bottom:20px;">
+        &#10003; Aceptado por {{ carga.revisado_por }}{% if carga.fecha_revision %} el {{ carga.fecha_revision|date:"d/m/Y H:i" }}{% endif %}.
+      </div>
+    {% endif %}
 
     <!-- Contadores -->
     <div class="grid-3" style="margin-bottom:24px;">
@@ -62,8 +129,97 @@
       </div>
     </div>
 
-    <!-- Log detallado -->
-    {% if log_lines %}
+    <!-- Listado completo de registros -->
+    {% if filas_vista %}
+    <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <span>&#128203; Listado de Registros ({{ filas_vista|length }})</span>
+      <label style="font-size:12px;font-weight:400;display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" id="filtro-solo-errores" onchange="filtrarSoloErrores(this.checked)">
+        Mostrar solo con error/omitidos
+      </label>
+    </div>
+    <div id="tabla-registros-wrap" style="overflow-x:auto;max-height:500px;overflow-y:auto;border:1px solid #eee;border-radius:6px;margin-bottom:20px;">
+      <table class="table-resp" style="font-size:12px;">
+        <thead style="position:sticky;top:0;background:#fff;">
+          <tr>
+            <th style="width:60px;">Fila</th>
+            <th>RFC</th>
+            <th>CURP</th>
+            <th>Nombre</th>
+            <th>ID Plaza</th>
+            <th style="width:90px;">Estado</th>
+            <th>Error</th>
+            {% if puede_revisar %}<th style="width:220px;">Revisi&oacute;n</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in filas_vista %}
+          <tr class="{% if r.estado == 'ERROR' or r.estado == 'OMITIDA' %}fila-con-error{% endif %}" style="
+            {% if r.estado == 'ERROR' %}background:#fff5f5;{% endif %}
+            {% if r.estado == 'OMITIDA' %}background:#fff8f0;{% endif %}
+          ">
+            <td style="color:#999;">{{ r.fila }}</td>
+            <td style="font-family:monospace;">{{ r.rfc|default:"—" }}</td>
+            <td style="font-family:monospace;">{{ r.curp|default:"—" }}</td>
+            <td>{{ r.nombre|default:"—" }}</td>
+            <td style="font-family:monospace;">{{ r.id_plaza|default:"—" }}</td>
+            <td>
+              {% if r.estado == 'ERROR' %}<span class="badge-inactivo">ERROR</span>
+              {% elif r.estado == 'OMITIDA' %}<span class="badge-pendiente">OMITIDA</span>
+              {% else %}<span class="badge-activo">OK</span>{% endif %}
+            </td>
+            <td style="{% if r.estado == 'ERROR' or r.estado == 'OMITIDA' %}color:var(--institucional-rojo);font-weight:600;{% elif r.mensaje %}color:#856404;{% endif %}">
+              {{ r.mensaje|default:"" }}
+            </td>
+            {% if puede_revisar %}
+            <td>
+              {% if r.estado == 'ERROR' or r.estado == 'OMITIDA' %}
+                {% if r.decision == 'aceptada' %}
+                  <span class="badge-activo" title="{{ r.decision_motivo }}">&#9989; Aceptada por {{ r.decision_por }}</span>
+                {% elif r.decision == 'rechazada' %}
+                  <span class="badge-inactivo" title="{{ r.decision_motivo }}">&#10060; Rechazada por {{ r.decision_por }}</span>
+                {% elif carga.estado == 'pendiente_revision' %}
+                  <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                    {% if r.forzable %}
+                    <button type="button" class="btn-outline btn-sm"
+                            onclick="document.getElementById('motivo-{{ r.fila }}').style.display='flex';this.style.display='none';">
+                      Aceptar
+                    </button>
+                    {% endif %}
+                    <form method="post" action="{% url 'carga_decidir_fila' carga.pk r.fila %}" style="display:inline;">
+                      {% csrf_token %}
+                      <input type="hidden" name="decision" value="rechazada">
+                      <button type="submit" class="btn-outline btn-sm" style="border-color:var(--institucional-rojo);color:var(--institucional-rojo);">Rechazar</button>
+                    </form>
+                  </div>
+                  {% if r.forzable %}
+                  <form id="motivo-{{ r.fila }}" method="post" action="{% url 'carga_decidir_fila' carga.pk r.fila %}"
+                        style="display:none;gap:4px;margin-top:4px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="decision" value="aceptada">
+                    <input type="text" name="motivo" required placeholder="Motivo (obligatorio)"
+                           style="flex:1;min-width:120px;padding:4px 6px;border:1px solid #ccc;border-radius:4px;font-size:11px;">
+                    <button type="submit" class="btn-institucional btn-sm">OK</button>
+                  </form>
+                  {% endif %}
+                {% endif %}
+              {% endif %}
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <script>
+      function filtrarSoloErrores(soloErrores) {
+        document.querySelectorAll('#tabla-registros-wrap tbody tr').forEach(function(tr) {
+          if (!soloErrores) { tr.style.display = ''; return; }
+          tr.style.display = tr.classList.contains('fila-con-error') ? '' : 'none';
+        });
+      }
+    </script>
+    {% elif log_lines %}
     <div class="form-section-title">&#128220; Detalle del Procesamiento</div>
     <div style="overflow-x:auto;max-height:450px;overflow-y:auto;border:1px solid #eee;border-radius:6px;">
       <table class="table-resp" style="font-size:12px;">
@@ -100,6 +256,7 @@
 
     <div style="margin-top:20px;display:flex;gap:10px;">
       <a href="{% url 'carga_list' %}" class="btn-outline">&#8592; Regresar</a>
+      <a href="{% url 'carga_comprobante' carga.pk %}" class="btn-outline" target="_blank">&#128196; Comprobante PDF</a>
       <a href="{% url 'servidor_list' %}" class="btn-institucional">&#128100; Ver Padr&oacute;n</a>
     </div>
   </div>
