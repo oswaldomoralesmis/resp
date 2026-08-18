@@ -117,7 +117,7 @@ Desde el navegador: `http://<IP-del-servidor>/`
 
 ## Notas y decisiones de esta configuración
 
-- **Gunicorn en loopback (`127.0.0.1:8001`)**, nunca expuesto directo:
+- **Gunicorn en loopback (`127.0.0.1:9000`)**, nunca expuesto directo:
   nginx es la única puerta de entrada (puerto 80). Evita además los
   problemas de permisos/SELinux de compartir un socket Unix entre el
   usuario de la app y `nginx`.

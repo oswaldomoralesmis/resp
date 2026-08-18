@@ -6,7 +6,7 @@ import multiprocessing
 
 # Solo loopback: nadie fuera de este servidor debe poder llegar directo a
 # Gunicorn, siempre a través de nginx (que sí escucha en 0.0.0.0:80).
-bind = '127.0.0.1:8001'
+bind = '127.0.0.1:9000'
 
 workers = min(4, multiprocessing.cpu_count() * 2 + 1)
 worker_class = 'sync'
