@@ -1,0 +1,15 @@
+[Unit]
+Description=Gunicorn - RESP Tabasco (servidor de pruebas)
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=resp
+Group=resp
+WorkingDirectory=/opt/resp_project
+ExecStart=/opt/resp_project/venv/bin/gunicorn --config /opt/resp_project/deploy/gunicorn.conf.py resp_project.wsgi:application
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

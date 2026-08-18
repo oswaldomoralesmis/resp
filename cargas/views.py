@@ -16,7 +16,7 @@ from django.http import HttpResponse
 
 from .models import (
     CargaLayout, PeriodoCarga, AccesoExcepcionCarga, ventana_permitida,
-    generar_periodos_ejercicio, tipos_permitidos_periodo,
+    generar_periodos_ejercicio, tipos_permitidos_periodo, periodo_vigente_hoy,
 )
 from .forms import CargaLayoutForm, PeriodoCargaForm, AccesoExcepcionCargaForm, GenerarPeriodosForm
 from .procesador import procesar_layout_basica, procesar_layout_bajas
@@ -59,7 +59,7 @@ def carga_layout(request):
     excepción vigente para la dependencia del usuario), o si el tipo no es
     válido para el período activo, se avisa con un mensaje y se regresa al
     calendario en vez de mostrar el formulario."""
-    periodo_activo = PeriodoCarga.objects.filter(activo=True).first()
+    periodo_activo = periodo_vigente_hoy()
     hoy = timezone.localdate()
 
     if not periodo_activo:
@@ -505,7 +505,7 @@ def calendario_cargas(request):
     # ── Panel "Acciones de hoy": único punto de entrada para cargar layouts,
     # reemplaza el link genérico "Cargar Layout" (ya no se elige el tipo en
     # un formulario, se elige aquí según lo que esté permitido ahora mismo).
-    periodo_activo = PeriodoCarga.objects.filter(activo=True).first()
+    periodo_activo = periodo_vigente_hoy()
     ventana_ini = ventana_fin = None
     ventana_abierta = False
     tipos_disponibles = []

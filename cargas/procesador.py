@@ -147,6 +147,77 @@ def es_fila_forzable(errores_fila):
     return bool(errores_fila) and all(e in MENSAJES_FORZABLES for e in errores_fila)
 
 
+# ── Comparación contra el período anterior (aviso, nunca bloquea) ─────────────
+# Todas las columnas de InformacionBasica que vienen del layout básico, para
+# poder avisarle al validador exactamente qué cambió respecto a la última
+# quincena cargada de ese mismo servidor+plaza, antes de aceptar la carga.
+CAMPOS_COMPARABLES_BASICA = [
+    ('fuente_financiamiento',    'Fuente de Financiamiento'),
+    ('unidad',                   'Unidad Administrativa'),
+    ('programa',                 'Programa'),
+    ('proyecto',                 'Proyecto'),
+    ('categoria',                'Categoría'),
+    ('nombramiento',             'Tipo de Contratación'),
+    ('tipo_personal',            'Tipo de Personal'),
+    ('tipo_funcion',             'Tipo de Función'),
+    ('nivel_estructura',         'Nivel de Estructura'),
+    ('id_plaza_jefe',            'ID Plaza Jefe'),
+    ('hsm',                      'HSM'),
+    ('total_percepciones',       'Percepciones'),
+    ('total_bonos',              'Bonos'),
+    ('total_neto',               'Neto'),
+    ('dias_pagados',             'Días Pagados'),
+    ('estatus_plaza',            'Estatus de Plaza'),
+    ('cct',                      'Centro de Trabajo'),
+    ('oblig_declaracion',        'Obligado Declaración Patrimonial'),
+    ('tipo_declaracion',         'Tipo de Declaración'),
+    ('oblig_entrega_recepcion',  'Oblig. Entrega-Recepción'),
+    ('oblig_rendir_cuentas',     'Obligado Rendir Cuentas'),
+    ('puesto_sensible',          'Puesto Sensible'),
+    ('fecha_ingreso_gobierno',   'Fecha Ingreso Gobierno'),
+    ('fecha_ingreso_dependencia','Fecha Ingreso Dependencia'),
+    ('fecha_ingreso_puesto',     'Fecha Ingreso Puesto'),
+    ('area',                     'Área'),
+    ('participa_contrataciones', 'Participa Contrataciones'),
+    ('nivel_contrataciones',     'Nivel Contrataciones'),
+    ('participa_concesiones',    'Participa Concesiones'),
+    ('nivel_concesiones',        'Nivel Concesiones'),
+    ('participa_enajenacion',    'Participa Enajenación'),
+    ('nivel_enajenacion',        'Nivel Enajenación'),
+    ('inmueble',                 'Inmueble'),
+]
+_CAMPOS_NUMERICOS_BASICA = {'hsm', 'total_percepciones', 'total_bonos', 'total_neto'}
+
+
+def comparar_con_periodo_anterior(servidor, id_plaza, quincena_actual, valores_nuevos):
+    """Compara 'valores_nuevos' (lo que se va a escribir en InformacionBasica
+    para esta fila) contra el último registro que ya existía en BD para ese
+    mismo servidor+plaza, en una quincena distinta a la actual. Devuelve una
+    lista de descripciones de cambio por columna (para avisos — nunca bloquea
+    la fila), o [] si no hay período anterior con qué comparar (alta nueva)."""
+    previo = InformacionBasica.objects.filter(
+        servidor=servidor, id_plaza=id_plaza,
+    ).exclude(quincena=quincena_actual).order_by('-quincena').first()
+    if not previo:
+        return []
+    cambios = []
+    for campo, etiqueta in CAMPOS_COMPARABLES_BASICA:
+        valor_previo = getattr(previo, campo)
+        valor_nuevo = valores_nuevos.get(campo)
+        if campo in _CAMPOS_NUMERICOS_BASICA:
+            try:
+                iguales = float(valor_previo or 0) == float(valor_nuevo or 0)
+            except (TypeError, ValueError):
+                iguales = valor_previo == valor_nuevo
+        else:
+            iguales = valor_previo == valor_nuevo
+        if not iguales:
+            v_previo = valor_previo if valor_previo not in (None, '') else '—'
+            v_nuevo = valor_nuevo if valor_nuevo not in (None, '') else '—'
+            cambios.append(f'{etiqueta} cambió de "{v_previo}" a "{v_nuevo}" (vs. quincena {previo.quincena})')
+    return cambios
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def sv(v, default=''):
     """Safe string, fuerza mayúsculas, limpia NULL."""
@@ -445,6 +516,14 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
                                        'mensaje': 'La plaza no existe; debe darse de alta primero en la carga inicial de estructura'})
                 continue
             dependencia = cache.dependencia(col(C_DEPENDENCIA))
+            if dependencia and dependencia.pk != carga.dependencia_id:
+                errores += 1
+                msg = (f'La dependencia de la fila ({dependencia.clave}) no coincide con '
+                       f'la dependencia de la carga ({carga.dependencia.clave})')
+                log.append(f'Fila {num_fila}: ERROR — {msg}')
+                filas_detalle.append({'fila': num_fila, 'rfc': '', 'curp': '', 'nombre': '',
+                                       'id_plaza': id_plaza, 'estado': 'ERROR', 'mensaje': msg})
+                continue
             programa    = cache.programa(col(C_PROGRAMA))
             proyecto    = cache.proyecto(col(C_PROYECTO), dependencia=dependencia)
             categoria   = cache.categoria(col(C_CATEGORIA))
@@ -506,6 +585,10 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
         expediente = sd(col(C_EXPEDIENTE, '')) or f'EXP-{rfc}'
 
         # ── Servidor Público: buscar o crear ─────────────────────────────────
+        # Si el servidor ya existía pero estaba inactivo (dado de baja), el
+        # solo hecho de aparecer en un layout de Información Básica implica
+        # que volvió a ocupar una plaza — se reactiva y se avisa.
+        reactivado = False
         if dry_run:
             servidor = ServidorPublico.objects.filter(rfc=rfc).first()
             creado = servidor is None and rfc not in vistos_rfc
@@ -514,6 +597,8 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
                 otro_por_curp = ServidorPublico.objects.filter(curp=curp).exclude(rfc=rfc).first()
                 if otro_por_curp:
                     log.append(f'Fila {num_fila} RFC={rfc}: AVISO — CURP {curp} ya pertenece a otro RFC registrado')
+            elif not servidor.activo:
+                reactivado = True
         else:
             # Cada fila se guarda en su propio savepoint: si esta fila falla,
             # solo se revierte ella (no invalida el resto de la transacción
@@ -563,6 +648,8 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
                         sin = cache.sindicato(col(C_SINDICATO))
                         if sin and servidor.sindicato != sin:
                             servidor.sindicato = sin; cambios = True
+                        if not servidor.activo:
+                            servidor.activo = True; cambios = True; reactivado = True
                         if cambios:
                             servidor.save()
 
@@ -581,6 +668,20 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
         # ── Catálogos del puesto ─────────────────────────────────────────────
         fuente      = cache.fuente(col(C_FTE_FINAN))
         dependencia = cache.dependencia(col(C_DEPENDENCIA))
+
+        # La dependencia de la fila (si se reconoce en el catálogo) debe ser
+        # la misma que se eligió al subir el archivo — no se permite mezclar
+        # datos de otra dependencia en la carga de una dependencia distinta.
+        if dependencia and dependencia.pk != carga.dependencia_id:
+            errores += 1
+            msg = (f'La dependencia de la fila ({dependencia.clave}) no coincide con '
+                   f'la dependencia de la carga ({carga.dependencia.clave})')
+            log.append(f'Fila {num_fila} RFC={rfc}: ERROR — {msg}')
+            filas_detalle.append({'fila': num_fila, 'rfc': rfc, 'curp': curp,
+                                   'nombre': f'{nombre} {ap_pat} {ap_mat or ""}'.strip(), 'id_plaza': id_plaza,
+                                   'estado': 'ERROR', 'mensaje': msg})
+            continue
+
         unidad      = cache.unidad(col(C_UNIDAD))
         programa    = cache.programa(col(C_PROGRAMA))
         proyecto    = cache.proyecto(col(C_PROYECTO), dependencia=dependencia)
@@ -595,6 +696,29 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
         area        = cache.area(col(C_AREA))
         inmueble    = cache.inmueble(col(C_INMUEBLE))
 
+        # Resto de columnas del layout que van a InformacionBasica — se calculan
+        # una sola vez aquí para poder compararlas contra el período anterior
+        # y para no repetir la lectura al crear el registro más abajo.
+        id_plaza_jefe_val           = sd(col(C_ID_PUESTO_JEFE, ''))
+        hsm_val                     = sf(col(C_HSM))
+        percepciones_val            = sf(col(C_PERCEPCIONES))
+        bonos_val                   = sf(col(C_BONOS))
+        neto_val                    = sf(col(C_NETO))
+        dias_pagados_val            = si(col(C_DIAS_PAGADOS))
+        oblig_declaracion_val       = normalizar_sino(col(C_ORDP))
+        oblig_entrega_recepcion_val = normalizar_sino(col(C_OPAAER))
+        oblig_rendir_cuentas_val    = normalizar_sino(col(C_RENCTA))
+        puesto_sensible_val         = normalizar_sino(col(C_PRDMIS))
+        f_ingob_val                 = parse_fecha(col(C_F_INGOB))
+        f_indep_val                 = parse_fecha(col(C_F_INDEP))
+        f_inpues_val                = parse_fecha(col(C_F_INPUES))
+        participa_contrataciones_val= normalizar_sino(col(C_PARCONPUB))
+        nivel_contrataciones_val    = sd(col(C_CONTRAT_PUB, ''))
+        participa_concesiones_val   = normalizar_sino(col(C_PARCON))
+        nivel_concesiones_val       = sd(col(C_CONCESIONES, ''))
+        participa_enajenacion_val   = normalizar_sino(col(C_PARENA))
+        nivel_enajenacion_val       = sd(col(C_ENAJENACION, ''))
+
         avisos = list(avisos_forzados)
         if not dependencia:
             avisos.append(f'Dependencia "{col(C_DEPENDENCIA)}" no encontrada')
@@ -607,6 +731,48 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
             avisos.append(f'El programa "{programa.clave}" no está asignado al proyecto "{proyecto.clave}"')
         if not curp_digito_verificador_valido(curp):
             avisos.append('Dígito verificador de CURP no coincide (posible error de captura)')
+        if reactivado:
+            avisos.append('El servidor estaba inactivo (dado de baja) y se reactiva con esta carga')
+
+        # ── Comparación contra el período anterior (aviso, no bloquea) ───────
+        valores_nuevos = {
+            'fuente_financiamiento':     fuente,
+            'unidad':                    unidad,
+            'programa':                  programa,
+            'proyecto':                  proyecto,
+            'categoria':                 categoria,
+            'nombramiento':              nombramiento,
+            'tipo_personal':             tipo_pers,
+            'tipo_funcion':              tipo_fun,
+            'nivel_estructura':          nivel_est,
+            'id_plaza_jefe':             id_plaza_jefe_val,
+            'hsm':                       hsm_val,
+            'total_percepciones':        percepciones_val,
+            'total_bonos':               bonos_val,
+            'total_neto':                neto_val,
+            'dias_pagados':              dias_pagados_val,
+            'estatus_plaza':             estatus,
+            'cct':                       cct,
+            'oblig_declaracion':         oblig_declaracion_val,
+            'tipo_declaracion':          tipo_decla,
+            'oblig_entrega_recepcion':   oblig_entrega_recepcion_val,
+            'oblig_rendir_cuentas':      oblig_rendir_cuentas_val,
+            'puesto_sensible':           puesto_sensible_val,
+            'fecha_ingreso_gobierno':    f_ingob_val,
+            'fecha_ingreso_dependencia': f_indep_val,
+            'fecha_ingreso_puesto':      f_inpues_val,
+            'area':                      area,
+            'participa_contrataciones':  participa_contrataciones_val,
+            'nivel_contrataciones':      nivel_contrataciones_val,
+            'participa_concesiones':     participa_concesiones_val,
+            'nivel_concesiones':         nivel_concesiones_val,
+            'participa_enajenacion':     participa_enajenacion_val,
+            'nivel_enajenacion':         nivel_enajenacion_val,
+            'inmueble':                  inmueble,
+        }
+        cambios_periodo = comparar_con_periodo_anterior(servidor, id_plaza, quincena, valores_nuevos)
+        if cambios_periodo:
+            avisos.append(f'Cambios vs. período anterior ({len(cambios_periodo)}): ' + '; '.join(cambios_periodo))
 
         nombre_completo = f'{nombre} {ap_pat} {ap_mat or ""}'.strip()
 
@@ -624,6 +790,14 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
             continue
 
         # ── Desactivar registro anterior + crear Información Básica ──────────
+        # "activo" debe representar la situación VIGENTE de este servidor en
+        # esta plaza — así que se desactiva cualquier InformacionBasica activa
+        # anterior de ese mismo servidor+plaza, sea de esta misma quincena
+        # (corrección de una carga ya aplicada) o de una quincena anterior
+        # (avance normal de quincena a quincena). Sin el filtro de quincena,
+        # antes se quedaban "Vigente" varias quincenas a la vez para la misma
+        # plaza. Se acota a servidor+id_plaza (no solo servidor) para no tocar
+        # otras plazas que ese mismo servidor tenga por compatibilidad.
         # En un solo savepoint: si esta fila falla, se revierte completa (no
         # deja el puesto anterior desactivado sin el registro nuevo) y no
         # invalida la transacción en la que corren el resto de las filas.
@@ -631,8 +805,8 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
             with transaction.atomic():
                 InformacionBasica.objects.filter(
                     servidor=servidor,
-                    quincena=quincena,
                     id_plaza=id_plaza,
+                    activo=True,
                 ).update(activo=False)
 
                 InformacionBasica.objects.create(
@@ -650,35 +824,35 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
                     tipo_personal              = tipo_pers,
                     tipo_funcion               = tipo_fun,
                     nivel_estructura           = nivel_est,
-                    id_plaza_jefe              = sd(col(C_ID_PUESTO_JEFE, '')),
-                    puesto_jefe                = sd(col(C_ID_PUESTO_JEFE, '')),
-                    hsm                        = sf(col(C_HSM)),
-                    total_percepciones         = sf(col(C_PERCEPCIONES)),
-                    total_bonos                = sf(col(C_BONOS)),
-                    total_neto                 = sf(col(C_NETO)),
-                    dias_pagados               = si(col(C_DIAS_PAGADOS)),
+                    id_plaza_jefe              = id_plaza_jefe_val,
+                    puesto_jefe                = id_plaza_jefe_val,
+                    hsm                        = hsm_val,
+                    total_percepciones         = percepciones_val,
+                    total_bonos                = bonos_val,
+                    total_neto                 = neto_val,
+                    dias_pagados               = dias_pagados_val,
                     estatus_plaza              = estatus,
                     # Servidor
                     servidor                   = servidor,
                     cct                        = cct,
                     # Persona-Puesto
-                    oblig_declaracion          = normalizar_sino(col(C_ORDP)),
+                    oblig_declaracion          = oblig_declaracion_val,
                     tipo_declaracion           = tipo_decla,
-                    oblig_entrega_recepcion    = normalizar_sino(col(C_OPAAER)),
-                    oblig_rendir_cuentas       = normalizar_sino(col(C_RENCTA)),
-                    puesto_sensible            = normalizar_sino(col(C_PRDMIS)),
+                    oblig_entrega_recepcion    = oblig_entrega_recepcion_val,
+                    oblig_rendir_cuentas       = oblig_rendir_cuentas_val,
+                    puesto_sensible            = puesto_sensible_val,
                     # Fechas
-                    fecha_ingreso_gobierno     = parse_fecha(col(C_F_INGOB)),
-                    fecha_ingreso_dependencia  = parse_fecha(col(C_F_INDEP)),
-                    fecha_ingreso_puesto       = parse_fecha(col(C_F_INPUES)),
+                    fecha_ingreso_gobierno     = f_ingob_val,
+                    fecha_ingreso_dependencia  = f_indep_val,
+                    fecha_ingreso_puesto       = f_inpues_val,
                     # Responsabilidades
                     area                       = area,
-                    participa_contrataciones   = normalizar_sino(col(C_PARCONPUB)),
-                    nivel_contrataciones       = sd(col(C_CONTRAT_PUB, '')),
-                    participa_concesiones      = normalizar_sino(col(C_PARCON)),
-                    nivel_concesiones          = sd(col(C_CONCESIONES, '')),
-                    participa_enajenacion      = normalizar_sino(col(C_PARENA)),
-                    nivel_enajenacion          = sd(col(C_ENAJENACION, '')),
+                    participa_contrataciones   = participa_contrataciones_val,
+                    nivel_contrataciones       = nivel_contrataciones_val,
+                    participa_concesiones      = participa_concesiones_val,
+                    nivel_concesiones          = nivel_concesiones_val,
+                    participa_enajenacion      = participa_enajenacion_val,
+                    nivel_enajenacion          = nivel_enajenacion_val,
                     participa_avaluos          = 'N',
                     nivel_avaluos              = '',
                     # Inmueble
@@ -696,12 +870,12 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
                     nivel_estructura=nivel_est,
                     estatus_plaza=estatus,
                     cct=cct,
-                    hsm=sf(col(C_HSM)),
-                    total_percepciones=sf(col(C_PERCEPCIONES)),
-                    total_bonos=sf(col(C_BONOS)),
-                    total_neto=sf(col(C_NETO)),
-                    dias_pagados=si(col(C_DIAS_PAGADOS)),
-                    id_plaza_jefe=sd(col(C_ID_PUESTO_JEFE, '')),
+                    hsm=hsm_val,
+                    total_percepciones=percepciones_val,
+                    total_bonos=bonos_val,
+                    total_neto=neto_val,
+                    dias_pagados=dias_pagados_val,
+                    id_plaza_jefe=id_plaza_jefe_val,
                 )
 
             ok += 1
@@ -861,6 +1035,14 @@ def procesar_layout_bajas(carga, dry_run=True, overrides=None):
             continue
 
         dependencia    = cache.dependencia(col(CB_DEPENDENCIA))
+        if dependencia and dependencia.pk != carga.dependencia_id:
+            errores += 1
+            msg = (f'La dependencia de la fila ({dependencia.clave}) no coincide con '
+                   f'la dependencia de la carga ({carga.dependencia.clave})')
+            log.append(f'Fila {num_fila} RFC={rfc}: ERROR — {msg}')
+            filas_detalle.append({'fila': num_fila, 'rfc': rfc, 'curp': curp, 'nombre': nombre_completo,
+                                   'id_plaza': id_plaza, 'estado': 'ERROR', 'mensaje': msg})
+            continue
         ejercicio_col  = si(col(CB_EJERCICIO), 0)
         periodo_col    = sd(col(CB_PERIODO, ''))
 

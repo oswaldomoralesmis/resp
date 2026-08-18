@@ -169,7 +169,7 @@ def exportar_excel(request, tipo):
     if tipo == 'padron':
         ws.title = 'Padrón RESP'
         headers = ['Expediente', 'RFC', 'CURP', 'Nombre', 'Primer Apellido', 'Segundo Apellido',
-                   'Fecha Nacimiento', 'Sexo', 'Correo Institucional', 'ISS', 'NSS', 'Activo']
+                   'Fecha Nacimiento', 'Género', 'Correo Institucional', 'ISS', 'NSS', 'Activo']
         for col, h in enumerate(headers, 1):
             cell = ws.cell(row=1, column=col, value=h)
             cell.fill = header_fill

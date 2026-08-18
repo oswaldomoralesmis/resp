@@ -3,6 +3,7 @@ import calendar
 import datetime
 
 from django.db import models
+from django.utils import timezone
 from usuarios.models import UsuarioRESP
 from catalogos.models import Dependencia
 
@@ -53,6 +54,38 @@ class PeriodoCarga(models.Model):
         return f"Quincena {self.quincena}/{self.ejercicio} ({self.fecha_inicio} - {self.fecha_fin})"
 
 
+def periodo_vigente_hoy():
+    """Determina el período de carga "activo" según la fecha de hoy, sin
+    depender de que el administrador lo active/cierre a mano cada quincena:
+
+    - Si hoy cae dentro de la ventana general de carga (fecha_fin a
+      fecha_cierre) de algún período, ESE es el vigente — y si no estaba
+      marcado 'activo' en BD, se activa aquí mismo (lo cual, por el
+      singleton de PeriodoCarga.save(), desactiva automáticamente
+      cualquier otro — así se "cierra" solo el período anterior en cuanto
+      empieza la ventana del siguiente).
+    - Si hoy NO cae en ninguna ventana (el hueco normal entre el cierre de
+      una quincena y la apertura de la siguiente), se respeta lo que el
+      administrador haya dejado marcado como 'activo' a mano — por ejemplo
+      para sostener abierto un período más allá de su ventana junto con
+      una excepción de acceso (AccesoExcepcionCarga).
+
+    Se llama en los puntos donde ya se resolvía "el período activo"
+    (carga_layout, calendario_cargas, dashboard), así que la actualización
+    ocurre sola la primera vez que alguien entra a esas pantallas en el día,
+    sin necesidad de una tarea programada."""
+    hoy = timezone.localdate()
+    vigente = PeriodoCarga.objects.filter(
+        fecha_fin__lte=hoy, fecha_cierre__gte=hoy
+    ).order_by('-fecha_fin').first()
+    if vigente:
+        if not vigente.activo:
+            vigente.activo = True
+            vigente.save()  # activa este y desactiva los demás (ver save() arriba)
+        return vigente
+    return PeriodoCarga.objects.filter(activo=True).first()
+
+
 def generar_periodos_ejercicio(ejercicio):
     """Crea los 24 períodos quincenales de 'ejercicio' (1-15 y 16-fin de mes
     de cada uno de los 12 meses), sin duplicar los que ya existan. La
@@ -81,11 +114,16 @@ def generar_periodos_ejercicio(ejercicio):
 
 
 class AccesoExcepcionCarga(models.Model):
-    """Ventana de fechas propia que el administrador otorga a una dependencia
-    para cargar layouts de un período fuera de la ventana general
-    (fecha_inicio-fecha_cierre) del período."""
+    """Ventana de fechas propia que el administrador otorga para cargar
+    layouts de un período fuera de la ventana general (fecha_inicio-
+    fecha_cierre) del período. 'dependencia' vacía significa que aplica a
+    TODAS las dependencias, en vez de tener que dar de alta una excepción
+    por cada una."""
     periodo = models.ForeignKey(PeriodoCarga, on_delete=models.CASCADE, related_name='excepciones', verbose_name='Período')
-    dependencia = models.ForeignKey(Dependencia, on_delete=models.CASCADE, verbose_name='Dependencia')
+    dependencia = models.ForeignKey(
+        Dependencia, on_delete=models.CASCADE, verbose_name='Dependencia',
+        null=True, blank=True, help_text='Vacío = aplica a todas las dependencias.',
+    )
     fecha_inicio = models.DateField(verbose_name='Fecha inicio de acceso')
     fecha_fin = models.DateField(verbose_name='Fecha fin de acceso')
     motivo = models.CharField(max_length=255, blank=True, verbose_name='Motivo')
@@ -99,15 +137,19 @@ class AccesoExcepcionCarga(models.Model):
         ordering = ['-periodo', 'dependencia']
 
     def __str__(self):
-        return f"{self.dependencia} - Quincena {self.periodo.quincena}/{self.periodo.ejercicio} ({self.fecha_inicio} a {self.fecha_fin})"
+        quien = self.dependencia or 'Todas las dependencias'
+        return f"{quien} - Quincena {self.periodo.quincena}/{self.periodo.ejercicio} ({self.fecha_inicio} a {self.fecha_fin})"
 
 
 def ventana_permitida(periodo, dependencia):
     """Ventana de fechas (inicio, fin) en la que 'dependencia' puede cargar
     layouts de 'periodo': la excepción vigente para esa dependencia si existe,
-    o si no la ventana general del período (fecha_fin - fecha_cierre; la carga
-    se hace una vez cerrada la quincena, no durante fecha_inicio-fecha_fin)."""
+    si no la excepción "Todas las dependencias" vigente para el período si
+    existe, o si no la ventana general del período (fecha_fin - fecha_cierre;
+    la carga se hace una vez cerrada la quincena, no durante fecha_inicio-fecha_fin)."""
     excepcion = periodo.excepciones.filter(dependencia=dependencia).first()
+    if not excepcion:
+        excepcion = periodo.excepciones.filter(dependencia__isnull=True).first()
     if excepcion:
         return excepcion.fecha_inicio, excepcion.fecha_fin
     return periodo.fecha_fin, periodo.fecha_cierre

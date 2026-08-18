@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Plaza {{ puesto.id_plaza }}{% endblock %}
+{% block page_title %}Detalle de Plaza{% endblock %}
+{% block content %}
+<div class="breadcrumb-resp">
+  <a href="{% url 'dashboard' %}">🏠</a><span class="sep">›</span>
+  <a href="{% url 'puesto_list' %}">Plazas</a><span class="sep">›</span>
+  <span>{{ puesto.id_plaza }}</span>
+</div>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+  <div>
+    <h2 style="margin:0;color:var(--institucional-azul);">Plaza {{ puesto.id_plaza }}</h2>
+    <div class="text-muted">{{ puesto.proyecto.dependencia.clave }} — {{ puesto.proyecto.dependencia.descripcion|truncatechars:40 }} &bull; {{ puesto.categoria }}</div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a href="{% url 'puesto_update' puesto.pk %}" class="btn-institucional btn-sm">✏️ Editar</a>
+    {% if puesto.servidor_actual %}<a href="{% url 'servidor_detail' puesto.servidor_actual.pk %}" class="btn-outline btn-sm">👤 Ver Servidor</a>{% endif %}
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">🏛️ Ubicación Institucional</div>
+    <div class="card-body">
+      <div class="grid-2">
+        <div><div class="form-label">Dependencia</div><div>{{ puesto.proyecto.dependencia.clave|default:"—" }} — {{ puesto.proyecto.dependencia.descripcion|default:"" }}</div></div>
+        <div><div class="form-label">Unidad Administrativa</div><div>{{ puesto.unidad|default:"—" }}</div></div>
+        <div><div class="form-label">Programa</div><div>{{ puesto.programa }}</div></div>
+        <div><div class="form-label">Proyecto</div><div>{{ puesto.proyecto }}</div></div>
+        <div><div class="form-label">Categoría</div><div>{{ puesto.categoria }}</div></div>
+        <div><div class="form-label">Tipo de Contratación</div><div>{{ puesto.nombramiento|default:"—" }}</div></div>
+        <div><div class="form-label">Nivel de Estructura</div><div>{{ puesto.nivel_estructura|default:"—" }}</div></div>
+        <div><div class="form-label">Centro de Trabajo</div><div>{{ puesto.cct|default:"—" }}</div></div>
+        <div><div class="form-label">ID Plaza Jefe</div><div>{{ puesto.id_plaza_jefe|default:"—" }}</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">💰 Ocupación y Percepciones</div>
+    <div class="card-body">
+      <div class="grid-2">
+        <div><div class="form-label">Estatus de Plaza</div><div>{{ puesto.estatus_plaza|default:"—" }}</div></div>
+        <div>
+          <div class="form-label">Trabajador Asignado</div>
+          <div>
+            {% if puesto.servidor_actual %}
+              <span class="badge-activo">Ocupada</span> {{ puesto.servidor_actual.nombre_completo }}
+            {% else %}
+              <span class="badge-inactivo">Vacante</span>
+            {% endif %}
+          </div>
+        </div>
+        <div><div class="form-label">HSM</div><div>{{ puesto.hsm|default:"—" }}</div></div>
+        <div><div class="form-label">Días Pagados</div><div>{{ puesto.dias_pagados }}</div></div>
+        <div><div class="form-label">Percepciones</div><div>${{ puesto.total_percepciones|floatformat:2 }}</div></div>
+        <div><div class="form-label">Bonos</div><div>${{ puesto.total_bonos|floatformat:2 }}</div></div>
+        <div><div class="form-label">Neto</div><div style="color:var(--institucional-verde);font-weight:700;">${{ puesto.total_neto|floatformat:2 }}</div></div>
+        <div><div class="form-label">Última actualización</div><div>{{ puesto.fecha_actualizacion|date:"d/m/Y H:i" }}</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if historial %}
+<div class="card">
+  <div class="card-header">📅 Historial de Asignaciones (por quincena)</div>
+  <div class="card-body">
+    <table class="table-resp">
+      <thead><tr><th>Quincena</th><th>Servidor</th><th>RFC</th><th>Dependencia</th><th>Tipo Contratación</th><th>Neto</th><th>Vigencia</th></tr></thead>
+      <tbody>
+        {% for h in historial %}
+        <tr>
+          <td>{{ h.quincena }}</td>
+          <td>{% if h.servidor %}<a href="{% url 'servidor_detail' h.servidor.pk %}">{{ h.servidor.nombre_completo }}</a>{% else %}—{% endif %}</td>
+          <td><code>{{ h.servidor.rfc|default:"—" }}</code></td>
+          <td>{{ h.dependencia.clave }}</td>
+          <td>{{ h.nombramiento|default:"—" }}</td>
+          <td>${{ h.total_neto|floatformat:2 }}</td>
+          <td>{% if h.activo %}<span class="badge-activo">Vigente</span>{% else %}<span class="badge-inactivo">Reemplazada</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="alert-resp alert-info">ℹ️ Esta plaza aún no tiene historial de Información Básica cargado.</div>
+{% endif %}
+
+{% if bajas %}
+<div class="card">
+  <div class="card-header">🚫 Bajas Registradas en esta Plaza</div>
+  <div class="card-body">
+    <table class="table-resp">
+      <thead><tr><th>Fecha de Baja</th><th>Servidor</th><th>RFC</th><th>Motivo</th><th>Dependencia</th><th>Período</th><th>Registrado por</th></tr></thead>
+      <tbody>
+        {% for b in bajas %}
+        <tr>
+          <td>{{ b.fecha_baja }}</td>
+          <td>{% if b.servidor %}<a href="{% url 'servidor_detail' b.servidor.pk %}">{{ b.servidor.nombre_completo }}</a>{% else %}—{% endif %}</td>
+          <td><code>{{ b.servidor.rfc|default:"—" }}</code></td>
+          <td>{{ b.motivo_baja }}</td>
+          <td>{{ b.dependencia.clave }}</td>
+          <td>{{ b.periodo }}</td>
+          <td>{{ b.registrado_por|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div style="margin-top:20px;">
+  <a href="{% url 'puesto_list' %}" class="btn-outline">&#8592; Regresar a Plazas</a>
+</div>
+{% endblock %}

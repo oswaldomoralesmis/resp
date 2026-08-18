@@ -47,8 +47,8 @@ class PeriodoCargaForm(forms.ModelForm):
         fields = '__all__'
         widgets = {
             'quincena':    forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 01', 'maxlength': '2'}),
-            'fecha_inicio':forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'fecha_fin':   forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'fecha_inicio':forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}, format='%Y-%m-%d'),
+            'fecha_fin':   forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}, format='%Y-%m-%d'),
             'activo':      forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
         labels = {
@@ -92,8 +92,8 @@ class AccesoExcepcionCargaForm(forms.ModelForm):
         widgets = {
             'periodo':     forms.Select(attrs={'class': 'form-select'}),
             'dependencia': forms.Select(attrs={'class': 'form-select'}),
-            'fecha_inicio':forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'fecha_fin':   forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'fecha_inicio':forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}, format='%Y-%m-%d'),
+            'fecha_fin':   forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}, format='%Y-%m-%d'),
             'motivo':      forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Motivo de la excepción (opcional)'}),
         }
         labels = {
@@ -104,10 +104,29 @@ class AccesoExcepcionCargaForm(forms.ModelForm):
             'motivo':      'Motivo',
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['dependencia'].required = False
+        self.fields['dependencia'].empty_label = 'Todas las dependencias'
+
     def clean(self):
         cleaned = super().clean()
         ini = cleaned.get('fecha_inicio')
         fin = cleaned.get('fecha_fin')
         if ini and fin and fin < ini:
             raise forms.ValidationError('La fecha fin de acceso no puede ser anterior a la fecha inicio.')
+
+        periodo = cleaned.get('periodo')
+        dependencia = cleaned.get('dependencia')
+        if periodo and not dependencia:
+            # unique_together no detecta duplicados de "Todas las dependencias"
+            # (dependencia=NULL): en Postgres cada NULL cuenta como distinto.
+            ya_existe = AccesoExcepcionCarga.objects.filter(periodo=periodo, dependencia__isnull=True)
+            if self.instance.pk:
+                ya_existe = ya_existe.exclude(pk=self.instance.pk)
+            if ya_existe.exists():
+                self.add_error(
+                    'dependencia',
+                    f'Ya existe una excepción para "Todas las dependencias" en la quincena {periodo.quincena}/{periodo.ejercicio}.'
+                )
         return cleaned

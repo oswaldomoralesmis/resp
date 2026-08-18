@@ -16,7 +16,10 @@
   {% endfor %}
 </div>
 <div class="card">
-  <div class="card-header">📌 Plazas por Dependencia-Unidad-Programa-Proyecto</div>
+  <div class="card-header" style="justify-content:space-between;">
+    <span>📌 Plazas por Dependencia-Unidad-Programa-Proyecto</span>
+    <a href="{% url 'puesto_exportar' %}" class="btn-dorado btn-sm">📥 Exportar Excel</a>
+  </div>
   <div class="card-body">
     <form method="get" style="margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap;">
       <div class="search-bar"><span>🔍</span>
@@ -45,7 +48,10 @@
             <td>${{ p.total_neto|floatformat:2 }}</td>
             <td>{% if p.servidor_actual %}<span class="badge-activo">{{ p.estatus_plaza.descripcion|default:"Ocupada" }}</span>{% else %}<span class="badge-inactivo">{{ p.estatus_plaza.descripcion|default:"Vacante" }}</span>{% endif %}</td>
             <td>{% if p.servidor_actual %}{{ p.servidor_actual.nombre_completo }}{% else %}—{% endif %}</td>
-            <td><a href="{% url 'puesto_update' p.pk %}" class="btn-institucional btn-sm">Editar</a></td>
+            <td>
+              <a href="{% url 'puesto_detail' p.pk %}" class="btn-outline btn-sm">Ver</a>
+              <a href="{% url 'puesto_update' p.pk %}" class="btn-institucional btn-sm">Editar</a>
+            </td>
           </tr>
           {% empty %}
           <tr><td colspan="10" class="text-muted text-center" style="padding:30px;">Sin plazas registradas.</td></tr>

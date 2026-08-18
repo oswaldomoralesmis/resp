@@ -5,11 +5,15 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, CreateView, UpdateView, DetailView
 from django.urls import reverse_lazy
-from django.db import transaction
+from django.db import transaction, connection
+from django.core.management.color import no_style
 from django.db.models import Q, Count
 from django.contrib import messages
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.utils import timezone
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.utils import get_column_letter
 from .models import (
     ServidorPublico, InformacionBasica, BajaServidorPublico, Puesto,
     DatosPersonales, DatosComplementarios, DiscapacidadServidor,
@@ -21,7 +25,7 @@ from .forms import (
     InformacionBasicaForm, BajaForm, PuestoForm,
 )
 from catalogos.models import Dependencia, EstatusPlaza, Discapacidad, EnfermedadCronica, Idioma
-from cargas.models import PeriodoCarga, CargaLayout
+from cargas.models import PeriodoCarga, CargaLayout, periodo_vigente_hoy
 from usuarios.mixins import DependenciaScopedMixin, filtrar_por_dependencia, admin_requerido
 
 
@@ -34,7 +38,7 @@ def dashboard(request):
     total_servidores = ServidorPublico.objects.filter(activo=True).count()
     total_dependencias = Dependencia.objects.count()
     # últimas cargas
-    periodo_actual = PeriodoCarga.objects.filter(activo=True).first()
+    periodo_actual = periodo_vigente_hoy()
     # estadísticas por estatus
     stats_estatus = InformacionBasica.objects.filter(
         activo=True
@@ -51,44 +55,94 @@ def dashboard(request):
     return render(request, 'dashboard.html', context)
 
 
+# (clave, etiqueta, modelo, claves de las que depende por integridad
+# referencial PROTECT — deben eliminarse junto con ella). El orden de la
+# lista ya respeta esas dependencias, así que basta con recorrerla en orden.
+GRUPOS_RESET = [
+    ('informacion_basica', 'Información Básica (historial quincenal)', InformacionBasica, []),
+    ('bajas', 'Bajas de Servidores', BajaServidorPublico, []),
+    ('plazas', 'Plazas', Puesto, []),
+    ('servidores', 'Servidores Públicos', ServidorPublico, ['informacion_basica', 'bajas']),
+    ('cargas', 'Cargas de Layouts', CargaLayout, []),
+    ('periodos', 'Períodos de Carga', PeriodoCarga, ['cargas']),
+]
+
+
 @login_required
 @admin_requerido
 def reset_datos_prueba(request):
-    """Borra todos los datos transaccionales (información básica, bajas,
-    plazas, servidores, cargas y períodos) para dejar el ambiente listo para
-    volver a probar desde cero. NO toca catálogos ni usuarios. Solo disponible
-    con DEBUG=True (ambiente de desarrollo/pruebas), nunca en producción."""
+    """Borra, grupo por grupo a elección del administrador, los datos
+    transaccionales (información básica, bajas, plazas, servidores, cargas y
+    períodos) para dejar el ambiente listo para volver a probar desde cero.
+    NO toca catálogos ni usuarios. Solo disponible con DEBUG=True (ambiente
+    de desarrollo/pruebas), nunca en producción."""
     if not settings.DEBUG:
         raise Http404()
 
-    conteos = {
-        'Información Básica (historial quincenal)': InformacionBasica.objects.count(),
-        'Bajas de Servidores': BajaServidorPublico.objects.count(),
-        'Plazas': Puesto.objects.count(),
-        'Servidores Públicos': ServidorPublico.objects.count(),
-        'Cargas de Layouts': CargaLayout.objects.count(),
-        'Períodos de Carga': PeriodoCarga.objects.count(),
-    }
+    grupos = [
+        {'clave': clave, 'etiqueta': etiqueta, 'cantidad': modelo.objects.count()}
+        for clave, etiqueta, modelo, _requiere in GRUPOS_RESET
+    ]
 
     if request.method == 'POST':
+        seleccionados = {
+            clave for clave, _e, _m, _r in GRUPOS_RESET
+            if request.POST.get(f'grupo_{clave}') == 'on'
+        }
+        if not seleccionados:
+            messages.error(request, 'Seleccione al menos un grupo de datos a eliminar.')
+            return redirect('reset_datos_prueba')
+
+        # Un grupo con dependientes (p.ej. Servidores Públicos protege su
+        # Información Básica y sus Bajas) solo se puede eliminar si esos
+        # dependientes también están seleccionados; si no, la eliminación
+        # fallaría a mitad de camino por la restricción PROTECT de la BD.
+        etiquetas = {clave: etiqueta for clave, etiqueta, _m, _r in GRUPOS_RESET}
+        faltantes = {}
+        for clave in seleccionados:
+            requiere = next(r for c, _e, _m, r in GRUPOS_RESET if c == clave)
+            faltan = [etiquetas[r] for r in requiere if r not in seleccionados]
+            if faltan:
+                faltantes[etiquetas[clave]] = faltan
+        if faltantes:
+            detalle = '; '.join(
+                f'"{grupo}" requiere también: {", ".join(reqs)}'
+                for grupo, reqs in faltantes.items()
+            )
+            messages.error(
+                request,
+                f'No se puede eliminar por separado, por integridad de datos. {detalle}.'
+            )
+            return redirect('reset_datos_prueba')
+
+        reiniciar_ids = request.POST.get('reiniciar_ids') == 'on'
+        modelos_eliminados = [m for c, _e, m, _r in GRUPOS_RESET if c in seleccionados]
         with transaction.atomic():
-            InformacionBasica.objects.all().delete()
-            BajaServidorPublico.objects.all().delete()
-            Puesto.objects.all().delete()
-            ServidorPublico.objects.all().delete()
-            CargaLayout.objects.all().delete()
-            PeriodoCarga.objects.all().delete()
-        messages.success(
-            request,
-            'Se eliminaron todos los servidores, plazas, información básica, bajas, cargas y '
-            'períodos. Los catálogos y los usuarios del sistema no se modificaron.'
-        )
+            for modelo in modelos_eliminados:
+                modelo.objects.all().delete()
+            if reiniciar_ids:
+                with connection.cursor() as cursor:
+                    for sql in connection.ops.sequence_reset_sql(no_style(), modelos_eliminados):
+                        cursor.execute(sql)
+
+        nombres = ', '.join(etiquetas[c] for c in seleccionados)
+        if reiniciar_ids:
+            mensaje = (
+                f'Se eliminó: {nombres}. Se reiniciaron sus IDs: los próximos registros que se '
+                'generen comenzarán de nuevo en 1. Los catálogos y los usuarios del sistema no '
+                'se modificaron.'
+            )
+        else:
+            mensaje = (
+                f'Se eliminó: {nombres}. Los catálogos y los usuarios del sistema no se modificaron.'
+            )
+        messages.success(request, mensaje)
         return redirect('dashboard')
 
     return render(request, 'servidores/reset_confirm.html', {
         'titulo': 'Reiniciar Datos de Prueba',
-        'conteos': conteos,
-        'total': sum(conteos.values()),
+        'grupos': grupos,
+        'total': sum(g['cantidad'] for g in grupos),
     })
 
 
@@ -396,6 +450,162 @@ class PuestoListView(LoginRequiredMixin, ListView):
             item['icono'], item['color'] = ICONOS_ESTATUS_PLAZA.get(item['descripcion'].strip().lower(), ('📌', 'azul'))
         ctx['resumen_estatus'] = resumen
         ctx['total_plazas'] = puestos_visibles.count()
+        return ctx
+
+
+PLAZAS_EXPORT_HEADERS = [
+    'FUENTE FINANCIAMIENTO', 'DEPENDENCIA', 'UNIDAD', 'PROGRAMA', 'PROYECTO', 'CATEGORIA',
+    'TIPO CONTRATACION', 'TIPO PERSONAL', 'TIPO FUNCION', 'NIVEL ESTRUCTURA', 'ID PUESTO',
+    'ID PUESTO JEFE', 'HSM', 'PERCEPCIONES', 'BONOS', 'NETO', 'DIAS PAGADOS', 'ESTATUS PLAZA',
+    'EXPEDIENTE', 'RFC', 'CURP', 'DETERMINANTE', 'NOMBRE', 'PRIMER APELLIDO', 'SEGUNDO APELLIDO',
+    'FECHA NACIMIENTO', 'GENERO', 'ESTADO CIVIL', 'ENTIDAD', 'PAIS', 'CORREO ELECTRONICO', 'ISS',
+    'NSS', 'CENTRO TRABAJO', 'SINDICALIZADO', 'SINDICATO', 'ORDP', 'TIPO DECLARACION', 'OPAAER',
+    'RENCTA', 'PRDMIS', 'OTRA PLAZA', 'FECHA INGRESO GOBIERNO', 'FECHA INGRESO DEPENDENCIA',
+    'FECHA INGRESO PUESTO', 'AREA', 'PARCONPUB', 'CONTRATACION PUBLICA', 'PARCON', 'CONCESIONES',
+    'PARENA', 'ENAJENACION', 'INMUEBLE',
+]
+
+
+@login_required
+def exportar_plazas_excel(request):
+    """Exporta las plazas en el mismo formato de 53 columnas que el Layout de
+    Información Básica (mismo orden que cargas/procesador.py: C_FTE_FINAN..
+    C_INMUEBLE) — administradores ven/exportan todas, el resto solo las de
+    su propia dependencia. La mayoría de las columnas de 'Persona-Puesto',
+    'Fechas' y 'Responsabilidades' no viven en Puesto ni en ServidorPublico
+    (solo en InformacionBasica, sin FK directa a Puesto), así que se buscan
+    por el último registro de InformacionBasica de ese servidor+plaza; en
+    una plaza vacante, o sin InformacionBasica todavía, esas columnas quedan
+    vacías — igual que se verían en una fila de "reporte de vacante" del
+    layout real."""
+    puestos = filtrar_por_dependencia(
+        Puesto.objects.select_related(
+            'proyecto', 'proyecto__dependencia', 'programa', 'unidad', 'categoria',
+            'nombramiento', 'nivel_estructura', 'estatus_plaza', 'cct',
+            'servidor_actual', 'servidor_actual__estado_civil', 'servidor_actual__entidad_nacimiento',
+            'servidor_actual__pais_nacimiento', 'servidor_actual__sindicato',
+        ),
+        request.user, 'proyecto__dependencia',
+    ).order_by('proyecto__dependencia__clave', 'id_plaza')
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Plazas'
+    header_fill = PatternFill(start_color='1B4F72', end_color='1B4F72', fill_type='solid')
+    header_font = Font(color='FFFFFF', bold=True)
+    for col, h in enumerate(PLAZAS_EXPORT_HEADERS, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center')
+
+    ib_cache = {}
+
+    def info_basica_de(servidor, id_plaza):
+        if not servidor:
+            return None
+        clave = (servidor.pk, id_plaza)
+        if clave not in ib_cache:
+            ib_cache[clave] = InformacionBasica.objects.filter(
+                servidor=servidor, id_plaza=id_plaza,
+            ).select_related(
+                'fuente_financiamiento', 'tipo_personal', 'tipo_funcion', 'tipo_declaracion',
+                'area', 'inmueble',
+            ).order_by('-activo', '-quincena').first()
+        return ib_cache[clave]
+
+    row = 2
+    for p in puestos:
+        s = p.servidor_actual
+        ib = info_basica_de(s, p.id_plaza)
+        valores = [
+            ib.fuente_financiamiento.clave if ib and ib.fuente_financiamiento else '',
+            p.proyecto.dependencia.clave if p.proyecto and p.proyecto.dependencia else '',
+            p.unidad.clave if p.unidad else '',
+            p.programa.clave if p.programa else '',
+            p.proyecto.clave if p.proyecto else '',
+            p.categoria.clave if p.categoria else '',
+            p.nombramiento.clave if p.nombramiento else '',
+            ib.tipo_personal.clave if ib and ib.tipo_personal else '',
+            ib.tipo_funcion.clave if ib and ib.tipo_funcion else '',
+            p.nivel_estructura.nivel if p.nivel_estructura else '',
+            p.id_plaza,
+            p.id_plaza_jefe,
+            float(p.hsm) if p.hsm is not None else '',
+            float(p.total_percepciones),
+            float(p.total_bonos),
+            float(p.total_neto),
+            p.dias_pagados,
+            p.estatus_plaza.clave if p.estatus_plaza else '',
+            s.expediente if s else '',
+            s.rfc if s else '',
+            s.curp if s else '',
+            s.determinante if s else '',
+            s.nombre if s else '',
+            s.primer_apellido if s else '',
+            s.segundo_apellido if s else '',
+            s.fecha_nacimiento if s else '',
+            s.sexo if s else '',
+            s.estado_civil.clave if s and s.estado_civil else '',
+            s.entidad_nacimiento.clave if s and s.entidad_nacimiento else '',
+            s.pais_nacimiento.clave if s and s.pais_nacimiento else '',
+            s.correo_institucional if s else '',
+            s.iss if s else '',
+            s.nss if s else '',
+            p.cct.clave if p.cct else '',
+            s.sindicalizado if s else '',
+            s.sindicato.clave if s and s.sindicato else '',
+            ib.oblig_declaracion if ib else '',
+            ib.tipo_declaracion.clave if ib and ib.tipo_declaracion else '',
+            ib.oblig_entrega_recepcion if ib else '',
+            ib.oblig_rendir_cuentas if ib else '',
+            ib.puesto_sensible if ib else '',
+            s.tiene_otra_plaza if s else '',
+            ib.fecha_ingreso_gobierno if ib else '',
+            ib.fecha_ingreso_dependencia if ib else '',
+            ib.fecha_ingreso_puesto if ib else '',
+            ib.area.clave if ib and ib.area else '',
+            ib.participa_contrataciones if ib else '',
+            ib.nivel_contrataciones if ib else '',
+            ib.participa_concesiones if ib else '',
+            ib.nivel_concesiones if ib else '',
+            ib.participa_enajenacion if ib else '',
+            ib.nivel_enajenacion if ib else '',
+            ib.inmueble.clave if ib and ib.inmueble else '',
+        ]
+        for col, valor in enumerate(valores, 1):
+            ws.cell(row=row, column=col, value=valor)
+        row += 1
+
+    for i in range(1, len(PLAZAS_EXPORT_HEADERS) + 1):
+        ws.column_dimensions[get_column_letter(i)].width = 16
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="RESP_Plazas.xlsx"'
+    wb.save(response)
+    return response
+
+
+class PuestoDetailView(LoginRequiredMixin, DependenciaScopedMixin, DetailView):
+    """Detalle de una plaza: quién la ocupa hoy, y su historial — igual que
+    el detalle de un servidor, pero visto desde el lado de la plaza: qué
+    servidores la han ocupado quincena a quincena (InformacionBasica por
+    id_plaza) y qué bajas la han liberado (BajaServidorPublico por id_plaza,
+    ver cargas/procesador.py: procesar_layout_bajas ya guarda ese vínculo)."""
+    model = Puesto
+    template_name = 'servidores/puesto_detail.html'
+    context_object_name = 'puesto'
+    dependencia_lookup = 'proyecto__dependencia'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['historial'] = InformacionBasica.objects.filter(
+            id_plaza=self.object.id_plaza
+        ).select_related('servidor', 'dependencia', 'nombramiento', 'estatus_plaza').order_by('-quincena')[:15]
+        ctx['bajas'] = BajaServidorPublico.objects.filter(
+            id_plaza=self.object.id_plaza
+        ).select_related('servidor', 'motivo_baja', 'dependencia').order_by('-fecha_baja')
+        ctx['titulo'] = f'Plaza: {self.object.id_plaza}'
         return ctx
 
 

@@ -1,10 +1,13 @@
 from pathlib import Path
-from decouple import config
+from decouple import config, Csv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = 'django-insecure-resp-tabasco-2025-change-in-production'
-DEBUG = True
-ALLOWED_HOSTS = ['*']
+# Los tres se pueden sobreescribir desde .env (p.ej. en el servidor de
+# pruebas/producción); si no está definido en .env, se mantiene el mismo
+# comportamiento que tenía este archivo antes (uso en desarrollo local).
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-resp-tabasco-2025-change-in-production')
+DEBUG = config('DEBUG', default=True, cast=bool)
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*', cast=Csv())
 
 INSTALLED_APPS = [
     'django.contrib.admin',

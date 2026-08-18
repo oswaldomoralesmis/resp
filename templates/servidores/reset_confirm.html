@@ -12,22 +12,36 @@
       Esta acción es <strong>irreversible</strong>. Solo está disponible mientras el sistema
       no está en producción (DEBUG activo), para limpiar el ambiente de pruebas.
     </div>
-    <p>Se eliminará por completo:</p>
-    <table class="table-resp" style="margin-bottom:16px;">
-      <tbody>
-        {% for etiqueta, cantidad in conteos.items %}
-        <tr><td>{{ etiqueta }}</td><td style="text-align:right;"><span class="badge-inactivo">{{ cantidad }}</span></td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
     <div class="alert-resp alert-info">
       ✅ Los <strong>catálogos</strong> (dependencias, categorías, estatus, etc.) y los
       <strong>usuarios del sistema</strong> NO se modifican.
     </div>
     <form method="post">
       {% csrf_token %}
+      <p>Seleccione qué grupos de datos eliminar:</p>
+      <table class="table-resp" style="margin-bottom:16px;">
+        <tbody>
+          {% for grupo in grupos %}
+          <tr>
+            <td style="width:32px;">
+              <input type="checkbox" name="grupo_{{ grupo.clave }}" style="width:auto;" checked>
+            </td>
+            <td>{{ grupo.etiqueta }}</td>
+            <td style="text-align:right;"><span class="badge-inactivo">{{ grupo.cantidad }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="text-muted" style="font-size:0.85em;margin-top:-10px;">
+        "Servidores Públicos" también requiere eliminar "Información Básica" y "Bajas de Servidores";
+        "Períodos de Carga" también requiere eliminar "Cargas de Layouts" (integridad de datos).
+      </p>
+      <label style="display:flex;align-items:center;gap:8px;margin:16px 0;cursor:pointer;">
+        <input type="checkbox" name="reiniciar_ids" style="width:auto;">
+        Reiniciar IDs — al generar nuevos datos, los próximos registros comenzarán de nuevo en 1
+      </label>
       <div style="display:flex;gap:10px;">
-        <button type="submit" class="btn-institucional" style="background:#b91c1c;">🗑️ Eliminar {{ total }} registros</button>
+        <button type="submit" class="btn-institucional" style="background:#b91c1c;">🗑️ Eliminar seleccionados</button>
         <a href="{% url 'dashboard' %}" class="btn-outline">✕ Cancelar</a>
       </div>
     </form>

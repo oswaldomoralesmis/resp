@@ -24,7 +24,7 @@ class ServidorPublico(models.Model):
     primer_apellido = models.CharField(max_length=50, verbose_name='Primer Apellido')
     segundo_apellido = models.CharField(max_length=50, blank=True, null=True, verbose_name='Segundo Apellido')
     fecha_nacimiento = models.DateField(verbose_name='Fecha de Nacimiento')
-    sexo = models.CharField(max_length=10, choices=SEXO_CHOICES, verbose_name='Sexo')
+    sexo = models.CharField(max_length=10, choices=SEXO_CHOICES, verbose_name='Género')
     estado_civil = models.ForeignKey(EstadoCivil, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Estado Civil')
     entidad_nacimiento = models.ForeignKey(EntidadFederativa, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Entidad de Nacimiento')
     pais_nacimiento = models.ForeignKey(Pais, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='País de Nacimiento')
