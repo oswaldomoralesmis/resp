@@ -5,8 +5,8 @@ Se usa como: gunicorn --config deploy/gunicorn.conf.py resp_project.wsgi:applica
 import multiprocessing
 
 # Solo loopback: nadie fuera de este servidor debe poder llegar directo a
-# Gunicorn, siempre a través de nginx (que sí escucha en 0.0.0.0:80).
-bind = '127.0.0.1:9000'
+# Gunicorn, siempre a través de nginx (que sí escucha en 0.0.0.0:9000).
+bind = '127.0.0.1:8001'
 
 workers = min(4, multiprocessing.cpu_count() * 2 + 1)
 worker_class = 'sync'

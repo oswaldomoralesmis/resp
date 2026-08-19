@@ -3,8 +3,8 @@
 Asume que el servidor **ya tiene instalados** Python 3, PostgreSQL (escuchando
 en el puerto **5440**), nginx y systemd. Esta guía solo cubre: llevar el
 código, crear la base de datos, y las configuraciones de carpetas,
-Gunicorn y nginx. Acceso planeado: **por IP del servidor, sin dominio ni
-HTTPS** (servidor de pruebas).
+Gunicorn y nginx. Acceso planeado: **por IP del servidor en el puerto
+9000, sin dominio ni HTTPS** (servidor de pruebas) — `http://<IP>:9000/`.
 
 Archivos de esta carpeta:
 
@@ -109,18 +109,24 @@ administrador, el comando lo detecta y no crea uno nuevo).
 sudo systemctl status resp_project      # el proceso Gunicorn
 sudo systemctl status nginx
 sudo journalctl -u resp_project -f      # logs de Django/Gunicorn en vivo
-curl -I http://localhost/               # debe responder 200/302
+curl -I http://localhost:9000/          # debe responder 200/302
 ```
-Desde el navegador: `http://<IP-del-servidor>/`
+Desde el navegador: `http://<IP-del-servidor>:9000/`
 
 ---
 
 ## Notas y decisiones de esta configuración
 
-- **Gunicorn en loopback (`127.0.0.1:9000`)**, nunca expuesto directo:
-  nginx es la única puerta de entrada (puerto 80). Evita además los
+- **Gunicorn en loopback (`127.0.0.1:8001`)**, nunca expuesto directo:
+  nginx es la única puerta de entrada, en el puerto **9000** (`NGINX_PORT`
+  en `instalar.sh`, por si lo quiere cambiar otra vez). Evita además los
   problemas de permisos/SELinux de compartir un socket Unix entre el
   usuario de la app y `nginx`.
+- **SELinux y el puerto 9000**: por defecto SELinux solo deja a `nginx`
+  escuchar en los puertos ya etiquetados `http_port_t` (80, 443, 8080...);
+  9000 no es uno de ellos, así que `instalar.sh` lo agrega con
+  `semanage port -a -t http_port_t -p tcp 9000` cuando SELinux está en
+  modo Enforcing.
 - **Usuario de sistema dedicado `resp`** (sin shell, sin home) corre
   Gunicorn — no corre como root ni como el usuario de `nginx`.
 - **`static/` y `media/` se sirven directo por nginx** (más rápido que

@@ -23,6 +23,7 @@ DB_NAME="${DB_NAME:-resp_db}"
 DB_USER="${DB_USER:-resp_user}"
 DB_PORT="${DB_PORT:-5440}"
 ALLOWED_HOSTS="${ALLOWED_HOSTS:-}"
+NGINX_PORT="${NGINX_PORT:-9000}"
 
 log() { echo -e "\n==> $*"; }
 
@@ -205,19 +206,26 @@ if command -v getenforce >/dev/null 2>&1 && [[ "$(getenforce)" == "Enforcing" ]]
         semanage fcontext -a -t httpd_sys_content_t "${PROJECT_DIR}/staticfiles(/.*)?" 2>/dev/null || true
         semanage fcontext -a -t httpd_sys_content_t "${PROJECT_DIR}/media(/.*)?" 2>/dev/null || true
         restorecon -Rv "${PROJECT_DIR}/staticfiles" "${PROJECT_DIR}/media" >/dev/null
+        # SELinux solo deja a nginx escuchar en los puertos etiquetados
+        # http_port_t (80, 443, 8080...); 9000 no es uno de ellos por
+        # defecto, hay que agregarlo o nginx falla al arrancar.
+        if ! semanage port -l 2>/dev/null | grep -qE "^http_port_t\s+tcp\s+.*(^|,)\s*${NGINX_PORT}(,|$)"; then
+            semanage port -a -t http_port_t -p tcp "${NGINX_PORT}" 2>/dev/null || \
+                semanage port -m -t http_port_t -p tcp "${NGINX_PORT}" 2>/dev/null || true
+        fi
     else
-        echo "AVISO: falta 'semanage' (paquete policycoreutils-python-utils); instálelo y vuelva a correr este script si nginx no puede leer static/media."
+        echo "AVISO: falta 'semanage' (paquete policycoreutils-python-utils); instálelo y vuelva a correr este script — si no, nginx no podrá leer static/media ni escuchar en el puerto ${NGINX_PORT}."
     fi
 fi
 
 # ── firewalld ────────────────────────────────────────────────────────────
 if systemctl is-active --quiet firewalld 2>/dev/null; then
-    log "Abriendo el puerto HTTP en firewalld..."
-    firewall-cmd --permanent --add-service=http
+    log "Abriendo el puerto ${NGINX_PORT} en firewalld..."
+    firewall-cmd --permanent --add-port="${NGINX_PORT}/tcp"
     firewall-cmd --reload
 fi
 
 log "Listo. Revise el estado con:"
 echo "  systemctl status resp_project"
 echo "  journalctl -u resp_project -f"
-echo "  http://${ALLOWED_HOSTS}/"
+echo "  http://${ALLOWED_HOSTS}:${NGINX_PORT}/"
