@@ -142,9 +142,10 @@ Desde el navegador: `http://<IP-del-servidor>/`
   asignan un dominio, se puede añadir `certbot --nginx` sin tocar nada de
   lo de aquí.
 - **`psycopg2` (no `-binary`)** compila desde código fuente al hacer
-  `pip install`; por eso `instalar.sh` exige `pg_config` y `gcc` antes de
-  arrancar (paquetes `postgresql-devel` y `gcc`, ya deberían estar si
-  PostgreSQL está compilado/instalado en este servidor).
+  `pip install`; `instalar.sh` solo **avisa** (no bloquea) si no encuentra
+  `pg_config`/`gcc` en el PATH de `sudo` — con `sudo`, el PATH suele venir
+  recortado (`secure_path`) y no siempre incluye la carpeta `bin` de
+  PostgreSQL aunque sí exista en el sistema.
 
 ## Actualizar el código más adelante
 
@@ -160,6 +161,22 @@ sudo ./deploy/instalar.sh        # DB_PASSWORD ya no hace falta: .env ya existe
 |---|---|---|
 | nginx responde 502 | Gunicorn no está corriendo | `systemctl status resp_project`, `journalctl -u resp_project -e` |
 | nginx da 403 en `/static/...` | Permisos/SELinux | Revise que `staticfiles/` sea grupo `nginx`; si SELinux está en Enforcing, corra de nuevo la sección SELinux de `instalar.sh` |
-| Error de conexión a BD | Puerto/credenciales | Verifique `DB_PORT=5440` en `.env` y que `crear_bd.sh` corrió sin error |
+| `FATAL: no pg_hba.conf entry for host "<IP>"...` | `DB_HOST` en `.env` es la IP de red del servidor en vez de `localhost` — pg_hba.conf no tiene una regla para esa IP | Edite `/opt/resp_project/.env`, ponga `DB_HOST=localhost` (Postgres está en el mismo servidor), y vuelva a correr `instalar.sh`. Si de verdad necesita conectarse por esa IP, agregue una línea en `pg_hba.conf` (ver abajo) |
+| Otro error de conexión a BD | Puerto/credenciales | Verifique `DB_PORT=5440` en `.env` y que `crear_bd.sh` corrió sin error |
 | `pip install` falla compilando psycopg2 | Faltan `postgresql-devel`/`gcc` | `dnf install postgresql-devel gcc python3-devel` |
 | Cambios de código no se ven | `collectstatic`/reinicio pendiente | Vuelva a correr `instalar.sh`, o `systemctl restart resp_project` |
+
+### Si necesita agregar una regla a `pg_hba.conf`
+
+Ubique el archivo (varía según cómo se instaló PostgreSQL, p.ej.
+`/var/lib/pgsql/data/pg_hba.conf` o `/var/lib/pgsql/<versión>/data/pg_hba.conf`;
+`sudo -u postgres psql -p 5440 -c 'SHOW hba_file;'` lo dice con certeza), agregue
+una línea como:
+```
+host    resp_db    resp_user    127.0.0.1/32    scram-sha-256
+```
+(cambie `scram-sha-256` por `md5` si así están las demás líneas del archivo)
+y recargue sin reiniciar conexiones activas:
+```bash
+sudo systemctl reload postgresql
+```

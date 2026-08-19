@@ -44,16 +44,22 @@ if [[ ! -f "${PROJECT_DIR}/.env" && -z "${DB_PASSWORD:-}" ]]; then
     exit 1
 fi
 
+# pg_config puede existir mas no estar en el PATH restringido de sudo
+# (secure_path), sobre todo si PostgreSQL viene del repositorio PGDG
+# (/usr/pgsql-XX/bin) en vez del paquete del sistema. Se busca ahí también
+# antes de darlo por no encontrado.
 if ! command -v pg_config >/dev/null 2>&1; then
-    echo "ERROR: no se encontró pg_config (paquete *-devel de PostgreSQL)." >&2
-    echo "  psycopg2 se compila desde el código fuente y lo necesita. Instale, p.ej.:" >&2
-    echo "  dnf install postgresql-devel gcc python3-devel" >&2
-    exit 1
+    for d in /usr/pgsql-*/bin /usr/lib64/pgsql*/bin /usr/lib/postgresql/*/bin; do
+        [[ -x "${d}/pg_config" ]] && export PATH="${d}:${PATH}" && break
+    done
 fi
-if ! command -v gcc >/dev/null 2>&1; then
-    echo "ERROR: no se encontró gcc, necesario para compilar psycopg2." >&2
-    exit 1
+if ! command -v pg_config >/dev/null 2>&1; then
+    echo "AVISO: no se encontró pg_config en PATH ni en ubicaciones comunes de PostgreSQL."
+    echo "  Si el 'pip install' de más abajo falla compilando psycopg2, instale:"
+    echo "  dnf install postgresql-devel gcc python3-devel"
+    echo "  (si ya corrió este script antes y el venv ya tiene psycopg2 instalado, esto no bloquea nada)."
 fi
+command -v gcc >/dev/null 2>&1 || echo "AVISO: no se encontró gcc; si psycopg2 no está ya instalado en el venv, el pip install de más abajo fallará al compilarlo."
 for prog in nginx systemctl semanage; do
     command -v "$prog" >/dev/null 2>&1 || echo "AVISO: no se encontró '$prog' en PATH; algunos pasos podrían fallar."
 done
@@ -119,6 +125,29 @@ chown -R "${APP_USER}:${APP_USER}" "$PROJECT_DIR"
 
 # ── Migraciones, estáticos, catálogos, admin inicial ───────────────────
 run_as_app() { runuser -u "$APP_USER" -- "${PROJECT_DIR}/venv/bin/python" "${PROJECT_DIR}/manage.py" "$@"; }
+
+env_db_host="$(grep -E '^DB_HOST=' "${PROJECT_DIR}/.env" | tail -1 | cut -d= -f2-)"
+env_db_port="$(grep -E '^DB_PORT=' "${PROJECT_DIR}/.env" | tail -1 | cut -d= -f2-)"
+log "Verificando conexión a la base de datos (${env_db_host}:${env_db_port})..."
+DBCHECK_LOG="$(mktemp)"
+if run_as_app shell -c "from django.db import connection; connection.ensure_connection()" \
+        > "$DBCHECK_LOG" 2>&1; then
+    log "Conexión a la base de datos OK."
+    rm -f "$DBCHECK_LOG"
+else
+    echo "ERROR: no se pudo conectar a PostgreSQL con los datos de ${PROJECT_DIR}/.env:" >&2
+    tail -5 "$DBCHECK_LOG" >&2
+    rm -f "$DBCHECK_LOG"
+    echo "" >&2
+    echo "  Causas típicas:" >&2
+    echo "  - DB_HOST=${env_db_host} no es un host que pg_hba.conf acepte para este" >&2
+    echo "    usuario/base. Si PostgreSQL corre en este mismo servidor, DB_HOST" >&2
+    echo "    normalmente debe ser 'localhost' o '127.0.0.1', no la IP de red del" >&2
+    echo "    servidor — edite ${PROJECT_DIR}/.env y vuelva a correr este script." >&2
+    echo "  - O bien, agregue en pg_hba.conf una línea 'host ${DB_NAME} ${DB_USER} <host-real>/32 scram-sha-256'" >&2
+    echo "    (o md5, según su configuración) y recargue PostgreSQL: sudo systemctl reload postgresql." >&2
+    exit 1
+fi
 
 log "Aplicando migraciones..."
 run_as_app migrate --noinput
