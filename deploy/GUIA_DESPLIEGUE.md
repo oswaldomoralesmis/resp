@@ -127,6 +127,15 @@ Desde el navegador: `http://<IP-del-servidor>:9000/`
   9000 no es uno de ellos, así que `instalar.sh` lo agrega con
   `semanage port -a -t http_port_t -p tcp 9000` cuando SELinux está en
   modo Enforcing.
+- **Cargar/aceptar un layout grande no bloquea la respuesta HTTP**: subir o
+  aceptar un archivo de layout corre la validación/aplicación real en un
+  hilo aparte (`cargas/views.py`, `_lanzar_procesamiento`) — la página
+  redirige de inmediato al detalle de la carga, que se auto-refresca cada 5
+  segundos mientras `estado == 'procesando'`. Esto evita el 504 Gateway
+  Timeout de nginx que daba antes con archivos grandes de Información
+  Básica/Plazas. `gunicorn.conf.py` sube su `timeout` a 300s como margen
+  extra, porque el worker `sync` sigue necesitando avisarle al *arbiter*
+  de Gunicorn que sigue vivo mientras ese hilo trabaja.
 - **Usuario de sistema dedicado `resp`** (sin shell, sin home) corre
   Gunicorn — no corre como root ni como el usuario de `nginx`.
 - **`static/` y `media/` se sirven directo por nginx** (más rápido que
@@ -166,6 +175,7 @@ sudo ./deploy/instalar.sh        # DB_PASSWORD ya no hace falta: .env ya existe
 | Síntoma | Causa probable | Solución |
 |---|---|---|
 | nginx responde 502 | Gunicorn no está corriendo | `systemctl status resp_project`, `journalctl -u resp_project -e` |
+| nginx responde 504 al subir/aceptar un layout | Archivo tan grande que ni los 300s de margen alcanzan (poco común) | Revise `journalctl -u resp_project -f` mientras sube — si el hilo sigue corriendo, solo hace falta esperar y refrescar `carga_detalle`; si el worker murió, suba `timeout` en `deploy/gunicorn.conf.py` y reinicie (`systemctl restart resp_project`) |
 | nginx da 403 en `/static/...` | Permisos/SELinux | Revise que `staticfiles/` sea grupo `nginx`; si SELinux está en Enforcing, corra de nuevo la sección SELinux de `instalar.sh` |
 | `FATAL: no pg_hba.conf entry for host "<IP>"...` | `DB_HOST` en `.env` es la IP de red del servidor en vez de `localhost` — pg_hba.conf no tiene una regla para esa IP | Edite `/opt/resp_project/.env`, ponga `DB_HOST=localhost` (Postgres está en el mismo servidor), y vuelva a correr `instalar.sh`. Si de verdad necesita conectarse por esa IP, agregue una línea en `pg_hba.conf` (ver abajo) |
 | Otro error de conexión a BD | Puerto/credenciales | Verifique `DB_PORT=5440` en `.env` y que `crear_bd.sh` corrió sin error |

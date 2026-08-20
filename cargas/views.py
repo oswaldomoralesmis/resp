@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 import calendar
 import datetime
+import threading
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
-from django.db import transaction
+from django.db import transaction, connection
 from django.views.generic import ListView, CreateView, DeleteView
 from django.urls import reverse_lazy
 from django.contrib import messages
@@ -25,6 +26,76 @@ from usuarios.mixins import (
     AdministradorRequiredMixin, DependenciaScopedMixin, filtrar_por_dependencia,
     admin_requerido, puede_revisar_carga,
 )
+
+
+def _correr_procesador(carga, dry_run, overrides):
+    """Llama al procesador correspondiente al tipo de carga. Común a validar
+    (dry_run=True) y aceptar (dry_run=False, con overrides)."""
+    if carga.tipo == 'basica':
+        return procesar_layout_basica(carga, dry_run=dry_run, overrides=overrides)
+    elif carga.tipo == 'bajas':
+        return procesar_layout_bajas(carga, dry_run=dry_run, overrides=overrides)
+    return {'ok': 0, 'errores': 0, 'total': 0,
+            'log': f'Tipo "{carga.tipo}" aún no implementado.', 'filas': []}
+
+
+def _procesar_carga_en_segundo_plano(carga_pk, dry_run, overrides=None, revisado_por_pk=None):
+    """Corre procesar_layout_* fuera del ciclo request/response, en un hilo
+    aparte: subir o aceptar un archivo grande de layout puede tardar más de
+    lo que nginx/gunicorn esperan una respuesta (504 Gateway Timeout). La
+    vista que llama a esto ya dejó carga.estado='procesando' guardado antes
+    de lanzar el hilo, así que la pantalla de detalle puede mostrar "en
+    proceso" y auto-refrescarse (ver carga_detalle.html) hasta que este hilo
+    actualice el registro con el resultado final.
+
+    Cada hilo obtiene su propia conexión a la BD (Django la maneja por hilo
+    automáticamente); se cierra explícitamente al terminar porque, a
+    diferencia de una request normal, aquí no hay una señal de Django que
+    la cierre sola."""
+    try:
+        carga = CargaLayout.objects.get(pk=carga_pk)
+        try:
+            if dry_run:
+                resultado = _correr_procesador(carga, dry_run=True, overrides=overrides)
+                carga.registros_totales = resultado['total']
+                carga.registros_ok = resultado['ok']
+                carga.registros_error = resultado['errores']
+                carga.log_errores = resultado['log']
+                carga.detalle_filas = resultado['filas']
+                carga.estado = 'pendiente_revision'
+                carga.save()
+            else:
+                with transaction.atomic():
+                    resultado = _correr_procesador(carga, dry_run=False, overrides=overrides)
+                    carga.registros_totales = resultado['total']
+                    carga.registros_ok = resultado['ok']
+                    carga.registros_error = resultado['errores']
+                    carga.log_errores = resultado['log']
+                    carga.detalle_filas = resultado['filas']
+                    carga.estado = 'aceptado'
+                    carga.revisado_por_id = revisado_por_pk
+                    carga.fecha_revision = timezone.now()
+                    carga.save()
+        except Exception as e:
+            # Si falló validando (dry_run), no hay nada útil que revisar
+            # todavía: con_errores, hay que resubir. Si falló aplicando de
+            # verdad (aceptar), el transaction.atomic() ya revirtió
+            # cualquier cambio a servidores/plazas — regresa a
+            # pendiente_revision para que puedan reintentar Aceptar.
+            carga.estado = 'con_errores' if dry_run else 'pendiente_revision'
+            carga.log_errores = f'Error inesperado durante el procesamiento en segundo plano:\n{e}'
+            carga.save()
+    finally:
+        connection.close()
+
+
+def _lanzar_procesamiento(carga_pk, dry_run, overrides=None, revisado_por_pk=None):
+    hilo = threading.Thread(
+        target=_procesar_carga_en_segundo_plano,
+        args=(carga_pk, dry_run, overrides, revisado_por_pk),
+        daemon=True,
+    )
+    hilo.start()
 
 MESES_ES = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
             'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
@@ -127,38 +198,17 @@ def carga_layout(request):
             # ── Validar (vista previa) según tipo de layout ────────────────
             # Ojo: esto NO escribe en el padrón todavía; solo valida el
             # archivo. La aplicación real ocurre cuando el validador acepta
-            # la carga (ver carga_aceptar).
-            try:
-                if carga.tipo == 'basica':
-                    resultado = procesar_layout_basica(carga, dry_run=True)
-                elif carga.tipo == 'bajas':
-                    resultado = procesar_layout_bajas(carga, dry_run=True)
-                else:
-                    # Tipo futuro: personales
-                    resultado = {'ok': 0, 'errores': 0, 'total': 0,
-                                 'log': f'Tipo "{carga.tipo}" aún no implementado.', 'filas': []}
+            # la carga (ver carga_aceptar). Corre en un hilo aparte (no en
+            # este request) porque un archivo grande puede tardar más de lo
+            # que nginx/gunicorn esperan una respuesta; la pantalla de
+            # detalle se auto-refresca mientras estado == 'procesando'.
+            _lanzar_procesamiento(carga.pk, dry_run=True)
 
-                carga.registros_totales = resultado['total']
-                carga.registros_ok      = resultado['ok']
-                carga.registros_error   = resultado['errores']
-                carga.log_errores       = resultado['log']
-                carga.detalle_filas     = resultado['filas']
-                carga.estado = 'pendiente_revision'
-                carga.save()
-
-                messages.success(
-                    request,
-                    f'Layout validado: {resultado["ok"]} de {resultado["total"]} registros correctos. '
-                    f'Quedó registrada en el historial de cargas, pendiente de revisión por el '
-                    f'validador de su dependencia. Los registros aún no se han aplicado al padrón.'
-                )
-
-            except Exception as e:
-                carga.estado = 'con_errores'
-                carga.log_errores = f'Error inesperado durante la validación:\n{e}'
-                carga.save()
-                messages.error(request, f'Error al procesar el archivo: {e}')
-
+            messages.info(
+                request,
+                'Archivo recibido, validándose en segundo plano — esta página se '
+                'actualizará sola cuando termine.'
+            )
             return redirect('carga_detalle', pk=carga.pk)
     else:
         form = CargaLayoutForm(initial={'tipo': tipo})
@@ -245,20 +295,14 @@ def carga_revalidar(request, pk):
         messages.error(request, 'Esta carga ya fue revisada o no está lista para revisión.')
         return redirect('carga_detalle', pk=carga.pk)
 
-    if carga.tipo == 'basica':
-        resultado = procesar_layout_basica(carga, dry_run=True)
-    elif carga.tipo == 'bajas':
-        resultado = procesar_layout_bajas(carga, dry_run=True)
-    else:
-        resultado = {'ok': 0, 'errores': 0, 'total': 0,
-                     'log': f'Tipo "{carga.tipo}" aún no implementado.', 'filas': []}
-    carga.registros_totales = resultado['total']
-    carga.registros_ok      = resultado['ok']
-    carga.registros_error   = resultado['errores']
-    carga.log_errores       = resultado['log']
-    carga.detalle_filas     = resultado['filas']
-    carga.save()
-    messages.success(request, 'Carga re-validada con la lógica actual de revisión.')
+    carga.estado = 'procesando'
+    carga.save(update_fields=['estado'])
+    _lanzar_procesamiento(carga.pk, dry_run=True)
+
+    messages.info(
+        request,
+        'Re-validando en segundo plano — esta página se actualizará sola cuando termine.'
+    )
     return redirect('carga_detalle', pk=carga.pk)
 
 
@@ -388,27 +432,18 @@ def carga_aceptar(request, pk):
 
     overrides = {int(k): v for k, v in carga.decisiones_filas.items()}
 
-    with transaction.atomic():
-        if carga.tipo == 'basica':
-            resultado = procesar_layout_basica(carga, dry_run=False, overrides=overrides)
-        elif carga.tipo == 'bajas':
-            resultado = procesar_layout_bajas(carga, dry_run=False, overrides=overrides)
-        else:
-            resultado = {'ok': 0, 'errores': 0, 'total': 0,
-                         'log': f'Tipo "{carga.tipo}" aún no implementado.', 'filas': []}
-        carga.registros_totales = resultado['total']
-        carga.registros_ok      = resultado['ok']
-        carga.registros_error   = resultado['errores']
-        carga.log_errores       = resultado['log']
-        carga.detalle_filas     = resultado['filas']
-        carga.estado = 'aceptado'
-        carga.revisado_por = request.user
-        carga.fecha_revision = timezone.now()
-        carga.save()
+    # Aplicar de verdad al padrón corre en un hilo aparte, no en este
+    # request (mismo motivo que al validar: un archivo grande puede tardar
+    # más de lo que nginx/gunicorn esperan una respuesta). La pantalla de
+    # detalle se auto-refresca mientras estado == 'procesando'.
+    carga.estado = 'procesando'
+    carga.save(update_fields=['estado'])
+    _lanzar_procesamiento(carga.pk, dry_run=False, overrides=overrides, revisado_por_pk=request.user.pk)
 
-    messages.success(
+    messages.info(
         request,
-        f'Carga aceptada: {resultado["ok"]} registros aplicados al padrón.'
+        'Aplicando los cambios al padrón en segundo plano — esta página se '
+        'actualizará sola cuando termine.'
     )
     return redirect('carga_detalle', pk=carga.pk)
 

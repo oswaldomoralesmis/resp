@@ -254,6 +254,13 @@
     <div class="alert-resp alert-success">&#10003; Sin observaciones &mdash; todos los registros fueron procesados correctamente.</div>
     {% endif %}
 
+    {% if carga.estado == 'procesando' %}
+    <div class="alert-resp" style="background:#e3f2fd;border:1px solid #64b5f6;color:#0d47a1;padding:14px 16px;border-radius:6px;margin-top:20px;">
+      &#8987; <strong>Procesando en segundo plano.</strong> Para archivos grandes puede tardar varios
+      minutos — esta página se actualiza sola cada 5 segundos, no hace falta que la refresque a mano.
+    </div>
+    {% endif %}
+
     <div style="margin-top:20px;display:flex;gap:10px;">
       <a href="{% url 'carga_list' %}" class="btn-outline">&#8592; Regresar</a>
       <a href="{% url 'carga_comprobante' carga.pk %}" class="btn-outline" target="_blank">&#128196; Comprobante PDF</a>
@@ -261,4 +268,12 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{% if carga.estado == 'procesando' %}
+<script>
+  setTimeout(function () { window.location.reload(); }, 5000);
+</script>
+{% endif %}
 {% endblock %}
