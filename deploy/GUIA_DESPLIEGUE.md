@@ -39,6 +39,9 @@ la aplicación los necesita en la raíz del proyecto:
 - `Catalogos_Sistema_RESP.xlsx` — catálogos iniciales (`cargar_catalogos.py`)
 - `Layout_Informacion_Basica.xlsx`, `Layout_Bajas.xlsx`, `Layout_Datos_Personales.xlsx`
   — plantillas descargables desde "Cargar Layout"
+- `Catalogo_Fuente.xlsx`, `Catalogo_Dependencia.xlsx`, `Catalogo_Categoria.xlsx`,
+  `Catalogo_Unidades_Admvas.xlsx`, `Catalogo_Programas.xlsx`, `Catalogo_Proyectos.xlsx`,
+  `Catalogo_Plazas.xlsx` — plantillas descargables desde cada catálogo (botón "⇓ Excel")
 
 Cópielos al servidor por separado (`scp`) — el paso 3 de abajo se lo recuerda
 si faltan.
@@ -78,7 +81,7 @@ existen, solo actualiza la contraseña.
 ## 3. Copiar los archivos Excel que no van en git
 
 ```bash
-scp Catalogos_Sistema_RESP.xlsx Layout_*.xlsx usuario@servidor:/opt/resp_project/
+scp Catalogos_Sistema_RESP.xlsx Layout_*.xlsx Catalogo_*.xlsx usuario@servidor:/opt/resp_project/
 ```
 Si los omite, `instalar.sh` avisa y sigue sin cargar catálogos — puede
 correrlo de nuevo después.

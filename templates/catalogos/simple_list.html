@@ -14,6 +14,9 @@
       <a href="{% url 'descargar_catalogo' catalogo_slug %}" class="btn-dorado btn-sm">&#8659; Excel</a>
       <a href="{% url 'importar_catalogo' catalogo_slug %}" class="btn-outline btn-sm">&#8657; Importar</a>
       {% endif %}
+      {% if export_slug %}
+      <a href="{% url 'exportar_catalogo' export_slug %}" class="btn-outline btn-sm">&#128190; Exportar Excel</a>
+      {% endif %}
       <a href="{% url request.resolver_match.url_name|cut:'_list'|add:'_create' %}" class="btn-institucional btn-sm">&#10133; Nuevo</a>
     </div>
   </div>

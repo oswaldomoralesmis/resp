@@ -58,6 +58,33 @@ def importar_fuentes(ruta):
     return {'creados': creados, 'actualizados': actualizados, 'errores': errores, 'total': total, 'log': log}
 
 
+def importar_dependencias(ruta):
+    ws = _cargar_hoja(ruta)
+    creados = actualizados = errores = total = 0
+    log = []
+    for num_fila, fila in enumerate(ws.iter_rows(min_row=4, values_only=True), start=4):
+        if not any(c is not None for c in fila):
+            continue
+        if _es_fila_ejemplo(fila):
+            continue
+        total += 1
+        clave = sd(fila[0]).upper()
+        desc = sd(fila[1]) if len(fila) > 1 else ''
+        if not clave or not desc:
+            errores += 1
+            log.append(f'Fila {num_fila}: OMITIDA — clave o descripción vacía')
+            continue
+        obj, creado = Dependencia.objects.update_or_create(
+            clave=clave, defaults={'descripcion': desc}
+        )
+        if creado:
+            creados += 1
+        else:
+            actualizados += 1
+    log.insert(0, f'{creados} creadas, {actualizados} actualizadas, {errores} con error, {total} filas procesadas.')
+    return {'creados': creados, 'actualizados': actualizados, 'errores': errores, 'total': total, 'log': log}
+
+
 def importar_unidades(ruta):
     ws = _cargar_hoja(ruta)
     creados = actualizados = errores = total = 0
@@ -237,9 +264,10 @@ def importar_puestos(ruta):
 
 
 IMPORTADORES = {
-    'fuente':    (importar_fuentes,   'fuente_list',   'Fuentes de Financiamiento'),
-    'unidades':  (importar_unidades,  'unidad_list',   'Unidades Administrativas'),
-    'programas': (importar_programas, 'programa_list', 'Programas'),
-    'proyectos': (importar_proyectos, 'proyecto_list', 'Proyectos'),
-    'puestos':   (importar_puestos,   'puesto_list',   'Plazas'),
+    'fuente':      (importar_fuentes,      'fuente_list',      'Fuentes de Financiamiento'),
+    'dependencia': (importar_dependencias, 'dependencia_list', 'Dependencias'),
+    'unidades':    (importar_unidades,     'unidad_list',      'Unidades Administrativas'),
+    'programas':   (importar_programas,    'programa_list',    'Programas'),
+    'proyectos':   (importar_proyectos,    'proyecto_list',    'Proyectos'),
+    'puestos':     (importar_puestos,      'puesto_list',      'Plazas'),
 }

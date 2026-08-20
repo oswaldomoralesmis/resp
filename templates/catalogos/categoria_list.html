@@ -9,6 +9,7 @@
     <span>&#127991;&#65039; Categor&iacute;as{% if page_obj %} <span class="badge-blue">{{ page_obj.paginator.count }}</span>{% endif %}</span>
     <div class="d-flex gap-2">
       <a href="{% url 'descargar_catalogo' 'categoria' %}" class="btn-dorado btn-sm">&#8659; Excel</a>
+      <a href="{% url 'exportar_catalogo' 'categoria' %}" class="btn-outline btn-sm">&#128190; Exportar Excel</a>
       <a href="{% url 'categoria_create' %}" class="btn-institucional btn-sm">&#10133; Nueva</a>
     </div>
   </div>

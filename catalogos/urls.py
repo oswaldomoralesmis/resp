@@ -118,8 +118,9 @@ urlpatterns = [
     path('inmuebles/',               views.InmuebleListView.as_view(),   name='inmueble_list'),
     path('inmuebles/nuevo/',         views.InmuebleCreateView.as_view(), name='inmueble_create'),
     path('inmuebles/<int:pk>/editar/',views.InmuebleUpdateView.as_view(),name='inmueble_update'),
-    # Descarga plantillas / Importación
+    # Descarga plantillas / Importación / Exportación
     path('descargar/<str:catalogo>/', views.descargar_catalogo, name='descargar_catalogo'),
     path('importar/<str:catalogo>/',  views.importar_catalogo,  name='importar_catalogo'),
     path('importar/estado/<int:pk>/', views.importacion_detalle, name='importacion_detalle'),
+    path('exportar/<str:catalogo>/',  views.exportar_catalogo_excel, name='exportar_catalogo'),
 ]

@@ -115,7 +115,10 @@ else
 fi
 
 # ── Plantillas Excel (no van en git, deben copiarse a mano) ────────────
-for f in Catalogos_Sistema_RESP.xlsx Layout_Informacion_Basica.xlsx Layout_Bajas.xlsx Layout_Datos_Personales.xlsx; do
+for f in Catalogos_Sistema_RESP.xlsx Layout_Informacion_Basica.xlsx Layout_Bajas.xlsx \
+         Layout_Datos_Personales.xlsx Catalogo_Fuente.xlsx Catalogo_Dependencia.xlsx \
+         Catalogo_Categoria.xlsx Catalogo_Unidades_Admvas.xlsx Catalogo_Programas.xlsx \
+         Catalogo_Proyectos.xlsx Catalogo_Plazas.xlsx; do
     if [[ ! -f "${PROJECT_DIR}/${f}" ]]; then
         echo "AVISO: falta ${PROJECT_DIR}/${f} (está en .gitignore, cópielo manualmente)."
     fi

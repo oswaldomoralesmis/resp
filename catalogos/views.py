@@ -6,7 +6,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
-from django.http import FileResponse, Http404
+from django.http import FileResponse, HttpResponse, Http404
 from django.db.models import Q, ProtectedError
 from django.db.models.deletion import Collector
 from django.core.files.storage import default_storage
@@ -41,7 +41,7 @@ def catalogo_index(request):
             'color':  'verde',
             'items': [
                 {'nombre': 'Fuentes de Financiamiento', 'url': 'fuente_list',    'icono': '💰', 'descarga': 'fuente'},
-                {'nombre': 'Dependencias',               'url': 'dependencia_list','icono': '🏛️', 'descarga': None},
+                {'nombre': 'Dependencias',               'url': 'dependencia_list','icono': '🏛️', 'descarga': 'dependencia'},
                 {'nombre': 'Unidades Administrativas',   'url': 'unidad_list',   'icono': '🏢', 'descarga': 'unidades'},
                 {'nombre': 'Programas',                  'url': 'programa_list', 'icono': '📋', 'descarga': 'programas'},
                 {'nombre': 'Proyectos',                  'url': 'proyecto_list', 'icono': '📁', 'descarga': 'proyectos'},
@@ -210,7 +210,7 @@ def make_delete_view(model, success_url, titulo_prefix, back_url, template='cata
 # ── Fuente de Financiamiento ──────────────────────────────────────────────────
 FuenteListView   = make_list_view(FuenteFinanciamiento, 'catalogos/simple_list.html',
                                   'Fuentes de Financiamiento', ['clave', 'descripcion'],
-                                  extra_ctx={'catalogo_slug': 'fuente'})
+                                  extra_ctx={'catalogo_slug': 'fuente', 'export_slug': 'fuente'})
 FuenteCreateView = make_create_view(FuenteFinanciamiento, FuenteFinanciamientoForm,
                                     'fuente_list', 'Nueva Fuente de Financiamiento', 'fuente_list')
 FuenteUpdateView = make_update_view(FuenteFinanciamiento, FuenteFinanciamientoForm,
@@ -221,7 +221,8 @@ FuenteUpdateView = make_update_view(FuenteFinanciamiento, FuenteFinanciamientoFo
 # un usuario no-admin solo puede consultar (y solo ve) la suya propia.
 DependenciaListView   = make_list_view(Dependencia, 'catalogos/simple_list.html',
                                        'Dependencias', ['clave', 'descripcion'],
-                                       dependencia_lookup='pk')
+                                       dependencia_lookup='pk',
+                                       extra_ctx={'catalogo_slug': 'dependencia', 'export_slug': 'dependencia'})
 DependenciaCreateView = make_create_view(Dependencia, DependenciaForm,
                                          'dependencia_list', 'Nueva Dependencia', 'dependencia_list',
                                          mixins=(AdministradorRequiredMixin,))
@@ -253,7 +254,8 @@ class UnidadListView(LoginRequiredMixin, ListView):
         ctx.update({'titulo': 'Unidades Administrativas',
                     'dependencias': filtrar_por_dependencia(Dependencia.objects.all(), self.request.user, 'pk').order_by('clave'),
                     'q': self.request.GET.get('q', ''),
-                    'dep_sel': self.request.GET.get('dep', '')})
+                    'dep_sel': self.request.GET.get('dep', ''),
+                    'export_slug': 'unidad'})
         return ctx
 
 UnidadCreateView = make_create_view(UnidadAdministrativa, UnidadAdministrativaForm,
@@ -285,7 +287,8 @@ class ProgramaListView(LoginRequiredMixin, ListView):
         ctx.update({'titulo': 'Programas Presupuestales',
                     'dependencias': filtrar_por_dependencia(Dependencia.objects.all(), self.request.user, 'pk').order_by('clave'),
                     'q': self.request.GET.get('q', ''),
-                    'dep_sel': self.request.GET.get('dep', '')})
+                    'dep_sel': self.request.GET.get('dep', ''),
+                    'export_slug': 'programa'})
         return ctx
 
 ProgramaCreateView = make_create_view(Programa, ProgramaForm,
@@ -319,7 +322,8 @@ class ProyectoListView(LoginRequiredMixin, ListView):
         ctx.update({'titulo': 'Proyectos',
                     'dependencias': filtrar_por_dependencia(Dependencia.objects.all(), self.request.user, 'pk').order_by('clave'),
                     'q': self.request.GET.get('q', ''),
-                    'dep_sel': self.request.GET.get('dep', '')})
+                    'dep_sel': self.request.GET.get('dep', ''),
+                    'export_slug': 'proyecto'})
         return ctx
 
 ProyectoCreateView = make_create_view(Proyecto, ProyectoForm,
@@ -347,7 +351,7 @@ class CategoriaListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx.update({'titulo': 'Categorías', 'q': self.request.GET.get('q', '')})
+        ctx.update({'titulo': 'Categorías', 'q': self.request.GET.get('q', ''), 'export_slug': 'categoria'})
         return ctx
 
 CategoriaCreateView = make_create_view(Categoria, CategoriaForm,
@@ -356,86 +360,95 @@ CategoriaUpdateView = make_update_view(Categoria, CategoriaForm,
                                        'categoria_list', 'Editar Categoría', 'categoria_list')
 
 # ── Catálogos simples (clave + descripcion) ───────────────────────────────────
-TipoContratacionListView   = make_list_view(TipoContratacion,  'catalogos/simple_list.html', 'Tipos de Contratación',  ['clave','descripcion'])
+TipoContratacionListView   = make_list_view(TipoContratacion,  'catalogos/simple_list.html', 'Tipos de Contratación',  ['clave','descripcion'],
+                                            extra_ctx={'export_slug': 'tipo_contratacion'})
 TipoContratacionCreateView = make_create_view(TipoContratacion,  TipoContratacionForm,  'tipo_contratacion_list', 'Nuevo Tipo Contratación',  'tipo_contratacion_list')
 TipoContratacionUpdateView = make_update_view(TipoContratacion,  TipoContratacionForm,  'tipo_contratacion_list', 'Editar',                    'tipo_contratacion_list')
 
-TipoPersonalListView   = make_list_view(TipoPersonal,    'catalogos/simple_list.html', 'Tipos de Personal',      ['clave','descripcion'])
+TipoPersonalListView   = make_list_view(TipoPersonal,    'catalogos/simple_list.html', 'Tipos de Personal',      ['clave','descripcion'],
+                                        extra_ctx={'export_slug': 'tipo_personal'})
 TipoPersonalCreateView = make_create_view(TipoPersonal,    TipoPersonalForm,    'tipo_personal_list',    'Nuevo Tipo Personal',       'tipo_personal_list')
 TipoPersonalUpdateView = make_update_view(TipoPersonal,    TipoPersonalForm,    'tipo_personal_list',    'Editar',                    'tipo_personal_list')
 
-TipoFuncionListView   = make_list_view(TipoFuncion,     'catalogos/simple_list.html', 'Tipos de Función',       ['clave','descripcion'])
+TipoFuncionListView   = make_list_view(TipoFuncion,     'catalogos/simple_list.html', 'Tipos de Función',       ['clave','descripcion'],
+                                       extra_ctx={'export_slug': 'tipo_funcion'})
 TipoFuncionCreateView = make_create_view(TipoFuncion,     TipoFuncionForm,     'tipo_funcion_list',     'Nuevo Tipo Función',         'tipo_funcion_list')
 TipoFuncionUpdateView = make_update_view(TipoFuncion,     TipoFuncionForm,     'tipo_funcion_list',     'Editar',                    'tipo_funcion_list')
 
-NivelEstructuraListView   = make_list_view(NivelEstructura,  'catalogos/simple_list.html', 'Niveles de Estructura',  ['clave','descripcion'])
+NivelEstructuraListView   = make_list_view(NivelEstructura,  'catalogos/simple_list.html', 'Niveles de Estructura',  ['clave','descripcion'],
+                                           extra_ctx={'export_slug': 'nivel_estructura'})
 NivelEstructuraCreateView = make_create_view(NivelEstructura,  NivelEstructuraForm,  'nivel_estructura_list', 'Nuevo Nivel',               'nivel_estructura_list')
 NivelEstructuraUpdateView = make_update_view(NivelEstructura,  NivelEstructuraForm,  'nivel_estructura_list', 'Editar',                    'nivel_estructura_list')
 
-EstatusPlazaListView   = make_list_view(EstatusPlaza,    'catalogos/simple_list.html', 'Estatus de Plaza',       ['clave','descripcion'])
+EstatusPlazaListView   = make_list_view(EstatusPlaza,    'catalogos/simple_list.html', 'Estatus de Plaza',       ['clave','descripcion'],
+                                        extra_ctx={'export_slug': 'estatus_plaza'})
 EstatusPlazaCreateView = make_create_view(EstatusPlaza,    EstatusPlazaForm,    'estatus_plaza_list',    'Nuevo Estatus',              'estatus_plaza_list')
 EstatusPlazaUpdateView = make_update_view(EstatusPlaza,    EstatusPlazaForm,    'estatus_plaza_list',    'Editar',                    'estatus_plaza_list')
 
-CentroTrabajoListView   = make_list_view(CentroTrabajo,   'catalogos/simple_list.html', 'Centros de Trabajo',     ['clave','nombre'])
+CentroTrabajoListView   = make_list_view(CentroTrabajo,   'catalogos/simple_list.html', 'Centros de Trabajo',     ['clave','nombre'],
+                                         extra_ctx={'export_slug': 'centro_trabajo'})
 CentroTrabajoCreateView = make_create_view(CentroTrabajo,   CentroTrabajoForm,   'centro_trabajo_list',   'Nuevo Centro de Trabajo',   'centro_trabajo_list')
 CentroTrabajoUpdateView = make_update_view(CentroTrabajo,   CentroTrabajoForm,   'centro_trabajo_list',   'Editar',                    'centro_trabajo_list')
 
-TipoDeclaracionListView   = make_list_view(TipoDeclaracion, 'catalogos/simple_list.html', 'Tipos de Declaración',  ['clave','descripcion'])
+TipoDeclaracionListView   = make_list_view(TipoDeclaracion, 'catalogos/simple_list.html', 'Tipos de Declaración',  ['clave','descripcion'],
+                                           extra_ctx={'export_slug': 'tipo_declaracion'})
 TipoDeclaracionCreateView = make_create_view(TipoDeclaracion, TipoDeclaracionForm, 'tipo_declaracion_list', 'Nuevo Tipo Declaración',    'tipo_declaracion_list')
 TipoDeclaracionUpdateView = make_update_view(TipoDeclaracion, TipoDeclaracionForm, 'tipo_declaracion_list', 'Editar',                    'tipo_declaracion_list')
 
-AreaListView   = make_list_view(Area,          'catalogos/simple_list.html', 'Áreas',                  ['clave','descripcion'])
+AreaListView   = make_list_view(Area,          'catalogos/simple_list.html', 'Áreas',                  ['clave','descripcion'],
+                                extra_ctx={'export_slug': 'area'})
 AreaCreateView = make_create_view(Area,          AreaForm,          'area_list',             'Nueva Área',                'area_list')
 AreaUpdateView = make_update_view(Area,          AreaForm,          'area_list',             'Editar',                    'area_list')
 
 NivelEscolaridadListView   = make_list_view(NivelEscolaridad, 'catalogos/simple_list.html', 'Niveles de Escolaridad', ['descripcion','estatus'],
-                                            extra_ctx={'permite_eliminar': True})
+                                            extra_ctx={'permite_eliminar': True, 'export_slug': 'nivel_escolaridad'})
 NivelEscolaridadCreateView = make_create_view(NivelEscolaridad, NivelEscolaridadForm, 'nivel_escolaridad_list', 'Nuevo Nivel Escolaridad', 'nivel_escolaridad_list')
 NivelEscolaridadUpdateView = make_update_view(NivelEscolaridad, NivelEscolaridadForm, 'nivel_escolaridad_list', 'Editar',                  'nivel_escolaridad_list')
 NivelEscolaridadDeleteView = make_delete_view(NivelEscolaridad, 'nivel_escolaridad_list', 'Eliminar Nivel de Escolaridad', 'nivel_escolaridad_list')
 
 DiscapacidadListView   = make_list_view(Discapacidad,   'catalogos/simple_list.html', 'Discapacidades',         ['tipo','descripcion'],
-                                        extra_ctx={'permite_eliminar': True})
+                                        extra_ctx={'permite_eliminar': True, 'export_slug': 'discapacidad'})
 DiscapacidadCreateView = make_create_view(Discapacidad,   DiscapacidadForm,   'discapacidad_list',     'Nueva Discapacidad',         'discapacidad_list')
 DiscapacidadUpdateView = make_update_view(Discapacidad,   DiscapacidadForm,   'discapacidad_list',     'Editar',                    'discapacidad_list')
 DiscapacidadDeleteView = make_delete_view(Discapacidad,   'discapacidad_list',     'Eliminar Discapacidad',      'discapacidad_list')
 
 EnfermedadListView   = make_list_view(EnfermedadCronica,'catalogos/simple_list.html', 'Enfermedades Crónicas',  ['descripcion'],
-                                      extra_ctx={'permite_eliminar': True})
+                                      extra_ctx={'permite_eliminar': True, 'export_slug': 'enfermedad'})
 EnfermedadCreateView = make_create_view(EnfermedadCronica,EnfermedadCronicaForm,'enfermedad_list',       'Nueva Enfermedad',           'enfermedad_list')
 EnfermedadUpdateView = make_update_view(EnfermedadCronica,EnfermedadCronicaForm,'enfermedad_list',       'Editar',                    'enfermedad_list')
 EnfermedadDeleteView = make_delete_view(EnfermedadCronica,'enfermedad_list',       'Eliminar Enfermedad',        'enfermedad_list')
 
 PuebloListView   = make_list_view(Pueblo,        'catalogos/simple_list.html', 'Pueblos Indígenas',      ['descripcion'],
-                                  extra_ctx={'permite_eliminar': True})
+                                  extra_ctx={'permite_eliminar': True, 'export_slug': 'pueblo'})
 PuebloCreateView = make_create_view(Pueblo,        PuebloForm,        'pueblo_list',           'Nuevo Pueblo',               'pueblo_list')
 PuebloUpdateView = make_update_view(Pueblo,        PuebloForm,        'pueblo_list',           'Editar',                    'pueblo_list')
 PuebloDeleteView = make_delete_view(Pueblo,        'pueblo_list',           'Eliminar Pueblo',            'pueblo_list')
 
-MotivoBajaListView   = make_list_view(MotivoBaja,    'catalogos/simple_list.html', 'Motivos de Baja',        ['clave','descripcion'])
+MotivoBajaListView   = make_list_view(MotivoBaja,    'catalogos/simple_list.html', 'Motivos de Baja',        ['clave','descripcion'],
+                                      extra_ctx={'export_slug': 'motivo_baja'})
 MotivoBajaCreateView = make_create_view(MotivoBaja,    MotivoBajaForm,    'motivo_baja_list',      'Nuevo Motivo de Baja',       'motivo_baja_list')
 MotivoBajaUpdateView = make_update_view(MotivoBaja,    MotivoBajaForm,    'motivo_baja_list',      'Editar',                    'motivo_baja_list')
 
 IdiomaListView   = make_list_view(Idioma,        'catalogos/simple_list.html', 'Idiomas / Lenguas',      ['descripcion','familia_linguistica'],
-                                  extra_ctx={'permite_eliminar': True})
+                                  extra_ctx={'permite_eliminar': True, 'export_slug': 'idioma'})
 IdiomaCreateView = make_create_view(Idioma,        IdiomaForm,        'idioma_list',           'Nuevo Idioma / Lengua',      'idioma_list')
 IdiomaUpdateView = make_update_view(Idioma,        IdiomaForm,        'idioma_list',           'Editar',                    'idioma_list')
 IdiomaDeleteView = make_delete_view(Idioma,        'idioma_list',           'Eliminar Idioma',            'idioma_list')
 
 EstadoCivilListView   = make_list_view(EstadoCivil,   'catalogos/simple_list.html', 'Estados Civiles',        ['clave','descripcion'],
-                                       extra_ctx={'permite_eliminar': True})
+                                       extra_ctx={'permite_eliminar': True, 'export_slug': 'estado_civil'})
 EstadoCivilCreateView = make_create_view(EstadoCivil,   EstadoCivilForm,   'estado_civil_list',     'Nuevo Estado Civil',         'estado_civil_list')
 EstadoCivilUpdateView = make_update_view(EstadoCivil,   EstadoCivilForm,   'estado_civil_list',     'Editar',                    'estado_civil_list')
 EstadoCivilDeleteView = make_delete_view(EstadoCivil,   'estado_civil_list',     'Eliminar Estado Civil',      'estado_civil_list')
 
 PaisListView   = make_list_view(Pais,          'catalogos/simple_list.html', 'Países',                 ['nombre'],
-                                extra_ctx={'permite_eliminar': True})
+                                extra_ctx={'permite_eliminar': True, 'export_slug': 'pais'})
 PaisCreateView = make_create_view(Pais,          PaisForm,          'pais_list',             'Nuevo País',                'pais_list')
 PaisUpdateView = make_update_view(Pais,          PaisForm,          'pais_list',             'Editar',                    'pais_list')
 PaisDeleteView = make_delete_view(Pais,          'pais_list',             'Eliminar País',              'pais_list')
 
 EntidadListView   = make_list_view(EntidadFederativa,'catalogos/simple_list.html', 'Entidades Federativas',  ['nombre','abreviatura'],
-                                   extra_ctx={'permite_eliminar': True})
+                                   extra_ctx={'permite_eliminar': True, 'export_slug': 'entidad'})
 EntidadCreateView = make_create_view(EntidadFederativa,EntidadFederativaForm,'entidad_list',          'Nueva Entidad Federativa',   'entidad_list')
 EntidadUpdateView = make_update_view(EntidadFederativa,EntidadFederativaForm,'entidad_list',          'Editar',                    'entidad_list')
 EntidadDeleteView = make_delete_view(EntidadFederativa,'entidad_list',          'Eliminar Entidad Federativa', 'entidad_list')
@@ -461,7 +474,7 @@ class MunicipioListView(LoginRequiredMixin, ListView):
         ctx.update({'titulo': 'Municipios', 'q': self.request.GET.get('q', ''),
                     'entidades': EntidadFederativa.objects.all().order_by('nombre'),
                     'ent_sel': self.request.GET.get('ent', ''),
-                    'permite_eliminar': True})
+                    'permite_eliminar': True, 'export_slug': 'municipio'})
         return ctx
 
 MunicipioCreateView = make_create_view(Municipio, MunicipioForm, 'municipio_list', 'Nuevo Municipio', 'municipio_list')
@@ -469,7 +482,7 @@ MunicipioUpdateView = make_update_view(Municipio, MunicipioForm, 'municipio_list
 MunicipioDeleteView = make_delete_view(Municipio, 'municipio_list', 'Eliminar Municipio', 'municipio_list')
 
 SindicatoListView   = make_list_view(Sindicato,    'catalogos/simple_list.html', 'Sindicatos',             ['clave','descripcion'],
-                                     extra_ctx={'permite_eliminar': True})
+                                     extra_ctx={'permite_eliminar': True, 'export_slug': 'sindicato'})
 SindicatoCreateView = make_create_view(Sindicato,    SindicatoForm,    'sindicato_list',        'Nuevo Sindicato',            'sindicato_list')
 SindicatoUpdateView = make_update_view(Sindicato,    SindicatoForm,    'sindicato_list',        'Editar',                    'sindicato_list')
 SindicatoDeleteView = make_delete_view(Sindicato,    'sindicato_list',        'Eliminar Sindicato',         'sindicato_list')
@@ -489,7 +502,7 @@ class InmuebleListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx.update({'titulo': 'Inmuebles', 'q': self.request.GET.get('q', '')})
+        ctx.update({'titulo': 'Inmuebles', 'q': self.request.GET.get('q', ''), 'export_slug': 'inmueble'})
         return ctx
 
 InmuebleCreateView = make_create_view(Inmueble, InmuebleForm, 'inmueble_list', 'Nuevo Inmueble', 'inmueble_list',
@@ -502,12 +515,13 @@ InmuebleUpdateView = make_update_view(Inmueble, InmuebleForm, 'inmueble_list', '
 @login_required
 def descargar_catalogo(request, catalogo):
     nombres = {
-        'fuente':    'Catalogo_Fuente.xlsx',
-        'categoria': 'Catalogo_Categoria.xlsx',
-        'unidades':  'Catalogo_Unidades_Admvas.xlsx',
-        'programas': 'Catalogo_Programas.xlsx',
-        'proyectos': 'Catalogo_Proyectos.xlsx',
-        'puestos':   'Catalogo_Plazas.xlsx',
+        'fuente':      'Catalogo_Fuente.xlsx',
+        'dependencia': 'Catalogo_Dependencia.xlsx',
+        'categoria':   'Catalogo_Categoria.xlsx',
+        'unidades':    'Catalogo_Unidades_Admvas.xlsx',
+        'programas':   'Catalogo_Programas.xlsx',
+        'proyectos':   'Catalogo_Proyectos.xlsx',
+        'puestos':     'Catalogo_Plazas.xlsx',
     }
     if catalogo not in nombres:
         raise Http404("Plantilla no encontrada.")
@@ -521,6 +535,57 @@ def descargar_catalogo(request, catalogo):
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
     response['Content-Disposition'] = f'attachment; filename="{nombre_archivo}"'
+    return response
+
+
+# ── Exportar TODOS los registros de un catálogo a Excel ───────────────────────
+@login_required
+def exportar_catalogo_excel(request, catalogo):
+    """A diferencia de 'descargar_catalogo' (plantilla en blanco para
+    importar), esto exporta los registros que YA existen en la tabla —
+    completos, sin el límite de 10 de la paginación de la lista. Si el
+    catálogo tiene dueño por dependencia (Unidades, Programas, Proyectos,
+    Inmuebles...), un usuario no-administrador solo exporta los de la suya,
+    igual que en el resto del sistema."""
+    from .exportador import CATALOGOS_EXPORT
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from openpyxl.utils import get_column_letter
+
+    cfg = CATALOGOS_EXPORT.get(catalogo)
+    if not cfg:
+        raise Http404("Catálogo no disponible para exportar.")
+
+    qs = cfg['model'].objects.all()
+    if cfg.get('select_related'):
+        qs = qs.select_related(*cfg['select_related'])
+    if cfg.get('dependencia_lookup'):
+        qs = filtrar_por_dependencia(qs, request.user, cfg['dependencia_lookup'])
+    qs = qs.order_by(*cfg['order_by'])
+
+    columnas = cfg['columnas']
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = cfg['titulo'][:31]  # límite de Excel para nombres de hoja
+
+    header_fill = PatternFill(start_color='1B4F72', end_color='1B4F72', fill_type='solid')
+    header_font = Font(color='FFFFFF', bold=True)
+    for col, (encabezado, _f) in enumerate(columnas, 1):
+        celda = ws.cell(row=1, column=col, value=encabezado)
+        celda.fill = header_fill
+        celda.font = header_font
+        celda.alignment = Alignment(horizontal='center')
+
+    for fila_num, obj in enumerate(qs, 2):
+        for col, (_h, extraer) in enumerate(columnas, 1):
+            ws.cell(row=fila_num, column=col, value=extraer(obj))
+
+    for i in range(1, len(columnas) + 1):
+        ws.column_dimensions[get_column_letter(i)].width = 20
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="RESP_{cfg["titulo"].replace(" ", "_")}.xlsx"'
+    wb.save(response)
     return response
 
 
