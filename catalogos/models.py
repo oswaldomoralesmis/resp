@@ -361,3 +361,37 @@ class Inmueble(models.Model):
 
     def __str__(self):
         return f"{self.clave} - {self.descripcion}"
+
+
+class ImportacionCatalogo(models.Model):
+    """Registro de una importación masiva de catálogo desde Excel. Existe
+    porque catálogos como Plazas pueden traer decenas de miles de filas —
+    demasiado para procesar dentro de un solo request sin toparse con el
+    504 Gateway Timeout de nginx — así que se procesa en un hilo aparte
+    (ver catalogos/views.py) y esta tabla es lo que la pantalla de detalle
+    consulta para saber si ya terminó y con qué resultado."""
+    ESTADO_CHOICES = [
+        ('procesando', 'Procesando'),
+        ('completado', 'Completado'),
+        ('error', 'Error'),
+    ]
+    catalogo = models.CharField(max_length=30, verbose_name='Catálogo')
+    nombre_archivo = models.CharField(max_length=255, blank=True, verbose_name='Archivo')
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='procesando')
+    creados = models.IntegerField(default=0)
+    actualizados = models.IntegerField(default=0)
+    errores = models.IntegerField(default=0)
+    total = models.IntegerField(default=0)
+    log = models.JSONField(default=list, blank=True)
+    usuario = models.ForeignKey(
+        'usuarios.UsuarioRESP', on_delete=models.SET_NULL, null=True, verbose_name='Usuario'
+    )
+    fecha = models.DateTimeField(auto_now_add=True, verbose_name='Fecha')
+
+    class Meta:
+        verbose_name = 'Importación de Catálogo'
+        verbose_name_plural = 'Importaciones de Catálogos'
+        ordering = ['-fecha']
+
+    def __str__(self):
+        return f"Importación {self.catalogo} — {self.get_estado_display()} ({self.fecha:%d/%m/%Y %H:%M})"

@@ -28,22 +28,6 @@
         <a href="{% url url_lista %}" class="btn-outline">&#10005; Cancelar</a>
       </div>
     </form>
-
-    {% if resultado %}
-    <hr class="mt-4 mb-3">
-    <div class="form-section-title" style="margin-bottom:12px;">Resultado de la importaci&oacute;n</div>
-    <div class="d-flex gap-2 flex-wrap mb-3">
-      <span class="badge-activo">{{ resultado.creados }} creados</span>
-      <span class="badge-blue">{{ resultado.actualizados }} actualizados</span>
-      {% if resultado.errores %}<span class="badge-inactivo">{{ resultado.errores }} con error</span>{% endif %}
-      <span class="badge-pendiente">{{ resultado.total }} filas procesadas</span>
-    </div>
-    <div style="max-height:320px;overflow-y:auto;border:1px solid #eef0f4;border-radius:8px;padding:10px 14px;font-size:13px;">
-      {% for linea in resultado.log %}
-      <div class="{% if 'ERROR' in linea %}text-danger{% elif 'OMITIDA' in linea %}text-muted{% endif %}" style="padding:3px 0;">{{ linea }}</div>
-      {% endfor %}
-    </div>
-    {% endif %}
   </div>
 </div>
 {% endblock %}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="breadcrumb-resp">
+  <a href="{% url 'catalogo_index' %}">&#127968; Cat&aacute;logos</a>
+  <span class="sep">&#8250;</span><a href="{% url url_lista %}">&#8592; Regresar</a>
+  <span class="sep">&#8250;</span><span>{{ titulo }}</span>
+</div>
+
+<div class="card" style="max-width:680px;">
+  <div class="card-header">&#8657; {{ titulo }}</div>
+  <div class="card-body">
+    <div class="d-flex gap-2 flex-wrap mb-3" style="align-items:center;">
+      <span class="form-label" style="margin:0;">Archivo:</span>
+      <strong>{{ importacion.nombre_archivo }}</strong>
+    </div>
+
+    {% if importacion.estado == 'procesando' %}
+    <div class="alert-resp" style="background:#e3f2fd;border:1px solid #64b5f6;color:#0d47a1;padding:14px 16px;border-radius:6px;">
+      &#8987; <strong>Procesando en segundo plano.</strong> Para cat&aacute;logos grandes (como Plazas) puede
+      tardar varios minutos — esta p&aacute;gina se actualiza sola cada 5 segundos, no hace falta que la
+      refresque a mano.
+    </div>
+    {% elif importacion.estado == 'error' %}
+    <div class="alert-resp alert-danger">
+      &#10060; No se pudo procesar el archivo.
+    </div>
+    {% else %}
+    <div class="alert-resp alert-success">&#10003; Importaci&oacute;n completada.</div>
+    {% endif %}
+
+    {% if importacion.estado != 'procesando' %}
+    <hr class="mt-4 mb-3">
+    <div class="form-section-title" style="margin-bottom:12px;">Resultado de la importaci&oacute;n</div>
+    <div class="d-flex gap-2 flex-wrap mb-3">
+      <span class="badge-activo">{{ importacion.creados }} creados</span>
+      <span class="badge-blue">{{ importacion.actualizados }} actualizados</span>
+      {% if importacion.errores %}<span class="badge-inactivo">{{ importacion.errores }} con error</span>{% endif %}
+      <span class="badge-pendiente">{{ importacion.total }} filas procesadas</span>
+    </div>
+    <div style="max-height:320px;overflow-y:auto;border:1px solid #eef0f4;border-radius:8px;padding:10px 14px;font-size:13px;">
+      {% for linea in importacion.log %}
+      <div class="{% if 'ERROR' in linea %}text-danger{% elif 'OMITIDA' in linea %}text-muted{% endif %}" style="padding:3px 0;">{{ linea }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div style="margin-top:20px;display:flex;gap:10px;">
+      <a href="{% url url_lista %}" class="btn-outline">&#8592; Regresar</a>
+      {% if importacion.estado != 'procesando' %}
+      <a href="{% url 'importar_catalogo' importacion.catalogo %}" class="btn-institucional">&#8657; Importar otro archivo</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if importacion.estado == 'procesando' %}
+<script>
+  setTimeout(function () { window.location.reload(); }, 5000);
+</script>
+{% endif %}
+{% endblock %}

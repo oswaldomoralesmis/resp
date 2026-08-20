@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
-from django.shortcuts import render, redirect
+import threading
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
@@ -20,6 +21,7 @@ from .models import (
     TipoDeclaracion, Area, NivelEscolaridad, Discapacidad,
     EnfermedadCronica, Pueblo, MotivoBaja, Idioma, EstadoCivil,
     Pais, EntidadFederativa, Municipio, Sindicato, Inmueble,
+    ImportacionCatalogo,
 )
 from .forms import (
     FuenteFinanciamientoForm, DependenciaForm, UnidadAdministrativaForm,
@@ -523,6 +525,41 @@ def descargar_catalogo(request, catalogo):
 
 
 # ── Importación de catálogos desde Excel ──────────────────────────────────────
+def _importar_catalogo_en_segundo_plano(importacion_pk, catalogo, ruta_tmp):
+    """Corre el importador del catálogo fuera del ciclo request/response, en
+    un hilo aparte: Plazas puede traer decenas de miles de filas (con varias
+    consultas de catálogo por fila), tiempo de sobra para chocar con el
+    504 Gateway Timeout de nginx si se corriera dentro del request. La
+    vista que lanza esto ya dejó la ImportacionCatalogo en 'procesando'
+    antes de arrancar el hilo, así que la pantalla de detalle puede
+    auto-refrescarse hasta que este hilo la actualice con el resultado."""
+    from django.db import connection
+    from .importador import IMPORTADORES
+
+    funcion = IMPORTADORES[catalogo][0]
+    try:
+        importacion = ImportacionCatalogo.objects.get(pk=importacion_pk)
+        try:
+            ruta_abs = default_storage.path(ruta_tmp)
+            resultado = funcion(ruta_abs)
+            importacion.creados = resultado['creados']
+            importacion.actualizados = resultado['actualizados']
+            importacion.errores = resultado['errores']
+            importacion.total = resultado['total']
+            importacion.log = resultado['log']
+            importacion.estado = 'completado'
+            importacion.save()
+        except Exception as e:
+            importacion.errores = 1
+            importacion.log = [f'No se pudo procesar el archivo: {e}']
+            importacion.estado = 'error'
+            importacion.save()
+        finally:
+            default_storage.delete(ruta_tmp)
+    finally:
+        connection.close()
+
+
 @login_required
 @admin_requerido
 def importar_catalogo(request, catalogo):
@@ -534,21 +571,26 @@ def importar_catalogo(request, catalogo):
         raise Http404("Catálogo no disponible para importar.")
     funcion, url_lista, titulo = IMPORTADORES[catalogo]
 
-    resultado = None
     if request.method == 'POST':
         form = ImportarExcelForm(request.POST, request.FILES)
         if form.is_valid():
             archivo = request.FILES['archivo']
             ruta_tmp = default_storage.save(f'tmp_importaciones/{archivo.name}', archivo)
-            ruta_abs = default_storage.path(ruta_tmp)
-            try:
-                resultado = funcion(ruta_abs)
-            except Exception as e:
-                resultado = {'creados': 0, 'actualizados': 0, 'errores': 1, 'total': 0,
-                             'log': [f'No se pudo procesar el archivo: {e}']}
-            finally:
-                default_storage.delete(ruta_tmp)
-            form = ImportarExcelForm()
+            importacion = ImportacionCatalogo.objects.create(
+                catalogo=catalogo, nombre_archivo=archivo.name, usuario=request.user,
+            )
+            hilo = threading.Thread(
+                target=_importar_catalogo_en_segundo_plano,
+                args=(importacion.pk, catalogo, ruta_tmp),
+                daemon=True,
+            )
+            hilo.start()
+            messages.info(
+                request,
+                'Archivo recibido, importándose en segundo plano — esta página se '
+                'actualizará sola cuando termine.'
+            )
+            return redirect('importacion_detalle', pk=importacion.pk)
     else:
         form = ImportarExcelForm()
 
@@ -557,5 +599,17 @@ def importar_catalogo(request, catalogo):
         'titulo': f'Importar {titulo}',
         'catalogo': catalogo,
         'url_lista': url_lista,
-        'resultado': resultado,
+    })
+
+
+@login_required
+@admin_requerido
+def importacion_detalle(request, pk):
+    from .importador import IMPORTADORES
+    importacion = get_object_or_404(ImportacionCatalogo, pk=pk)
+    _, url_lista, titulo = IMPORTADORES.get(importacion.catalogo, (None, 'catalogo_index', importacion.catalogo))
+    return render(request, 'catalogos/importar_detalle.html', {
+        'importacion': importacion,
+        'titulo': f'Importar {titulo}',
+        'url_lista': url_lista,
     })

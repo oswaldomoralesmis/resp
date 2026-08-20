@@ -121,4 +121,5 @@ urlpatterns = [
     # Descarga plantillas / Importación
     path('descargar/<str:catalogo>/', views.descargar_catalogo, name='descargar_catalogo'),
     path('importar/<str:catalogo>/',  views.importar_catalogo,  name='importar_catalogo'),
+    path('importar/estado/<int:pk>/', views.importacion_detalle, name='importacion_detalle'),
 ]
