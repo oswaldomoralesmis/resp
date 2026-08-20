@@ -30,4 +30,46 @@
     </form>
   </div>
 </div>
+
+<div class="card" style="max-width:900px;margin-top:20px;">
+  <div class="card-header">&#128203; Importaciones realizadas</div>
+  <div class="card-body">
+    {% if historial %}
+    <table class="table-resp">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Archivo</th>
+          <th>Usuario</th>
+          <th>Estado</th>
+          <th>Creados</th>
+          <th>Actualizados</th>
+          <th>Errores</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for imp in historial %}
+        <tr>
+          <td>{{ imp.fecha|date:"d/m/Y H:i" }}</td>
+          <td>{{ imp.nombre_archivo }}</td>
+          <td>{{ imp.usuario|default:"—" }}</td>
+          <td>
+            {% if imp.estado == 'completado' %}<span class="badge-activo">&#10003; Completado</span>
+            {% elif imp.estado == 'error' %}<span class="badge-inactivo">&#10060; Error</span>
+            {% else %}<span class="badge-pendiente">&#8987; Procesando</span>{% endif %}
+          </td>
+          <td>{{ imp.creados }}</td>
+          <td>{{ imp.actualizados }}</td>
+          <td>{% if imp.errores %}{{ imp.errores }}{% else %}—{% endif %}</td>
+          <td><a href="{% url 'importacion_detalle' imp.pk %}" class="btn-outline" style="padding:2px 10px;">Ver</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="alert-resp alert-info">Todav&iacute;a no hay importaciones registradas para este cat&aacute;logo.</div>
+    {% endif %}
+  </div>
+</div>
 {% endblock %}

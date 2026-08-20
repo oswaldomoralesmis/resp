@@ -571,6 +571,18 @@ def importar_catalogo(request, catalogo):
         raise Http404("Catálogo no disponible para importar.")
     funcion, url_lista, titulo = IMPORTADORES[catalogo]
 
+    # Si ya hay una importación de este catálogo corriendo, no tiene sentido
+    # mostrar el formulario (ni menos lanzar una segunda en paralelo contra
+    # las mismas tablas) — se retoma directo su pantalla de estado.
+    en_curso = ImportacionCatalogo.objects.filter(catalogo=catalogo, estado='procesando').order_by('-fecha').first()
+    if en_curso:
+        if request.method == 'POST':
+            messages.warning(
+                request,
+                'Ya hay una importación de este catálogo en curso — espere a que termine antes de subir otra.'
+            )
+        return redirect('importacion_detalle', pk=en_curso.pk)
+
     if request.method == 'POST':
         form = ImportarExcelForm(request.POST, request.FILES)
         if form.is_valid():
@@ -594,11 +606,14 @@ def importar_catalogo(request, catalogo):
     else:
         form = ImportarExcelForm()
 
+    historial = ImportacionCatalogo.objects.filter(catalogo=catalogo).select_related('usuario').order_by('-fecha')[:15]
+
     return render(request, 'catalogos/importar_form.html', {
         'form': form,
         'titulo': f'Importar {titulo}',
         'catalogo': catalogo,
         'url_lista': url_lista,
+        'historial': historial,
     })
 
 
