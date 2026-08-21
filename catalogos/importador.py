@@ -199,6 +199,49 @@ def importar_proyectos(ruta):
     return {'creados': creados, 'actualizados': actualizados, 'errores': errores, 'total': total, 'log': log}
 
 
+def _entero(v):
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return 0
+
+
+def importar_categorias(ruta):
+    """La columna A (Id) de Catalogo_Categoria.xlsx es autogenerada por
+    Excel y no se usa; los datos empiezan en B (Clave)."""
+    ws = _cargar_hoja(ruta)
+    creados = actualizados = errores = total = 0
+    log = []
+    for num_fila, fila in enumerate(ws.iter_rows(min_row=4, values_only=True), start=4):
+        if not any(c is not None for c in fila):
+            continue
+        if _es_fila_ejemplo(fila):
+            continue
+        total += 1
+        clave = sd(fila[1]).upper() if len(fila) > 1 else ''
+        desc = sd(fila[3]) if len(fila) > 3 else ''
+        if not clave or not desc:
+            errores += 1
+            log.append(f'Fila {num_fila}: OMITIDA — clave o descripción vacía')
+            continue
+        subcategoria = _entero(fila[2]) if len(fila) > 2 else 0
+        tipo_plaza = sd(fila[4]) if len(fila) > 4 else ''
+        tp = sd(fila[5]).upper() if len(fila) > 5 else ''
+        nivel = _entero(fila[6]) if len(fila) > 6 else 0
+        obj, creado = Categoria.objects.update_or_create(
+            clave=clave, defaults={
+                'subcategoria': subcategoria, 'descripcion': desc,
+                'tipo_plaza': tipo_plaza, 'tp': tp, 'nivel': nivel,
+            }
+        )
+        if creado:
+            creados += 1
+        else:
+            actualizados += 1
+    log.insert(0, f'{creados} creadas, {actualizados} actualizadas, {errores} con error, {total} filas procesadas.')
+    return {'creados': creados, 'actualizados': actualizados, 'errores': errores, 'total': total, 'log': log}
+
+
 def importar_puestos(ruta):
     """Alta/actualización masiva de plazas (solo datos de la plaza: ubicación
     presupuestal, categoría, contratación, estatus, CCT y plaza jefe). No toca
@@ -269,5 +312,6 @@ IMPORTADORES = {
     'unidades':    (importar_unidades,     'unidad_list',      'Unidades Administrativas'),
     'programas':   (importar_programas,    'programa_list',    'Programas'),
     'proyectos':   (importar_proyectos,    'proyecto_list',    'Proyectos'),
+    'categoria':   (importar_categorias,   'categoria_list',   'Categorías'),
     'puestos':     (importar_puestos,      'puesto_list',      'Plazas'),
 }

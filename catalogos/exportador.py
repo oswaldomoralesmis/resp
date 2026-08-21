@@ -12,6 +12,24 @@ from .models import (
     Pais, EntidadFederativa, Municipio, Sindicato, Inmueble,
 )
 
+def _filas_proyecto(qs):
+    """Un Proyecto puede tener varios programas/unidades (M2M); la plantilla
+    de importación espera una fila por cada combinación proyecto-programa,
+    repitiendo la CLAVE_PROYECTO — igual que Catalogo_Proyectos.xlsx. Si un
+    proyecto no tiene ningún programa asignado (caso raro), igual se exporta
+    una fila con ID_UNIDAD/ID_PROGRAMA vacíos, para no perderlo de vista."""
+    for p in qs:
+        dep_clave = p.dependencia.clave if p.dependencia else ''
+        programas = sorted(p.programas.all(), key=lambda prg: prg.clave)
+        if not programas:
+            yield [f'{dep_clave}-{p.clave}'.strip('-'), dep_clave, '', '', p.clave, p.descripcion]
+            continue
+        for prg in programas:
+            uni_clave = prg.unidad.clave if prg.unidad else ''
+            llave = '-'.join(filter(None, [dep_clave, uni_clave, prg.clave, p.clave]))
+            yield [llave, dep_clave, uni_clave, prg.clave, p.clave, p.descripcion]
+
+
 CATALOGOS_EXPORT = {
     'fuente': {
         'model': FuenteFinanciamiento, 'titulo': 'Fuentes de Financiamiento',
@@ -47,11 +65,16 @@ CATALOGOS_EXPORT = {
     'proyecto': {
         'model': Proyecto, 'titulo': 'Proyectos',
         'select_related': ['dependencia'],
+        'prefetch_related': ['programas__unidad'],
+        # Mismas 6 columnas y mismo orden que Catalogo_Proyectos.xlsx (la
+        # plantilla de importación), para poder editar el export y volver a
+        # subirlo tal cual. LLAVE es informativa (importar_proyectos no la
+        # lee, igual que en la plantilla real) — solo ayuda a ubicar la fila.
         'columnas': [
-            ('Dependencia', lambda o: o.dependencia.clave),
-            ('Clave', lambda o: o.clave),
-            ('Descripción', lambda o: o.descripcion),
+            ('LLAVE', None), ('ID_DEPCIA', None), ('ID_UNIDAD', None),
+            ('ID_PROGRAMA', None), ('CLAVE_PROYECTO', None), ('DESCRIPCION DEL PROYECTO', None),
         ],
+        'filas': _filas_proyecto,
         'dependencia_lookup': 'dependencia', 'order_by': ['dependencia__clave', 'clave'],
     },
     'categoria': {

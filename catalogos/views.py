@@ -559,6 +559,8 @@ def exportar_catalogo_excel(request, catalogo):
     qs = cfg['model'].objects.all()
     if cfg.get('select_related'):
         qs = qs.select_related(*cfg['select_related'])
+    if cfg.get('prefetch_related'):
+        qs = qs.prefetch_related(*cfg['prefetch_related'])
     if cfg.get('dependencia_lookup'):
         qs = filtrar_por_dependencia(qs, request.user, cfg['dependencia_lookup'])
     qs = qs.order_by(*cfg['order_by'])
@@ -576,9 +578,21 @@ def exportar_catalogo_excel(request, catalogo):
         celda.font = header_font
         celda.alignment = Alignment(horizontal='center')
 
-    for fila_num, obj in enumerate(qs, 2):
-        for col, (_h, extraer) in enumerate(columnas, 1):
-            ws.cell(row=fila_num, column=col, value=extraer(obj))
+    # La mayoría de los catálogos exportan una fila por registro (columnas
+    # = lista de (encabezado, función que extrae el valor del objeto)). Los
+    # que no calzan uno-a-uno con una fila del layout de importación (p.ej.
+    # Proyectos, que puede repetirse por cada programa/unidad) traen su
+    # propio generador de filas en 'filas'.
+    if cfg.get('filas'):
+        filas_iter = cfg['filas'](qs)
+    else:
+        filas_iter = ([extraer(obj) for _h, extraer in columnas] for obj in qs)
+
+    fila_num = 2
+    for valores in filas_iter:
+        for col, valor in enumerate(valores, 1):
+            ws.cell(row=fila_num, column=col, value=valor)
+        fila_num += 1
 
     for i in range(1, len(columnas) + 1):
         ws.column_dimensions[get_column_letter(i)].width = 20
