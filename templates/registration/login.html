@@ -34,7 +34,12 @@
         🔐 Iniciar Sesión
       </button>
     </form>
-    <div style="margin-top:20px;text-align:center;font-size:12px;color:#999;">
+    <div style="margin-top:16px;text-align:center;font-size:13px;">
+      <a href="{% url 'password_reset' %}">¿Olvidó su contraseña?</a>
+      &nbsp;·&nbsp;
+      <a href="{% url 'registro' %}">Crear una cuenta</a>
+    </div>
+    <div style="margin-top:16px;text-align:center;font-size:12px;color:#999;">
       ¿Problemas para acceder? Contacta al administrador del sistema.
     </div>
   </div>

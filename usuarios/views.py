@@ -10,8 +10,29 @@ from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib import messages
 from .models import UsuarioRESP
-from .forms import UsuarioRESPForm, UsuarioRESPEditForm
+from .forms import UsuarioRESPForm, UsuarioRESPEditForm, RegistroForm, ActivarUsuarioForm
 from .mixins import AdministradorRequiredMixin, admin_requerido
+
+
+def registro(request):
+    """Auto-registro público (sin login). La cuenta queda inactiva —
+    is_active=False— hasta que un administrador la active asignándole rol
+    y dependencia (ver activar_usuario)."""
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+    if request.method == 'POST':
+        form = RegistroForm(request.POST)
+        if form.is_valid():
+            usuario = form.save()
+            messages.success(
+                request,
+                f'Su registro fue recibido, {usuario.first_name}. Un administrador debe activar su '
+                'cuenta (asignarle rol y dependencia) antes de que pueda iniciar sesión.'
+            )
+            return redirect('login')
+    else:
+        form = RegistroForm()
+    return render(request, 'registration/registro.html', {'form': form, 'titulo': 'Crear cuenta'})
 
 
 class UsuarioListView(AdministradorRequiredMixin, LoginRequiredMixin, ListView):
@@ -20,9 +41,22 @@ class UsuarioListView(AdministradorRequiredMixin, LoginRequiredMixin, ListView):
     context_object_name = 'usuarios'
     paginate_by = 20
 
+    def get_queryset(self):
+        qs = UsuarioRESP.objects.all().order_by('-fecha_registro')
+        estado = self.request.GET.get('estado', '')
+        if estado == 'pendientes':
+            qs = qs.filter(is_active=False, motivo_baja='')
+        elif estado == 'activos':
+            qs = qs.filter(activo_sistema=True)
+        elif estado == 'inactivos':
+            qs = qs.filter(activo_sistema=False)
+        return qs
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['titulo'] = 'Control de Usuarios'
+        ctx['estado'] = self.request.GET.get('estado', '')
+        ctx['pendientes_count'] = UsuarioRESP.objects.filter(is_active=False, motivo_baja='').count()
         return ctx
 
 
@@ -63,6 +97,27 @@ def inactivar_usuario(request, pk):
         messages.success(request, f'Usuario {usuario.email} inactivado.')
         return redirect('usuario_list')
     return render(request, 'usuarios/inactivar.html', {'usuario': usuario})
+
+
+@login_required
+@admin_requerido
+def activar_usuario(request, pk):
+    """Activa a un usuario (auto-registrado y pendiente, o reactivando a
+    uno dado de baja antes), asignándole/confirmándole rol y dependencia."""
+    usuario = get_object_or_404(UsuarioRESP, pk=pk)
+    if request.method == 'POST':
+        form = ActivarUsuarioForm(request.POST, instance=usuario)
+        if form.is_valid():
+            usuario = form.save(commit=False)
+            usuario.is_active = True
+            usuario.activo_sistema = True
+            usuario.motivo_baja = ''
+            usuario.save()
+            messages.success(request, f'Usuario {usuario.email} activado. Ya puede iniciar sesión.')
+            return redirect('usuario_list')
+    else:
+        form = ActivarUsuarioForm(instance=usuario)
+    return render(request, 'usuarios/activar.html', {'usuario': usuario, 'form': form, 'titulo': 'Activar Usuario'})
 
 
 @login_required

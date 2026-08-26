@@ -49,6 +49,14 @@ SESSION_COOKIE_HTTPONLY = True  # Previene acceso desde JavaScript
 SESSION_COOKIE_SAMESITE = 'Lax'  # Protección CSRF adicional
 SESSION_COOKIE_NAME = 'sessionid_app3'
 
+# La cookie de sesión ya tenía nombre propio (sessionid_app3) para no chocar
+# con otras apps del mismo servidor, pero la de CSRF se había quedado con el
+# nombre por defecto de Django ('csrftoken') — si otra app en el mismo
+# dominio también usa ese nombre, el navegador manda el csrftoken de LA OTRA
+# app y esta lo rechaza ("CSRF verification failed"). Con nombre propio se
+# resuelve.
+CSRF_COOKIE_NAME = 'csrftoken_app3'
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -104,6 +112,20 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/login/'
+
+# Correo para el link de "recuperar contraseña". Por defecto se imprime en
+# consola/log (no requiere SMTP, sirve para probar sin configurar nada) —
+# para que el correo realmente llegue a una bandeja de entrada, defina en
+# .env: EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend, más
+# EMAIL_HOST/EMAIL_PORT/EMAIL_HOST_USER/EMAIL_HOST_PASSWORD/EMAIL_USE_TLS
+# con los datos del servidor SMTP real.
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = config('EMAIL_HOST', default='')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='RESP Tabasco <no-responder@tabasco.gob.mx>')
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'
 CRISPY_TEMPLATE_PACK = 'bootstrap5'

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Activar Usuario{% endblock %}
+{% block page_title %}Activar Usuario{% endblock %}
+{% block content %}
+<div class="card" style="max-width:560px;margin:0 auto;">
+  <div class="card-header" style="background:var(--institucional-verde,#1E8449);color:#fff;">✅ Activar Usuario</div>
+  <div class="card-body">
+    <div class="alert-resp alert-info">
+      <strong>{{ usuario.get_full_name|default:usuario.username }}</strong> ({{ usuario.email }}) —
+      asigne su rol y dependencia para habilitarle el acceso.
+    </div>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="mb-3">
+        <label for="{{ form.rol.id_for_label }}" class="form-label fw-semibold">{{ form.rol.label }} <span class="text-danger">*</span></label>
+        {{ form.rol }}
+        {% if form.rol.errors %}<div class="text-danger small mt-1">{{ form.rol.errors|join:", " }}</div>{% endif %}
+      </div>
+      <div class="mb-3">
+        <label for="{{ form.dependencia.id_for_label }}" class="form-label fw-semibold">{{ form.dependencia.label }}</label>
+        {{ form.dependencia }}
+        {% if form.dependencia.errors %}<div class="text-danger small mt-1">{{ form.dependencia.errors|join:", " }}</div>{% endif %}
+      </div>
+      <hr style="margin:8px 0 16px;">
+      <div style="display:flex;gap:10px;">
+        <button type="submit" class="btn-institucional" style="background:#1E8449;">✅ Activar</button>
+        <a href="{% url 'usuario_list' %}" class="btn-outline">✕ Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

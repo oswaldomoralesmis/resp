@@ -4,10 +4,21 @@
 {% block content %}
 <div class="card">
   <div class="card-header" style="justify-content:space-between;">
-    <span>👥 Usuarios del Sistema</span>
+    <span>
+      👥 Usuarios del Sistema
+      {% if pendientes_count %}
+      <a href="?estado=pendientes" class="badge-pendiente" style="margin-left:8px;">🆕 {{ pendientes_count }} pendiente{{ pendientes_count|pluralize }} de activar</a>
+      {% endif %}
+    </span>
     <a href="{% url 'usuario_create' %}" class="btn-institucional btn-sm">➕ Nuevo Usuario</a>
   </div>
   <div class="card-body" style="padding:0;">
+    <div style="padding:14px 16px 0;display:flex;gap:8px;">
+      <a href="?" class="btn-outline btn-sm {% if not estado %}active{% endif %}">Todos</a>
+      <a href="?estado=activos" class="btn-outline btn-sm {% if estado == 'activos' %}active{% endif %}">Activos</a>
+      <a href="?estado=inactivos" class="btn-outline btn-sm {% if estado == 'inactivos' %}active{% endif %}">Inactivos</a>
+      <a href="?estado=pendientes" class="btn-outline btn-sm {% if estado == 'pendientes' %}active{% endif %}">Pendientes de activar</a>
+    </div>
     <table class="table-resp">
       <thead><tr><th>Nombre</th><th>Correo</th><th>RFC</th><th>Rol</th><th>Dependencia</th><th>Estado</th><th>Acciones</th></tr></thead>
       <tbody>
@@ -18,12 +29,18 @@
           <td><code>{{ u.rfc|default:"—" }}</code></td>
           <td><span class="badge-blue">{{ u.get_rol_display }}</span></td>
           <td>{{ u.dependencia|default:"—" }}</td>
-          <td>{% if u.activo_sistema %}<span class="badge-activo">Activo</span>{% else %}<span class="badge-inactivo">Inactivo</span>{% endif %}</td>
+          <td>
+            {% if u.activo_sistema %}<span class="badge-activo">Activo</span>
+            {% elif not u.motivo_baja %}<span class="badge-pendiente">🆕 Pendiente</span>
+            {% else %}<span class="badge-inactivo">Inactivo</span>{% endif %}
+          </td>
           <td>
             <a href="{% url 'usuario_update' u.pk %}" class="btn-institucional btn-sm">Editar</a>
             <a href="{% url 'usuario_reset_contrasena' u.pk %}" class="btn-dorado btn-sm">🔑 Reset</a>
             {% if u.activo_sistema and u.pk != request.user.pk %}
             <a href="{% url 'usuario_inactivar' u.pk %}" class="btn-rojo btn-sm">Inactivar</a>
+            {% elif not u.activo_sistema %}
+            <a href="{% url 'usuario_activar' u.pk %}" class="btn-institucional btn-sm" style="background:#1E8449;">✅ Activar</a>
             {% endif %}
           </td>
         </tr>

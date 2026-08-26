@@ -43,7 +43,10 @@ class UsuarioRESP(AbstractUser):
 
     def clean(self):
         super().clean()
-        if not self.es_administrador and not self.dependencia_id:
+        # Solo se exige para cuentas activas: un usuario recién auto-
+        # registrado queda inactivo sin rol/dependencia todavía —
+        # corresponde al administrador asignárselos al activarlo.
+        if self.is_active and not self.es_administrador and not self.dependencia_id:
             raise ValidationError({
                 'dependencia': 'La dependencia es obligatoria para usuarios que no son administradores.'
             })

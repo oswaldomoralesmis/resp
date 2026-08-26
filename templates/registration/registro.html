@@ -1,0 +1,80 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crear cuenta — RESP Tabasco</title>
+  <link rel="stylesheet" href="{% static 'css/resp.css' %}">
+</head>
+<body>
+<div class="login-page">
+  <div class="login-box" style="max-width:480px;">
+    <div class="login-logo">
+      <img src="{% static 'img/logo_resp.png' %}" alt="RESP — Registro Estatal de Servidores Públicos, Gobierno del Estado de Tabasco" class="login-logo-img">
+    </div>
+    <div class="alert-resp alert-info" style="font-size:13px;">
+      ℹ️ Su cuenta quedará <strong>pendiente</strong> hasta que un administrador le asigne rol y
+      dependencia. No podrá iniciar sesión hasta entonces.
+    </div>
+    {% for msg in messages %}
+    <div class="alert-resp alert-{{ msg.tags }}">{{ msg }}</div>
+    {% endfor %}
+    {% if form.non_field_errors %}
+    <div class="alert-resp alert-danger">{{ form.non_field_errors|join:", " }}</div>
+    {% endif %}
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div style="margin-bottom:14px;">
+        <label class="form-label">{{ form.username.label }}</label>
+        {{ form.username }}
+        {% if form.username.errors %}<div class="text-danger small mt-1">{{ form.username.errors|join:", " }}</div>{% endif %}
+      </div>
+      <div style="margin-bottom:14px;">
+        <label class="form-label">{{ form.email.label }}</label>
+        {{ form.email }}
+        {% if form.email.errors %}<div class="text-danger small mt-1">{{ form.email.errors|join:", " }}</div>{% endif %}
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:14px;">
+        <div style="flex:1;">
+          <label class="form-label">{{ form.first_name.label }}</label>
+          {{ form.first_name }}
+        </div>
+        <div style="flex:1;">
+          <label class="form-label">{{ form.last_name.label }}</label>
+          {{ form.last_name }}
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:14px;">
+        <div style="flex:1;">
+          <label class="form-label">{{ form.rfc.label }}</label>
+          {{ form.rfc }}
+          {% if form.rfc.errors %}<div class="text-danger small mt-1">{{ form.rfc.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div style="flex:1;">
+          <label class="form-label">{{ form.curp.label }}</label>
+          {{ form.curp }}
+          {% if form.curp.errors %}<div class="text-danger small mt-1">{{ form.curp.errors|join:", " }}</div>{% endif %}
+        </div>
+      </div>
+      <div style="margin-bottom:14px;">
+        <label class="form-label">{{ form.password1.label }}</label>
+        {{ form.password1 }}
+        {% if form.password1.errors %}<div class="text-danger small mt-1">{{ form.password1.errors|join:", " }}</div>{% endif %}
+      </div>
+      <div style="margin-bottom:24px;">
+        <label class="form-label">{{ form.password2.label }}</label>
+        {{ form.password2 }}
+        {% if form.password2.errors %}<div class="text-danger small mt-1">{{ form.password2.errors|join:", " }}</div>{% endif %}
+      </div>
+      <button type="submit" class="btn-institucional w-100" style="justify-content:center;padding:12px;">
+        📝 Crear cuenta
+      </button>
+    </form>
+    <div style="margin-top:16px;text-align:center;font-size:13px;">
+      <a href="{% url 'login' %}">← Volver a iniciar sesión</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>
