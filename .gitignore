@@ -17,7 +17,8 @@ staticfiles/
 
 .env
 
-# Excepto este archivo
+# Excepto estos archivos
 #!media/manuales/Manual_de_Usuario.pdf
 #!media/manuales/Manual_de_Adminin.pdf
+!Catalogo_Plazas.xlsx
 
