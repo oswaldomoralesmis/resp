@@ -14,6 +14,15 @@
 <form method="post" novalidate>
 {% csrf_token %}
 
+{% if form.errors %}
+<div class="alert-resp alert-danger">
+  &#9888;&#65039; No se guard&oacute; — revise los campos marcados en rojo:
+  <ul style="margin:6px 0 0 18px;">
+    {% for campo in form %}{% for error in campo.errors %}<li>{{ campo.label }}: {{ error }}</li>{% endfor %}{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
 <!-- INSTITUCIÓN -->
 <div class="card mb-3">
   <div class="card-header">&#127963;&#65039; Datos de la Instituci&oacute;n</div>
@@ -25,8 +34,9 @@
         {% if form.quincena.errors %}<div class="text-danger small mt-1">{{ form.quincena.errors|join:", " }}</div>{% endif %}
       </div>
       <div class="col-md-3">
-        <label for="{{ form.fuente_financiamiento.id_for_label }}" class="form-label fw-semibold">Fuente Financiamiento</label>
+        <label for="{{ form.fuente_financiamiento.id_for_label }}" class="form-label fw-semibold">Fuente Financiamiento <span class="text-danger">*</span></label>
         {{ form.fuente_financiamiento }}
+        {% if form.fuente_financiamiento.errors %}<div class="text-danger small mt-1">{{ form.fuente_financiamiento.errors|join:", " }}</div>{% endif %}
       </div>
       <div class="col-md-3">
         <label for="{{ form.dependencia.id_for_label }}" class="form-label fw-semibold">Dependencia <span class="text-danger">*</span></label>
@@ -57,6 +67,12 @@
       <div class="col-md-3">
         <label for="{{ form.id_plaza.id_for_label }}" class="form-label fw-semibold">ID Plaza <span class="text-danger">*</span></label>
         {{ form.id_plaza }}
+        {% if form.id_plaza.errors %}<div class="text-danger small mt-1">{{ form.id_plaza.errors|join:", " }}</div>{% endif %}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.puesto.id_for_label }}" class="form-label fw-semibold">Puesto (clave) <span class="text-danger">*</span></label>
+        {{ form.puesto }}
+        {% if form.puesto.errors %}<div class="text-danger small mt-1">{{ form.puesto.errors|join:", " }}</div>{% endif %}
       </div>
       <div class="col-md-3">
         <label for="{{ form.categoria.id_for_label }}" class="form-label fw-semibold">Categor&iacute;a</label>
@@ -67,6 +83,14 @@
         {{ form.nombramiento }}
       </div>
       <div class="col-md-3">
+        <label for="{{ form.tipo_personal.id_for_label }}" class="form-label fw-semibold">Tipo de Personal</label>
+        {{ form.tipo_personal }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.tipo_funcion.id_for_label }}" class="form-label fw-semibold">Tipo de Funci&oacute;n</label>
+        {{ form.tipo_funcion }}
+      </div>
+      <div class="col-md-3">
         <label for="{{ form.nivel_estructura.id_for_label }}" class="form-label fw-semibold">Nivel Estructura</label>
         {{ form.nivel_estructura }}
       </div>
@@ -75,8 +99,13 @@
         {{ form.id_plaza_jefe }}
       </div>
       <div class="col-md-3">
+        <label for="{{ form.puesto_jefe.id_for_label }}" class="form-label fw-semibold">Puesto Jefe (clave)</label>
+        {{ form.puesto_jefe }}
+      </div>
+      <div class="col-md-3">
         <label for="{{ form.estatus_plaza.id_for_label }}" class="form-label fw-semibold">Estatus Plaza <span class="text-danger">*</span></label>
         {{ form.estatus_plaza }}
+        {% if form.estatus_plaza.errors %}<div class="text-danger small mt-1">{{ form.estatus_plaza.errors|join:", " }}</div>{% endif %}
       </div>
       <div class="col-md-2">
         <label for="{{ form.hsm.id_for_label }}" class="form-label fw-semibold">HSM</label>
@@ -166,12 +195,43 @@
         {{ form.participa_contrataciones }}
       </div>
       <div class="col-md-3">
+        <label for="{{ form.nivel_contrataciones.id_for_label }}" class="form-label fw-semibold">Nivel en Contrataciones</label>
+        {{ form.nivel_contrataciones }}
+      </div>
+      <div class="col-md-3">
         <label for="{{ form.participa_concesiones.id_for_label }}" class="form-label fw-semibold">Concesiones</label>
         {{ form.participa_concesiones }}
       </div>
       <div class="col-md-3">
+        <label for="{{ form.nivel_concesiones.id_for_label }}" class="form-label fw-semibold">Nivel en Concesiones</label>
+        {{ form.nivel_concesiones }}
+      </div>
+      <div class="col-md-3">
         <label for="{{ form.participa_enajenacion.id_for_label }}" class="form-label fw-semibold">Enajenaci&oacute;n</label>
         {{ form.participa_enajenacion }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.nivel_enajenacion.id_for_label }}" class="form-label fw-semibold">Nivel en Enajenaci&oacute;n</label>
+        {{ form.nivel_enajenacion }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.participa_avaluos.id_for_label }}" class="form-label fw-semibold">Aval&uacute;os <span class="text-danger">*</span></label>
+        {{ form.participa_avaluos }}
+        {% if form.participa_avaluos.errors %}<div class="text-danger small mt-1">{{ form.participa_avaluos.errors|join:", " }}</div>{% endif %}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.nivel_avaluos.id_for_label }}" class="form-label fw-semibold">Nivel en Aval&uacute;os</label>
+        {{ form.nivel_avaluos }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.serc.id_for_label }}" class="form-label fw-semibold">SERC <span class="text-danger">*</span></label>
+        {{ form.serc }}
+        {% if form.serc.errors %}<div class="text-danger small mt-1">{{ form.serc.errors|join:", " }}</div>{% endif %}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.exigibilidad_serc.id_for_label }}" class="form-label fw-semibold">Exigibilidad SERC <span class="text-danger">*</span></label>
+        {{ form.exigibilidad_serc }}
+        {% if form.exigibilidad_serc.errors %}<div class="text-danger small mt-1">{{ form.exigibilidad_serc.errors|join:", " }}</div>{% endif %}
       </div>
       <div class="col-md-3">
         <label for="{{ form.inmueble.id_for_label }}" class="form-label fw-semibold">Inmueble</label>
@@ -180,6 +240,10 @@
     </div>
   </div>
 </div>
+
+{% if form.non_field_errors %}
+<div class="alert-resp alert-danger">{{ form.non_field_errors|join:", " }}</div>
+{% endif %}
 
 <div class="d-flex gap-2 mb-4">
   <button type="submit" class="btn-institucional">&#128190; Guardar</button>
