@@ -361,6 +361,22 @@ def servidor_baja(request, pk):
     })
 
 
+class BajaUpdateView(LoginRequiredMixin, DependenciaScopedMixin, UpdateView):
+    """Corrige los datos administrativos de una baja ya registrada (por
+    layout o manual). No permite cambiar el servidor ni la plaza liberada
+    —eso ya tuvo su efecto al darla de alta— solo dependencia/fecha/
+    motivo/ejercicio/periodo, igual que el alta manual (BajaForm)."""
+    model = BajaServidorPublico
+    form_class = BajaForm
+    template_name = 'servidores/baja_edit_form.html'
+    success_url = reverse_lazy('reporte_bajas')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['titulo'] = f'Editar Baja: {self.object.servidor.nombre_completo}'
+        return ctx
+
+
 @login_required
 def hoja_resp(request, pk):
     qs = filtrar_por_dependencia(
@@ -374,6 +390,12 @@ def hoja_resp(request, pk):
 
 
 class InformacionBasicaListView(LoginRequiredMixin, ListView):
+    """Por default solo muestra lo VIGENTE (activo=True) — lo mismo que
+    alimenta reportes y estadísticas. Con ?vista=todas se ve el histórico
+    completo (todas las quincenas, no solo la vigente por servidor+plaza),
+    útil para consultar/corregir una carga anterior; cada registro con
+    carga_origen enlaza de vuelta a esa carga. Con ?carga=<pk> se filtra a
+    solo lo generado por esa carga en particular (link desde su detalle)."""
     model = InformacionBasica
     template_name = 'servidores/info_basica_list.html'
     context_object_name = 'registros'
@@ -381,20 +403,29 @@ class InformacionBasicaListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         qs = filtrar_por_dependencia(
-            InformacionBasica.objects.filter(activo=True).select_related('servidor', 'dependencia', 'estatus_plaza'),
+            InformacionBasica.objects.select_related('servidor', 'dependencia', 'estatus_plaza', 'carga_origen'),
             self.request.user,
         )
+        carga_pk = self.request.GET.get('carga', '')
+        if carga_pk:
+            # Ver lo que generó ESA carga en particular importa sin importar
+            # si sigue vigente o ya quedó reemplazada por una carga posterior.
+            qs = qs.filter(carga_origen_id=carga_pk)
+        elif self.request.GET.get('vista') != 'todas':
+            qs = qs.filter(activo=True)
         q = self.request.GET.get('q', '')
         if q:
             qs = qs.filter(
                 Q(servidor__nombre__icontains=q) | Q(servidor__rfc__icontains=q) |
                 Q(id_plaza__icontains=q)
             )
-        return qs.order_by('-quincena')
+        return qs.order_by('-quincena', 'servidor__rfc')
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['titulo'] = 'Información Básica'
+        ctx['vista'] = self.request.GET.get('vista', 'vigentes')
+        ctx['carga_filtro'] = self.request.GET.get('carga', '')
         return ctx
 
 

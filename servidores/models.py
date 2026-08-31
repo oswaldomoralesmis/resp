@@ -264,6 +264,12 @@ class InformacionBasica(models.Model):
     quincena = models.CharField(max_length=7, verbose_name='Quincena (AAAA-QQ)')
     fecha_carga = models.DateTimeField(auto_now_add=True)
     activo = models.BooleanField(default=True)
+    carga_origen = models.ForeignKey(
+        'cargas.CargaLayout', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='registros_generados', verbose_name='Carga de origen',
+        help_text='Carga de layout que creó/actualizó este registro. Vacío en registros '
+                   'de antes de esta función o dados de alta manualmente.'
+    )
 
     class Meta:
         verbose_name = 'Información Básica'
@@ -288,6 +294,11 @@ class BajaServidorPublico(models.Model):
     periodo = models.CharField(max_length=7, verbose_name='Período')
     fecha_registro = models.DateTimeField(auto_now_add=True)
     registrado_por = models.ForeignKey('usuarios.UsuarioRESP', on_delete=models.SET_NULL, null=True)
+    carga_origen = models.ForeignKey(
+        'cargas.CargaLayout', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='bajas_generadas', verbose_name='Carga de origen',
+        help_text='Carga de layout que registró esta baja. Vacío si se dio de alta manualmente.'
+    )
 
     class Meta:
         verbose_name = 'Baja de Servidor Público'

@@ -166,7 +166,13 @@
             <td>
               {% if r.estado == 'ERROR' %}<span class="badge-inactivo">ERROR</span>
               {% elif r.estado == 'OMITIDA' %}<span class="badge-pendiente">OMITIDA</span>
-              {% else %}<span class="badge-activo">OK</span>{% endif %}
+              {% else %}<span class="badge-activo">OK</span>
+                {% if r.informacion_basica_id %}
+                <br><a href="{% url 'info_basica_update' r.informacion_basica_id %}" style="font-size:11px;">✏️ Ver/editar</a>
+                {% elif r.baja_id %}
+                <br><a href="{% url 'baja_update' r.baja_id %}" style="font-size:11px;">✏️ Ver/editar</a>
+                {% endif %}
+              {% endif %}
             </td>
             <td style="{% if r.estado == 'ERROR' or r.estado == 'OMITIDA' %}color:var(--institucional-rojo);font-weight:600;{% elif r.mensaje %}color:#856404;{% endif %}">
               {{ r.mensaje|default:"" }}
@@ -264,6 +270,11 @@
     <div style="margin-top:20px;display:flex;gap:10px;">
       <a href="{% url 'carga_list' %}" class="btn-outline">&#8592; Regresar</a>
       <a href="{% url 'carga_comprobante' carga.pk %}" class="btn-outline" target="_blank">&#128196; Comprobante PDF</a>
+      {% if carga.tipo == 'basica' and carga.registros_ok %}
+      <a href="{% url 'info_basica_list' %}?carga={{ carga.pk }}" class="btn-outline">&#128203; Ver registros generados</a>
+      {% elif carga.tipo == 'bajas' and carga.registros_ok %}
+      <a href="{% url 'reporte_bajas' %}?carga={{ carga.pk }}" class="btn-outline">&#128203; Ver bajas generadas</a>
+      {% endif %}
       <a href="{% url 'servidor_list' %}" class="btn-institucional">&#128100; Ver Padr&oacute;n</a>
     </div>
   </div>

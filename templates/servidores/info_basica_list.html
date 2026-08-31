@@ -9,28 +9,44 @@
     <a href="{% url 'info_basica_create' %}" class="btn-institucional btn-sm">➕ Nuevo Registro</a>
   </div>
   <div class="card-body">
-    <form method="get" style="margin-bottom:16px;">
+    {% if carga_filtro %}
+    <div class="alert-resp alert-info" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>Mostrando solo los registros generados por la <strong>Carga #{{ carga_filtro }}</strong>.</span>
+      <a href="{% url 'carga_detalle' carga_filtro %}" class="btn-outline btn-sm">← Ver esa carga</a>
+    </div>
+    {% endif %}
+    <form method="get" style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
       <div class="search-bar"><span>🔍</span>
         <input type="text" name="q" value="{{ request.GET.q }}" placeholder="RFC, nombre, ID plaza...">
         <button type="submit">Buscar</button>
       </div>
+      <div style="display:flex;gap:8px;">
+        <a href="?q={{ request.GET.q }}" class="btn-outline btn-sm {% if vista == 'vigentes' %}active{% endif %}">Vigentes</a>
+        <a href="?q={{ request.GET.q }}&vista=todas" class="btn-outline btn-sm {% if vista == 'todas' %}active{% endif %}">Todo el histórico</a>
+      </div>
     </form>
     <div style="overflow-x:auto;">
       <table class="table-resp">
-        <thead><tr><th>Quincena</th><th>Servidor</th><th>Dependencia</th><th>Plaza</th><th>Estatus</th><th>Neto</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Quincena</th><th>Servidor</th><th>RFC</th><th>Dependencia</th><th>Plaza</th><th>Estatus</th><th>Neto</th><th>Vigencia</th><th>Carga</th><th>Acciones</th></tr></thead>
         <tbody>
           {% for r in registros %}
           <tr>
             <td><span class="badge-blue">{{ r.quincena }}</span></td>
             <td>{{ r.servidor.primer_apellido }} {{ r.servidor.nombre }}</td>
+            <td><code>{{ r.servidor.rfc }}</code></td>
             <td>{{ r.dependencia.clave }}</td>
             <td>{{ r.id_plaza }}</td>
             <td>{{ r.estatus_plaza }}</td>
             <td>${{ r.total_neto|floatformat:2 }}</td>
+            <td>{% if r.activo %}<span class="badge-activo">Vigente</span>{% else %}<span class="badge-inactivo">Reemplazada</span>{% endif %}</td>
+            <td>
+              {% if r.carga_origen_id %}<a href="{% url 'carga_detalle' r.carga_origen_id %}">Carga #{{ r.carga_origen_id }}</a>
+              {% else %}<span class="text-muted">— manual —</span>{% endif %}
+            </td>
             <td><a href="{% url 'info_basica_update' r.pk %}" class="btn-institucional btn-sm">Editar</a></td>
           </tr>
           {% empty %}
-          <tr><td colspan="7" class="text-muted text-center" style="padding:30px;">Sin registros.</td></tr>
+          <tr><td colspan="10" class="text-muted text-center" style="padding:30px;">Sin registros.</td></tr>
           {% endfor %}
         </tbody>
       </table>

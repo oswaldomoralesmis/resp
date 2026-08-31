@@ -5,11 +5,26 @@
 <div class="flex-between mb-3 no-print">
   <div></div><button onclick="window.print()" class="btn-institucional btn-sm">🖨️ Imprimir</button>
 </div>
+{% if carga_filtro %}
+<div class="alert-resp alert-info no-print" style="display:flex;justify-content:space-between;align-items:center;">
+  <span>Mostrando solo las bajas generadas por la <strong>Carga #{{ carga_filtro }}</strong>.</span>
+  <a href="{% url 'carga_detalle' carga_filtro %}" class="btn-outline btn-sm">← Ver esa carga</a>
+</div>
+{% endif %}
 <div class="card">
-  <div class="card-header">🚫 Registro de Bajas</div>
-  <div class="card-body" style="padding:0;">
+  <div class="card-header" style="justify-content:space-between;">
+    <span>🚫 Registro de Bajas</span>
+  </div>
+  <div class="card-body">
+    <form method="get" class="mb-3 no-print">
+      <div class="search-bar"><span>🔍</span>
+        <input type="text" name="q" value="{{ q }}" placeholder="RFC, nombre, expediente...">
+        <button type="submit">Buscar</button>
+      </div>
+    </form>
+    <div style="overflow-x:auto;">
     <table class="table-resp">
-      <thead><tr><th>Fecha Baja</th><th>Dependencia</th><th>Expediente</th><th>RFC</th><th>Nombre</th><th>Motivo</th><th class="no-print">Acciones</th></tr></thead>
+      <thead><tr><th>Fecha Baja</th><th>Dependencia</th><th>Expediente</th><th>RFC</th><th>Nombre</th><th>Motivo</th><th class="no-print">Carga</th><th class="no-print">Acciones</th></tr></thead>
       <tbody>
         {% for b in bajas %}
         <tr>
@@ -19,11 +34,19 @@
           <td><code>{{ b.servidor.rfc }}</code></td>
           <td>{{ b.servidor.primer_apellido }} {{ b.servidor.nombre }}</td>
           <td>{{ b.motivo_baja }}</td>
-          <td class="no-print"><a href="{% url 'servidor_detail' b.servidor.pk %}" class="btn-outline btn-sm">Ver</a></td>
+          <td class="no-print">
+            {% if b.carga_origen_id %}<a href="{% url 'carga_detalle' b.carga_origen_id %}">Carga #{{ b.carga_origen_id }}</a>
+            {% else %}<span class="text-muted">— manual —</span>{% endif %}
+          </td>
+          <td class="no-print">
+            <a href="{% url 'servidor_detail' b.servidor.pk %}" class="btn-outline btn-sm">Ver</a>
+            <a href="{% url 'baja_update' b.pk %}" class="btn-institucional btn-sm">Editar</a>
+          </td>
         </tr>
-        {% empty %}<tr><td colspan="7" class="text-muted text-center" style="padding:30px;">Sin bajas registradas.</td></tr>{% endfor %}
+        {% empty %}<tr><td colspan="8" class="text-muted text-center" style="padding:30px;">Sin bajas registradas.</td></tr>{% endfor %}
       </tbody>
     </table>
+    </div>
   </div>
 </div>
 {% endblock %}

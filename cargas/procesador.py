@@ -809,7 +809,8 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
                     activo=True,
                 ).update(activo=False)
 
-                InformacionBasica.objects.create(
+                ib_creada = InformacionBasica.objects.create(
+                    carga_origen               = carga,
                     # Institución
                     fuente_financiamiento      = fuente,
                     dependencia                = dependencia,
@@ -884,7 +885,8 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
                 log.append(f'Fila {num_fila} RFC={rfc}: OK ({accion}) — Avisos: {"; ".join(avisos)}')
             filas_detalle.append({'fila': num_fila, 'rfc': rfc, 'curp': curp, 'nombre': nombre_completo,
                                    'id_plaza': id_plaza, 'estado': 'OK',
-                                   'mensaje': '; '.join(avisos)})
+                                   'mensaje': '; '.join(avisos),
+                                   'informacion_basica_id': ib_creada.pk})
 
         except Exception as e:
             errores += 1
@@ -1067,7 +1069,7 @@ def procesar_layout_bajas(carga, dry_run=True, overrides=None):
         # ninguna otra plaza asignada (puede tener más de una por compatibilidad).
         try:
             with transaction.atomic():
-                BajaServidorPublico.objects.create(
+                baja_creada = BajaServidorPublico.objects.create(
                     servidor=servidor,
                     dependencia=dependencia or carga.dependencia,
                     id_plaza=id_plaza,
@@ -1076,6 +1078,7 @@ def procesar_layout_bajas(carga, dry_run=True, overrides=None):
                     ejercicio=ejercicio_col or carga.periodo.ejercicio,
                     periodo=periodo_col or f'{carga.periodo.ejercicio}-{carga.periodo.quincena}',
                     registrado_por=carga.usuario_carga,
+                    carga_origen=carga,
                 )
                 reportar_puesto_vacante(id_plaza)
                 InformacionBasica.objects.filter(
@@ -1089,7 +1092,8 @@ def procesar_layout_bajas(carga, dry_run=True, overrides=None):
             if avisos:
                 log.append(f'Fila {num_fila} RFC={rfc}: OK — Avisos: {"; ".join(avisos)}')
             filas_detalle.append({'fila': num_fila, 'rfc': rfc, 'curp': curp, 'nombre': nombre_completo,
-                                   'id_plaza': id_plaza, 'estado': 'OK', 'mensaje': '; '.join(avisos)})
+                                   'id_plaza': id_plaza, 'estado': 'OK', 'mensaje': '; '.join(avisos),
+                                   'baja_id': baja_creada.pk})
 
         except Exception as e:
             errores += 1

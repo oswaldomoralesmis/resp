@@ -37,8 +37,21 @@ def reporte_padron(request):
 def reporte_bajas(request):
     bajas = filtrar_por_dependencia(
         BajaServidorPublico.objects.select_related('servidor', 'dependencia', 'motivo_baja'), request.user
-    ).order_by('-fecha_baja')
-    return render(request, 'reportes/bajas.html', {'bajas': bajas, 'titulo': 'Bajas de Servidores Públicos'})
+    )
+    carga_pk = request.GET.get('carga', '')
+    if carga_pk:
+        bajas = bajas.filter(carga_origen_id=carga_pk)
+    q = request.GET.get('q', '')
+    if q:
+        bajas = bajas.filter(
+            Q(servidor__rfc__icontains=q) | Q(servidor__nombre__icontains=q) |
+            Q(servidor__primer_apellido__icontains=q) | Q(servidor__expediente__icontains=q)
+        )
+    bajas = bajas.order_by('-fecha_baja')
+    return render(request, 'reportes/bajas.html', {
+        'bajas': bajas, 'titulo': 'Bajas de Servidores Públicos',
+        'q': q, 'carga_filtro': carga_pk,
+    })
 
 
 @login_required

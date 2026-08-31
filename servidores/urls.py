@@ -10,6 +10,7 @@ urlpatterns = [
     path('servidores/<int:pk>/', views.ServidorDetailView.as_view(), name='servidor_detail'),
     path('servidores/<int:pk>/editar/', views.ServidorUpdateView.as_view(), name='servidor_update'),
     path('servidores/<int:pk>/baja/', views.servidor_baja, name='servidor_baja'),
+    path('bajas/<int:pk>/editar/', views.BajaUpdateView.as_view(), name='baja_update'),
     path('servidores/<int:pk>/hoja-resp/', views.hoja_resp, name='hoja_resp'),
     path('informacion-basica/', views.InformacionBasicaListView.as_view(), name='info_basica_list'),
     path('informacion-basica/nueva/', views.InformacionBasicaCreateView.as_view(), name='info_basica_create'),
