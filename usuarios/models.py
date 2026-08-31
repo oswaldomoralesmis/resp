@@ -6,7 +6,7 @@ from django.db import models
 
 class UsuarioRESP(AbstractUser):
     ROL_CHOICES = [
-        ('plantilla', 'De Plantilla'),
+        ('plantilla', 'Operador'),
         ('validador', 'Validador'),
         ('empleado', 'Empleado'),
         ('consulta', 'Consulta'),

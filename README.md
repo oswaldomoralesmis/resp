@@ -65,7 +65,7 @@ python manage.py runserver 0.0.0.0:8000
 |--------|-------------|
 | `servidores` | Padrón de servidores, información básica quincenal, bajas |
 | `catalogos` | 20+ catálogos del sistema (dependencias, categorías, municipios, etc.) |
-| `usuarios` | Control de acceso con 7 roles: Plantilla, Validador, Empleado, Consulta, OIC, General, Administrador |
+| `usuarios` | Control de acceso con 7 roles: Operador, Validador, Empleado, Consulta, OIC, General, Administrador |
 | `cargas` | Carga masiva de layouts (Básica, Datos Personales, Bajas) con validación |
 | `reportes` | Padrón general, declaración patrimonial, entrega-recepción, bajas, compatibilidad, estadísticas |
 
@@ -73,7 +73,7 @@ python manage.py runserver 0.0.0.0:8000
 
 | Rol | Permisos |
 |-----|---------|
-| **De Plantilla** | Sube layouts quincenales, captura individual |
+| **Operador** | Sube layouts quincenales, captura individual |
 | **Validador** | Valida estudios, cursos, idiomas, discapacidades |
 | **Empleado** | Captura sus propios datos complementarios |
 | **Consulta** | Genera todos los reportes |
