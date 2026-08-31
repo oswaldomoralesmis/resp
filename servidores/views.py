@@ -17,7 +17,7 @@ from openpyxl.utils import get_column_letter
 from .models import (
     ServidorPublico, InformacionBasica, BajaServidorPublico, Puesto,
     DatosPersonales, DatosComplementarios, DiscapacidadServidor,
-    EnfermedadCronicaServidor, IdiomaServidor,
+    EnfermedadCronicaServidor, IdiomaServidor, LogEvento,
     sincronizar_puesto, liberar_puestos_de,
 )
 from .forms import (
@@ -207,6 +207,7 @@ class ServidorDetailView(LoginRequiredMixin, DependenciaScopedMixin, DetailView)
             servidor=self.object
         ).order_by('-quincena')[:10]
         ctx['bajas'] = self.object.bajas.select_related('motivo_baja', 'dependencia').order_by('-fecha_baja')
+        ctx['eventos_log'] = self.object.eventos_log.select_related('usuario', 'carga')[:30]
         ctx['titulo'] = f'Servidor: {self.object.nombre_completo}'
         return ctx
 
@@ -284,9 +285,14 @@ class ServidorUpdateView(LoginRequiredMixin, DependenciaScopedMixin, UpdateView)
         if form.is_valid() and form_personales.is_valid() and form_complementarios.is_valid():
             self.object = form.save()
 
+            datos_personales_es_nuevo = form_personales.instance.pk is None
             datos_personales = form_personales.save(commit=False)
             datos_personales.servidor = self.object
             datos_personales.save()
+            LogEvento.registrar(
+                'datos_personales', datos_personales.pk, self.object,
+                'creado' if datos_personales_es_nuevo else 'editado', 'manual', usuario=request.user,
+            )
 
             datos_complementarios = form_complementarios.save(commit=False)
             datos_complementarios.servidor = self.object
@@ -344,6 +350,7 @@ def servidor_baja(request, pk):
                 baja.servidor = servidor
                 baja.registrado_por = request.user
                 baja.save()
+                LogEvento.registrar('baja', baja.pk, servidor, 'creado', 'manual', usuario=request.user)
                 servidor.activo = False
                 servidor.save()
                 InformacionBasica.objects.filter(servidor=servidor, activo=True).update(activo=False)
@@ -375,6 +382,11 @@ class BajaUpdateView(LoginRequiredMixin, DependenciaScopedMixin, UpdateView):
         ctx = super().get_context_data(**kwargs)
         ctx['titulo'] = f'Editar Baja: {self.object.servidor.nombre_completo}'
         return ctx
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        LogEvento.registrar('baja', self.object.pk, self.object.servidor, 'editado', 'manual', usuario=self.request.user)
+        return response
 
 
 @login_required
@@ -718,6 +730,7 @@ class InformacionBasicaCreateView(LoginRequiredMixin, CreateView):
             dias_pagados=info.dias_pagados,
             id_plaza_jefe=info.id_plaza_jefe,
         )
+        LogEvento.registrar('informacion_basica', info.pk, info.servidor, 'creado', 'manual', usuario=user)
         return response
 
 
@@ -763,4 +776,5 @@ class InformacionBasicaUpdateView(LoginRequiredMixin, DependenciaScopedMixin, Up
             dias_pagados=info.dias_pagados,
             id_plaza_jefe=info.id_plaza_jefe,
         )
+        LogEvento.registrar('informacion_basica', info.pk, info.servidor, 'editado', 'manual', usuario=user)
         return response

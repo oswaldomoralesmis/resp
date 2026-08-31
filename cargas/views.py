@@ -76,6 +76,7 @@ def _procesar_carga_en_segundo_plano(carga_pk, dry_run, overrides=None, revisado
                     carga.revisado_por_id = revisado_por_pk
                     carga.fecha_revision = timezone.now()
                     carga.save()
+                _registrar_eventos_de_carga(carga, resultado['filas'], revisado_por_pk)
         except Exception as e:
             # Si falló validando (dry_run), no hay nada útil que revisar
             # todavía: con_errores, hay que resubir. Si falló aplicando de
@@ -87,6 +88,38 @@ def _procesar_carga_en_segundo_plano(carga_pk, dry_run, overrides=None, revisado
             carga.save()
     finally:
         connection.close()
+
+
+def _registrar_eventos_de_carga(carga, filas, revisado_por_pk):
+    """Bitácora (LogEvento) de lo que una carga aceptada aplicó de verdad:
+    un evento 'creado'/'carga' por cada Información Básica o Baja generada.
+    El usuario del evento es quien aceptó la carga (revisado_por), porque es
+    la acción que de verdad escribió en la base — no quien subió el archivo,
+    que pudo ser otra persona y en otro momento."""
+    from servidores.models import InformacionBasica, BajaServidorPublico, LogEvento
+
+    ib_ids = [f['informacion_basica_id'] for f in filas if f.get('informacion_basica_id')]
+    baja_ids = [f['baja_id'] for f in filas if f.get('baja_id')]
+    if not ib_ids and not baja_ids:
+        return
+
+    servidor_por_ib = dict(InformacionBasica.objects.filter(pk__in=ib_ids).values_list('pk', 'servidor_id'))
+    servidor_por_baja = dict(BajaServidorPublico.objects.filter(pk__in=baja_ids).values_list('pk', 'servidor_id'))
+
+    eventos = [
+        LogEvento(
+            modelo='informacion_basica', objeto_id=ib_id, servidor_id=servidor_por_ib.get(ib_id),
+            accion='creado', origen='carga', carga=carga, usuario_id=revisado_por_pk,
+        )
+        for ib_id in ib_ids
+    ] + [
+        LogEvento(
+            modelo='baja', objeto_id=baja_id, servidor_id=servidor_por_baja.get(baja_id),
+            accion='creado', origen='carga', carga=carga, usuario_id=revisado_por_pk,
+        )
+        for baja_id in baja_ids
+    ]
+    LogEvento.objects.bulk_create(eventos)
 
 
 def _lanzar_procesamiento(carga_pk, dry_run, overrides=None, revisado_por_pk=None):

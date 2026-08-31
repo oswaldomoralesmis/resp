@@ -122,4 +122,33 @@
   </div>
 </div>
 {% endif %}
+
+{% if eventos_log %}
+<div class="card">
+  <div class="card-header">📜 Historial de Eventos (últimos 30)</div>
+  <div class="card-body">
+    <table class="table-resp">
+      <thead><tr><th>Fecha</th><th>Modelo</th><th>Acción</th><th>Origen</th><th>Usuario</th></tr></thead>
+      <tbody>
+        {% for e in eventos_log %}
+        <tr>
+          <td>{{ e.fecha|date:"d/m/Y H:i" }}</td>
+          <td>{{ e.get_modelo_display }}</td>
+          <td>
+            {% if e.accion == 'creado' %}<span class="badge-activo">Creado</span>
+            {% else %}<span class="badge-pendiente">Editado</span>{% endif %}
+          </td>
+          <td>
+            {% if e.origen == 'carga' %}
+              {% if e.carga_id %}<a href="{% url 'carga_detalle' e.carga_id %}">Carga #{{ e.carga_id }}</a>{% else %}Carga{% endif %}
+            {% else %}Manual{% endif %}
+          </td>
+          <td>{{ e.usuario|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

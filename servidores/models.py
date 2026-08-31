@@ -306,3 +306,55 @@ class BajaServidorPublico(models.Model):
 
     def __str__(self):
         return f"Baja: {self.servidor} - {self.fecha_baja}"
+
+
+class LogEvento(models.Model):
+    """Bitácora de movimientos sobre Información Básica, Bajas y Datos
+    Personales: quién, cuándo, si fue por una carga de layout o editado a
+    mano. No reemplaza la trazabilidad de detalle que ya tiene cada modelo
+    (carga_origen en InformacionBasica/BajaServidorPublico) — la complementa
+    con un registro plano, cronológico y consultable por servidor/RFC."""
+    MODELO_CHOICES = [
+        ('informacion_basica', 'Información Básica'),
+        ('baja', 'Baja de Servidor Público'),
+        ('datos_personales', 'Datos Personales'),
+    ]
+    ACCION_CHOICES = [
+        ('creado', 'Creado'),
+        ('editado', 'Editado'),
+    ]
+    ORIGEN_CHOICES = [
+        ('carga', 'Carga de Layout'),
+        ('manual', 'Manual'),
+    ]
+    modelo = models.CharField(max_length=30, choices=MODELO_CHOICES, verbose_name='Modelo')
+    objeto_id = models.PositiveIntegerField(verbose_name='ID del registro')
+    servidor = models.ForeignKey(
+        ServidorPublico, on_delete=models.SET_NULL, null=True, related_name='eventos_log',
+        verbose_name='Servidor',
+    )
+    accion = models.CharField(max_length=10, choices=ACCION_CHOICES, verbose_name='Acción')
+    origen = models.CharField(max_length=10, choices=ORIGEN_CHOICES, verbose_name='Origen')
+    carga = models.ForeignKey(
+        'cargas.CargaLayout', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Carga',
+    )
+    usuario = models.ForeignKey(
+        'usuarios.UsuarioRESP', on_delete=models.SET_NULL, null=True, verbose_name='Usuario',
+    )
+    fecha = models.DateTimeField(auto_now_add=True, verbose_name='Fecha')
+
+    class Meta:
+        verbose_name = 'Evento de Log'
+        verbose_name_plural = 'Log de Eventos'
+        ordering = ['-fecha']
+        indexes = [models.Index(fields=['modelo', 'objeto_id'])]
+
+    def __str__(self):
+        return f"{self.get_modelo_display()} #{self.objeto_id} — {self.get_accion_display()} ({self.get_origen_display()})"
+
+    @classmethod
+    def registrar(cls, modelo, objeto_id, servidor, accion, origen, usuario=None, carga=None):
+        return cls.objects.create(
+            modelo=modelo, objeto_id=objeto_id, servidor=servidor, accion=accion,
+            origen=origen, usuario=usuario, carga=carga,
+        )
