@@ -10,4 +10,5 @@ urlpatterns = [
     path('<int:pk>/reset-contrasena/', views.resetear_contrasena, name='usuario_reset_contrasena'),
     path('cambiar-contrasena/', views.cambiar_contrasena, name='cambiar_contrasena'),
     path('perfil/', views.perfil, name='perfil'),
+    path('permisos/', views.permisos_rol, name='permisos_rol'),
 ]

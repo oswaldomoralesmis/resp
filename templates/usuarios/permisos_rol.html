@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Permisos por Rol{% endblock %}
+{% block page_title %}Permisos por Rol{% endblock %}
+{% block content %}
+<div class="breadcrumb-resp">
+  <a href="{% url 'dashboard' %}">🏠</a><span class="sep">›</span><span>Permisos por Rol</span>
+</div>
+
+<div class="alert-resp alert-info">
+  ℹ️ Marque qué opciones del menú puede ver y usar cada rol. <strong>Administrador</strong> no aparece
+  aquí porque siempre tiene acceso total a todo el sistema, sin excepción.
+</div>
+
+<form method="post">
+  {% csrf_token %}
+  <div class="card">
+    <div class="card-header" style="justify-content:space-between;">
+      <span>🛡️ Matriz de Permisos</span>
+      <button type="submit" class="btn-institucional btn-sm">💾 Guardar Cambios</button>
+    </div>
+    <div class="card-body" style="padding:0;">
+      <div style="overflow-x:auto;">
+        <table class="table-resp">
+          <thead>
+            <tr>
+              <th>Opción del Menú</th>
+              {% for rol_key, rol_label in roles %}
+              <th style="text-align:center;">{{ rol_label }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for modulo, filas in modulos.items %}
+            <tr style="background:#f5f7fa;">
+              <td colspan="{{ roles|length|add:1 }}"><strong>{{ modulo }}</strong></td>
+            </tr>
+            {% for fila in filas %}
+            <tr>
+              <td>{{ fila.opcion.nombre }}</td>
+              {% for permiso in fila.permisos %}
+              <td style="text-align:center;">
+                <input type="checkbox" name="{{ permiso.campo }}" {% if permiso.permitido %}checked{% endif %} style="width:auto;">
+              </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+            {% empty %}
+            <tr><td colspan="{{ roles|length|add:1 }}" class="text-muted text-center" style="padding:30px;">Sin opciones configuradas.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="d-flex gap-2 mt-3 mb-4">
+    <button type="submit" class="btn-institucional">💾 Guardar Cambios</button>
+    <a href="{% url 'dashboard' %}" class="btn-outline">✕ Cancelar</a>
+  </div>
+</form>
+{% endblock %}

@@ -17,27 +17,56 @@
     <span class="nav-section">Principal</span>
     <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"><span class="nav-icon">📊</span> Dashboard</a>
     <span class="nav-section">Servidores Públicos</span>
+    {% if 'padron' in opciones_permitidas %}
     <a href="{% url 'servidor_list' %}" class="nav-link {% if 'servidor' in request.resolver_match.url_name|default:'' %}active{% endif %}"><span class="nav-icon">👤</span> Padrón</a>
+    {% endif %}
+    {% if 'info_basica' in opciones_permitidas %}
     <a href="{% url 'info_basica_list' %}" class="nav-link {% if 'info_basica' in request.resolver_match.url_name|default:'' %}active{% endif %}"><span class="nav-icon">📋</span> Inf. Básica Quincenal</a>
+    {% endif %}
+    {% if 'plazas' in opciones_permitidas %}
     <a href="{% url 'puesto_list' %}" class="nav-link {% if request.resolver_match.url_name == 'puesto_list' %}active{% endif %}"><span class="nav-icon">📌</span> Plazas</a>
+    {% endif %}
     <span class="nav-section">Carga de Información</span>
+    {% if 'calendario_cargas' in opciones_permitidas %}
     <a href="{% url 'calendario_cargas' %}" class="nav-link {% if request.resolver_match.url_name == 'calendario_cargas' or request.resolver_match.url_name == 'carga_new' %}active{% endif %}"><span class="nav-icon">📅</span> Calendario (Cargar Layout)</a>
+    {% endif %}
+    {% if 'historial_cargas' in opciones_permitidas %}
     <a href="{% url 'carga_list' %}" class="nav-link {% if request.resolver_match.url_name == 'carga_list' %}active{% endif %}"><span class="nav-icon">📁</span> Historial Cargas</a>
+    {% endif %}
     <span class="nav-section">Reportes</span>
+    {% if 'reporte_padron' in opciones_permitidas %}
     <a href="{% url 'reporte_padron' %}" class="nav-link"><span class="nav-icon">📄</span> Padrón General</a>
+    {% endif %}
+    {% if 'reporte_declaracion' in opciones_permitidas %}
     <a href="{% url 'reporte_declaracion' %}" class="nav-link"><span class="nav-icon">⚖️</span> Declaración Patrimonial</a>
+    {% endif %}
+    {% if 'reporte_entrega_recepcion' in opciones_permitidas %}
     <a href="{% url 'reporte_entrega_recepcion' %}" class="nav-link"><span class="nav-icon">🤝</span> Entrega-Recepción</a>
+    {% endif %}
+    {% if 'reporte_bajas' in opciones_permitidas %}
     <a href="{% url 'reporte_bajas' %}" class="nav-link"><span class="nav-icon">🚫</span> Bajas</a>
+    {% endif %}
+    {% if 'reporte_compatibilidad' in opciones_permitidas %}
     <a href="{% url 'reporte_compatibilidad' %}" class="nav-link"><span class="nav-icon">🔄</span> Compatibilidad</a>
+    {% endif %}
+    {% if 'reporte_estadisticas' in opciones_permitidas %}
     <a href="{% url 'reporte_estadisticas' %}" class="nav-link"><span class="nav-icon">📈</span> Estadísticas</a>
+    {% endif %}
     <span class="nav-section">Administración</span>
+    {% if 'catalogos' in opciones_permitidas %}
     <a href="{% url 'catalogo_index' %}" class="nav-link"><span class="nav-icon">🗂️</span> Catálogos</a>
-    {% if request.user.rol == 'administrador' %}
+    {% endif %}
+    {% if 'usuarios' in opciones_permitidas %}
     <a href="{% url 'usuario_list' %}" class="nav-link"><span class="nav-icon">👥</span> Usuarios</a>
     {% endif %}
+    {% if 'periodos_carga' in opciones_permitidas %}
     <a href="{% url 'periodo_list' %}" class="nav-link"><span class="nav-icon">⚙️</span> Períodos de Carga</a>
-    {% if request.user.rol == 'administrador' %}
+    {% endif %}
+    {% if 'excepciones_acceso' in opciones_permitidas %}
     <a href="{% url 'excepcion_list' %}" class="nav-link {% if 'excepcion' in request.resolver_match.url_name|default:'' %}active{% endif %}"><span class="nav-icon">🔓</span> Excepciones de Acceso</a>
+    {% endif %}
+    {% if request.user.es_administrador %}
+    <a href="{% url 'permisos_rol' %}" class="nav-link {% if request.resolver_match.url_name == 'permisos_rol' %}active{% endif %}"><span class="nav-icon">🛡️</span> Permisos por Rol</a>
     {% endif %}
   </nav>
   <div class="sidebar-footer">

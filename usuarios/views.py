@@ -9,9 +9,9 @@ from django.urls import reverse_lazy
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib import messages
-from .models import UsuarioRESP
+from .models import UsuarioRESP, OpcionAplicativo, RolPermiso, ROLES_CONFIGURABLES
 from .forms import UsuarioRESPForm, UsuarioRESPEditForm, RegistroForm, ActivarUsuarioForm
-from .mixins import AdministradorRequiredMixin, admin_requerido
+from .mixins import AdministradorRequiredMixin, admin_requerido, PermisoRequeridoMixin, permiso_requerido
 
 
 def registro(request):
@@ -35,7 +35,8 @@ def registro(request):
     return render(request, 'registration/registro.html', {'form': form, 'titulo': 'Crear cuenta'})
 
 
-class UsuarioListView(AdministradorRequiredMixin, LoginRequiredMixin, ListView):
+class UsuarioListView(LoginRequiredMixin, PermisoRequeridoMixin, ListView):
+    permiso_clave = 'usuarios'
     model = UsuarioRESP
     template_name = 'usuarios/list.html'
     context_object_name = 'usuarios'
@@ -60,7 +61,8 @@ class UsuarioListView(AdministradorRequiredMixin, LoginRequiredMixin, ListView):
         return ctx
 
 
-class UsuarioCreateView(AdministradorRequiredMixin, LoginRequiredMixin, CreateView):
+class UsuarioCreateView(LoginRequiredMixin, PermisoRequeridoMixin, CreateView):
+    permiso_clave = 'usuarios'
     model = UsuarioRESP
     form_class = UsuarioRESPForm
     template_name = 'usuarios/form.html'
@@ -72,7 +74,8 @@ class UsuarioCreateView(AdministradorRequiredMixin, LoginRequiredMixin, CreateVi
         return ctx
 
 
-class UsuarioUpdateView(AdministradorRequiredMixin, LoginRequiredMixin, UpdateView):
+class UsuarioUpdateView(LoginRequiredMixin, PermisoRequeridoMixin, UpdateView):
+    permiso_clave = 'usuarios'
     model = UsuarioRESP
     form_class = UsuarioRESPEditForm
     template_name = 'usuarios/form.html'
@@ -85,7 +88,7 @@ class UsuarioUpdateView(AdministradorRequiredMixin, LoginRequiredMixin, UpdateVi
 
 
 @login_required
-@admin_requerido
+@permiso_requerido('usuarios')
 def inactivar_usuario(request, pk):
     usuario = get_object_or_404(UsuarioRESP, pk=pk)
     if request.method == 'POST':
@@ -100,7 +103,7 @@ def inactivar_usuario(request, pk):
 
 
 @login_required
-@admin_requerido
+@permiso_requerido('usuarios')
 def activar_usuario(request, pk):
     """Activa a un usuario (auto-registrado y pendiente, o reactivando a
     uno dado de baja antes), asignándole/confirmándole rol y dependencia."""
@@ -121,7 +124,7 @@ def activar_usuario(request, pk):
 
 
 @login_required
-@admin_requerido
+@permiso_requerido('usuarios')
 def resetear_contrasena(request, pk):
     """Genera una contraseña temporal aleatoria para el usuario y la marca
     como 'contraseña temporal' para que la cambie en su próximo ingreso."""
@@ -159,3 +162,46 @@ def cambiar_contrasena(request):
 @login_required
 def perfil(request):
     return render(request, 'usuarios/perfil.html', {'titulo': 'Mi Perfil'})
+
+
+@login_required
+@admin_requerido
+def permisos_rol(request):
+    """Matriz Rol × Opción del menú: qué puede ver/entrar cada rol.
+    A propósito NO usa permiso_requerido('usuarios') ni ninguna otra clave
+    configurable — queda fija en admin_requerido para que nunca se pueda
+    dar a un rol la posibilidad de otorgarse permisos a sí mismo."""
+    opciones = OpcionAplicativo.objects.all().order_by('orden', 'modulo', 'nombre')
+
+    if request.method == 'POST':
+        for opcion in opciones:
+            for rol_key, _rol_label in ROLES_CONFIGURABLES:
+                permitido = request.POST.get(f'perm_{opcion.pk}_{rol_key}') == 'on'
+                RolPermiso.objects.update_or_create(
+                    rol=rol_key, opcion=opcion, defaults={'permitido': permitido},
+                )
+        messages.success(request, 'Permisos actualizados.')
+        return redirect('permisos_rol')
+
+    permisos_actuales = {
+        (p.opcion_id, p.rol): p.permitido
+        for p in RolPermiso.objects.all()
+    }
+    modulos = {}
+    for opcion in opciones:
+        modulos.setdefault(opcion.modulo, []).append({
+            'opcion': opcion,
+            'permisos': [
+                {
+                    'campo': f'perm_{opcion.pk}_{rol_key}',
+                    'permitido': permisos_actuales.get((opcion.pk, rol_key), False),
+                }
+                for rol_key, _rol_label in ROLES_CONFIGURABLES
+            ],
+        })
+
+    return render(request, 'usuarios/permisos_rol.html', {
+        'modulos': modulos,
+        'roles': ROLES_CONFIGURABLES,
+        'titulo': 'Permisos por Rol',
+    })

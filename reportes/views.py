@@ -5,7 +5,7 @@ from django.db.models import Count, Q
 from django.http import HttpResponse
 from servidores.models import ServidorPublico, InformacionBasica, BajaServidorPublico, Puesto
 from catalogos.models import Dependencia
-from usuarios.mixins import filtrar_por_dependencia
+from usuarios.mixins import filtrar_por_dependencia, permiso_requerido
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 
@@ -16,6 +16,7 @@ def reporte_index(request):
 
 
 @login_required
+@permiso_requerido('reporte_padron')
 def reporte_padron(request):
     qs = filtrar_por_dependencia(
         ServidorPublico.objects.filter(activo=True).select_related('entidad_nacimiento', 'pais_nacimiento', 'sindicato'),
@@ -34,6 +35,7 @@ def reporte_padron(request):
 
 
 @login_required
+@permiso_requerido('reporte_bajas')
 def reporte_bajas(request):
     bajas = filtrar_por_dependencia(
         BajaServidorPublico.objects.select_related('servidor', 'dependencia', 'motivo_baja'), request.user
@@ -55,6 +57,7 @@ def reporte_bajas(request):
 
 
 @login_required
+@permiso_requerido('reporte_declaracion')
 def reporte_declaracion(request):
     registros = filtrar_por_dependencia(
         InformacionBasica.objects.filter(activo=True, oblig_declaracion='S')
@@ -67,6 +70,7 @@ def reporte_declaracion(request):
 
 
 @login_required
+@permiso_requerido('reporte_entrega_recepcion')
 def reporte_entrega_recepcion(request):
     registros = filtrar_por_dependencia(
         InformacionBasica.objects.filter(activo=True, oblig_entrega_recepcion='S').select_related('servidor', 'dependencia'),
@@ -78,6 +82,7 @@ def reporte_entrega_recepcion(request):
 
 
 @login_required
+@permiso_requerido('reporte_compatibilidad')
 def reporte_compatibilidad(request):
     servidores_doble = filtrar_por_dependencia(
         ServidorPublico.objects.filter(activo=True, tiene_otra_plaza='S'),
@@ -102,6 +107,7 @@ def _distribucion(qs, campo, top=None):
 
 
 @login_required
+@permiso_requerido('reporte_estadisticas')
 def reporte_estadisticas(request):
     info_visible = filtrar_por_dependencia(InformacionBasica.objects.filter(activo=True), request.user)
     puestos_visibles = filtrar_por_dependencia(Puesto.objects.all(), request.user, 'proyecto__dependencia')

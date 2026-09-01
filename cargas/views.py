@@ -24,7 +24,7 @@ from .procesador import procesar_layout_basica, procesar_layout_bajas
 from .comprobante import generar_comprobante_pdf
 from usuarios.mixins import (
     AdministradorRequiredMixin, DependenciaScopedMixin, filtrar_por_dependencia,
-    admin_requerido, puede_revisar_carga,
+    admin_requerido, puede_revisar_carga, PermisoRequeridoMixin, permiso_requerido,
 )
 
 
@@ -137,7 +137,8 @@ DIAS_SEMANA = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 PRIORIDAD_ESTADO = {'verde': 0, 'dorado': 1, 'rojo': 2}
 
 
-class CargaListView(LoginRequiredMixin, DependenciaScopedMixin, ListView):
+class CargaListView(LoginRequiredMixin, PermisoRequeridoMixin, DependenciaScopedMixin, ListView):
+    permiso_clave = 'historial_cargas'
     model = CargaLayout
     template_name = 'cargas/list.html'
     context_object_name = 'cargas'
@@ -152,6 +153,7 @@ class CargaListView(LoginRequiredMixin, DependenciaScopedMixin, ListView):
 
 
 @login_required
+@permiso_requerido('calendario_cargas')
 def carga_layout(request):
     """La carga siempre es contra el período de carga activo (PeriodoCarga con
     activo=True); no se permite elegir otro desde este formulario. El TIPO de
@@ -510,6 +512,7 @@ def carga_rechazar(request, pk):
 
 
 @login_required
+@permiso_requerido('calendario_cargas')
 def calendario_cargas(request):
     """Calendario de un solo mes (estilo Google Calendar): resalta los días
     en los que hay una ventana de carga abierta, próxima o cerrada para
@@ -612,7 +615,8 @@ def calendario_cargas(request):
     })
 
 
-class PeriodoCargaListView(LoginRequiredMixin, ListView):
+class PeriodoCargaListView(LoginRequiredMixin, PermisoRequeridoMixin, ListView):
+    permiso_clave = 'periodos_carga'
     model = PeriodoCarga
     template_name = 'cargas/periodo_list.html'
     context_object_name = 'periodos'
@@ -624,7 +628,10 @@ class PeriodoCargaListView(LoginRequiredMixin, ListView):
         return ctx
 
 
-class PeriodoCargaCreateView(LoginRequiredMixin, CreateView):
+class PeriodoCargaCreateView(LoginRequiredMixin, AdministradorRequiredMixin, CreateView):
+    """Admin-only —igual que generar_periodos/activar_periodo—, no depende
+    de la opción de menú 'periodos_carga' (esa solo controla quién puede
+    ENTRAR a consultar la lista, no quién puede crear períodos)."""
     model = PeriodoCarga
     form_class = PeriodoCargaForm
     template_name = 'cargas/periodo_form.html'
@@ -667,7 +674,8 @@ def activar_periodo(request, pk):
     return redirect('periodo_list')
 
 
-class AccesoExcepcionListView(AdministradorRequiredMixin, ListView):
+class AccesoExcepcionListView(PermisoRequeridoMixin, ListView):
+    permiso_clave = 'excepciones_acceso'
     model = AccesoExcepcionCarga
     template_name = 'cargas/excepcion_list.html'
     context_object_name = 'excepciones'
@@ -681,7 +689,8 @@ class AccesoExcepcionListView(AdministradorRequiredMixin, ListView):
         return ctx
 
 
-class AccesoExcepcionCreateView(AdministradorRequiredMixin, CreateView):
+class AccesoExcepcionCreateView(PermisoRequeridoMixin, CreateView):
+    permiso_clave = 'excepciones_acceso'
     model = AccesoExcepcionCarga
     form_class = AccesoExcepcionCargaForm
     template_name = 'cargas/excepcion_form.html'
@@ -697,7 +706,8 @@ class AccesoExcepcionCreateView(AdministradorRequiredMixin, CreateView):
         return ctx
 
 
-class AccesoExcepcionDeleteView(AdministradorRequiredMixin, DeleteView):
+class AccesoExcepcionDeleteView(PermisoRequeridoMixin, DeleteView):
+    permiso_clave = 'excepciones_acceso'
     model = AccesoExcepcionCarga
     template_name = 'cargas/excepcion_confirm_delete.html'
     success_url = reverse_lazy('excepcion_list')

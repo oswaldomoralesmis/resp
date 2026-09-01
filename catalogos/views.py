@@ -12,7 +12,10 @@ from django.db.models.deletion import Collector
 from django.core.files.storage import default_storage
 from django.contrib import messages
 
-from usuarios.mixins import AdministradorRequiredMixin, DependenciaScopedMixin, DependenciaFormRestrictMixin, filtrar_por_dependencia, admin_requerido
+from usuarios.mixins import (
+    AdministradorRequiredMixin, DependenciaScopedMixin, DependenciaFormRestrictMixin,
+    filtrar_por_dependencia, admin_requerido, PermisoRequeridoMixin, permiso_requerido,
+)
 
 from .models import (
     FuenteFinanciamiento, Dependencia, UnidadAdministrativa,
@@ -34,6 +37,8 @@ from .forms import (
 )
 
 # ── Índice ────────────────────────────────────────────────────────────────────
+@login_required
+@permiso_requerido('catalogos')
 def catalogo_index(request):
     grupos = [
         {
@@ -112,10 +117,16 @@ class CatalogoMixin(LoginRequiredMixin):
         return ctx
 
 
-def make_list_view(model, template, titulo, search_fields=None, paginate=30, extra_ctx=None, dependencia_lookup=None):
+def make_list_view(model, template, titulo, search_fields=None, paginate=30, extra_ctx=None,
+                    dependencia_lookup=None, permiso_clave='catalogos'):
     """Factoría de ListViews para catálogos simples. 'dependencia_lookup' activa
-    el filtrado por dependencia del usuario (None = catálogo global, sin filtrar)."""
-    class V(LoginRequiredMixin, ListView):
+    el filtrado por dependencia del usuario (None = catálogo global, sin filtrar).
+    'permiso_clave' exige esa OpcionAplicativo (ver usuarios.mixins); None la
+    omite (para vistas que ya traen su propio control de acceso, p.ej. con
+    AdministradorRequiredMixin en 'mixins')."""
+    bases = (LoginRequiredMixin, PermisoRequeridoMixin) if permiso_clave else (LoginRequiredMixin,)
+
+    class V(*bases, ListView):
         queryset         = model.objects.all()
         template_name    = template
         context_object_name = 'registros'
@@ -140,12 +151,20 @@ def make_list_view(model, template, titulo, search_fields=None, paginate=30, ext
             if extra_ctx:
                 ctx.update(extra_ctx() if callable(extra_ctx) else extra_ctx)
             return ctx
+    if permiso_clave:
+        V.permiso_clave = permiso_clave
     return V
 
 
-def make_create_view(model, form_class, success_url, titulo, back_url, template='catalogos/form_generica.html', mixins=()):
-    """'mixins' se insertan antes de CreateView (ej. DependenciaFormRestrictMixin)."""
-    class V(*mixins, CatalogoMixin, CreateView):
+def make_create_view(model, form_class, success_url, titulo, back_url, template='catalogos/form_generica.html',
+                      mixins=(), permiso_clave='catalogos'):
+    """'mixins' se insertan antes de CreateView (ej. DependenciaFormRestrictMixin,
+    o AdministradorRequiredMixin para catálogos sensibles — en ese caso pase
+    permiso_clave=None, porque combinar dos mixins de tipo UserPassesTestMixin
+    en la misma clase solo deja activo el primero, no los dos a la vez)."""
+    bases = (*mixins, PermisoRequeridoMixin, CatalogoMixin) if permiso_clave else (*mixins, CatalogoMixin)
+
+    class V(*bases, CreateView):
         pass
     V.model        = model
     V.form_class   = form_class
@@ -153,12 +172,18 @@ def make_create_view(model, form_class, success_url, titulo, back_url, template=
     V.success_url        = reverse_lazy(success_url)
     V.titulo             = titulo
     V.back_url_name      = back_url
+    if permiso_clave:
+        V.permiso_clave = permiso_clave
     return V
 
 
-def make_update_view(model, form_class, success_url, titulo_prefix, back_url, template='catalogos/form_generica.html', mixins=()):
-    """'mixins' se insertan antes de UpdateView (ej. DependenciaFormRestrictMixin)."""
-    class V(*mixins, LoginRequiredMixin, UpdateView):
+def make_update_view(model, form_class, success_url, titulo_prefix, back_url, template='catalogos/form_generica.html',
+                      mixins=(), permiso_clave='catalogos'):
+    """'mixins' se insertan antes de UpdateView (ej. DependenciaFormRestrictMixin);
+    ver nota de permiso_clave en make_create_view."""
+    bases = (*mixins, PermisoRequeridoMixin, LoginRequiredMixin) if permiso_clave else (*mixins, LoginRequiredMixin)
+
+    class V(*bases, UpdateView):
         def get_context_data(self, **kwargs):
             ctx = super().get_context_data(**kwargs)
             ctx['titulo']   = f'{titulo_prefix}: {self.object}'
@@ -168,14 +193,19 @@ def make_update_view(model, form_class, success_url, titulo_prefix, back_url, te
     V.form_class   = form_class
     V.template_name      = template
     V.success_url        = reverse_lazy(success_url)
+    if permiso_clave:
+        V.permiso_clave = permiso_clave
     return V
 
 
-def make_delete_view(model, success_url, titulo_prefix, back_url, template='catalogos/confirm_delete.html'):
+def make_delete_view(model, success_url, titulo_prefix, back_url, template='catalogos/confirm_delete.html',
+                      permiso_clave='catalogos'):
     """Factoría de vistas de eliminación con confirmación. Muestra qué otros
     registros se borrarían en cascada y evita romper la app si el catálogo
     está protegido por alguna relación (PROTECT)."""
-    class V(LoginRequiredMixin, DeleteView):
+    bases = (LoginRequiredMixin, PermisoRequeridoMixin) if permiso_clave else (LoginRequiredMixin,)
+
+    class V(*bases, DeleteView):
         def get_context_data(self, **kwargs):
             ctx = super().get_context_data(**kwargs)
             ctx['titulo']   = f'{titulo_prefix}: {self.object}'
@@ -204,6 +234,8 @@ def make_delete_view(model, success_url, titulo_prefix, back_url, template='cata
     V.model        = model
     V.template_name = template
     V.success_url   = reverse_lazy(success_url)
+    if permiso_clave:
+        V.permiso_clave = permiso_clave
     return V
 
 
@@ -225,10 +257,10 @@ DependenciaListView   = make_list_view(Dependencia, 'catalogos/simple_list.html'
                                        extra_ctx={'catalogo_slug': 'dependencia', 'export_slug': 'dependencia'})
 DependenciaCreateView = make_create_view(Dependencia, DependenciaForm,
                                          'dependencia_list', 'Nueva Dependencia', 'dependencia_list',
-                                         mixins=(AdministradorRequiredMixin,))
+                                         mixins=(AdministradorRequiredMixin,), permiso_clave=None)
 DependenciaUpdateView = make_update_view(Dependencia, DependenciaForm,
                                          'dependencia_list', 'Editar Dependencia', 'dependencia_list',
-                                         mixins=(AdministradorRequiredMixin,))
+                                         mixins=(AdministradorRequiredMixin,), permiso_clave=None)
 
 # ── Unidades Administrativas ──────────────────────────────────────────────────
 class UnidadListView(LoginRequiredMixin, ListView):
@@ -513,6 +545,7 @@ InmuebleUpdateView = make_update_view(Inmueble, InmuebleForm, 'inmueble_list', '
 
 # ── Descarga de plantillas ────────────────────────────────────────────────────
 @login_required
+@permiso_requerido('catalogos')
 def descargar_catalogo(request, catalogo):
     nombres = {
         'fuente':      'Catalogo_Fuente.xlsx',
@@ -540,6 +573,7 @@ def descargar_catalogo(request, catalogo):
 
 # ── Exportar TODOS los registros de un catálogo a Excel ───────────────────────
 @login_required
+@permiso_requerido('catalogos')
 def exportar_catalogo_excel(request, catalogo):
     """A diferencia de 'descargar_catalogo' (plantilla en blanco para
     importar), esto exporta los registros que YA existen en la tabla —

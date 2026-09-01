@@ -25,6 +25,42 @@ def admin_requerido(view_func):
     return wrapper
 
 
+def usuario_tiene_permiso(user, clave_opcion):
+    """Si 'user' puede entrar a la opción de menú 'clave_opcion' (ver
+    OpcionAplicativo/RolPermiso). El administrador siempre tiene acceso
+    total, sin excepción — no depende de que exista/esté marcada la fila
+    de RolPermiso, así nunca se puede dejar sin acceso por un error de
+    configuración. Para cualquier otro rol, sin fila RolPermiso = sin
+    acceso (deniega por defecto)."""
+    if not user.is_authenticated:
+        return False
+    if user.es_administrador:
+        return True
+    from .models import RolPermiso
+    return RolPermiso.objects.filter(rol=user.rol, opcion__clave=clave_opcion, permitido=True).exists()
+
+
+class PermisoRequeridoMixin(UserPassesTestMixin):
+    """Para vistas basadas en clase: exige que el rol del usuario tenga
+    habilitada la opción de menú 'permiso_clave' (ver usuario_tiene_permiso)."""
+    permiso_clave = None
+
+    def test_func(self):
+        return usuario_tiene_permiso(self.request.user, self.permiso_clave)
+
+
+def permiso_requerido(clave):
+    """Para vistas basadas en función: exige la opción de menú 'clave'."""
+    def decorador(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            if not usuario_tiene_permiso(request.user, clave):
+                raise PermissionDenied
+            return view_func(request, *args, **kwargs)
+        return wrapper
+    return decorador
+
+
 def puede_revisar_carga(user, carga):
     """Puede aceptar/rechazar una CargaLayout: el administrador (cualquiera),
     o un usuario con rol='validador' de la misma dependencia de la carga."""

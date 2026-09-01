@@ -26,7 +26,7 @@ from .forms import (
 )
 from catalogos.models import Dependencia, EstatusPlaza, Discapacidad, EnfermedadCronica, Idioma
 from cargas.models import PeriodoCarga, CargaLayout, periodo_vigente_hoy
-from usuarios.mixins import DependenciaScopedMixin, filtrar_por_dependencia, admin_requerido
+from usuarios.mixins import DependenciaScopedMixin, filtrar_por_dependencia, admin_requerido, PermisoRequeridoMixin
 
 
 @login_required
@@ -146,7 +146,8 @@ def reset_datos_prueba(request):
     })
 
 
-class ServidorListView(LoginRequiredMixin, ListView):
+class ServidorListView(LoginRequiredMixin, PermisoRequeridoMixin, ListView):
+    permiso_clave = 'padron'
     model = ServidorPublico
     template_name = 'servidores/list.html'
     context_object_name = 'servidores'
@@ -401,13 +402,14 @@ def hoja_resp(request, pk):
     })
 
 
-class InformacionBasicaListView(LoginRequiredMixin, ListView):
+class InformacionBasicaListView(LoginRequiredMixin, PermisoRequeridoMixin, ListView):
     """Por default solo muestra lo VIGENTE (activo=True) — lo mismo que
     alimenta reportes y estadísticas. Con ?vista=todas se ve el histórico
     completo (todas las quincenas, no solo la vigente por servidor+plaza),
     útil para consultar/corregir una carga anterior; cada registro con
     carga_origen enlaza de vuelta a esa carga. Con ?carga=<pk> se filtra a
     solo lo generado por esa carga en particular (link desde su detalle)."""
+    permiso_clave = 'info_basica'
     model = InformacionBasica
     template_name = 'servidores/info_basica_list.html'
     context_object_name = 'registros'
@@ -451,7 +453,8 @@ ICONOS_ESTATUS_PLAZA = {
 }
 
 
-class PuestoListView(LoginRequiredMixin, ListView):
+class PuestoListView(LoginRequiredMixin, PermisoRequeridoMixin, ListView):
+    permiso_clave = 'plazas'
     model = Puesto
     template_name = 'servidores/puesto_list.html'
     context_object_name = 'puestos'
