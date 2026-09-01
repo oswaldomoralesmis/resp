@@ -4,23 +4,44 @@ solo debe ver/editar información de la dependencia que tiene asignada."""
 from functools import wraps
 
 from django.contrib.auth.mixins import UserPassesTestMixin
-from django.core.exceptions import PermissionDenied
+from django.contrib import messages
+from django.shortcuts import redirect
+
+MENSAJE_SIN_ACCESO = 'No tiene acceso a este módulo.'
 
 
-class AdministradorRequiredMixin(UserPassesTestMixin):
+def _denegar_acceso(request):
+    """En vez del 403 crudo de Django: manda al dashboard con un aviso. Solo
+    se llama cuando el usuario YA está autenticado (todo lo que usa esto va
+    después de @login_required / LoginRequiredMixin en la cadena de
+    permisos), así que no hay que resolver el caso anónimo aquí."""
+    messages.error(request, MENSAJE_SIN_ACCESO)
+    return redirect('dashboard')
+
+
+class NoAccesoMixin:
+    """Mixin común para los UserPassesTestMixin de este archivo: si el
+    usuario ya inició sesión pero test_func() rechaza, en vez del 403 crudo
+    manda al dashboard con un aviso. Un usuario anónimo conserva el
+    comportamiento normal de Django (redirigir al login)."""
+    def handle_no_permission(self):
+        if self.request.user.is_authenticated:
+            return _denegar_acceso(self.request)
+        return super().handle_no_permission()
+
+
+class AdministradorRequiredMixin(NoAccesoMixin, UserPassesTestMixin):
     """Restringe la vista a usuarios con rol='administrador'."""
     def test_func(self):
         return self.request.user.is_authenticated and self.request.user.es_administrador
 
 
 def admin_requerido(view_func):
-    """Para vistas basadas en función: exige rol='administrador'. A diferencia
-    de user_passes_test, responde 403 (no redirige al login) cuando el usuario
-    ya está autenticado pero no tiene permiso, igual que AdministradorRequiredMixin."""
+    """Para vistas basadas en función: exige rol='administrador'."""
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         if not (request.user.is_authenticated and request.user.es_administrador):
-            raise PermissionDenied
+            return _denegar_acceso(request)
         return view_func(request, *args, **kwargs)
     return wrapper
 
@@ -40,7 +61,7 @@ def usuario_tiene_permiso(user, clave_opcion):
     return RolPermiso.objects.filter(rol=user.rol, opcion__clave=clave_opcion, permitido=True).exists()
 
 
-class PermisoRequeridoMixin(UserPassesTestMixin):
+class PermisoRequeridoMixin(NoAccesoMixin, UserPassesTestMixin):
     """Para vistas basadas en clase: exige que el rol del usuario tenga
     habilitada la opción de menú 'permiso_clave' (ver usuario_tiene_permiso)."""
     permiso_clave = None
@@ -55,7 +76,7 @@ def permiso_requerido(clave):
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
             if not usuario_tiene_permiso(request.user, clave):
-                raise PermissionDenied
+                return _denegar_acceso(request)
             return view_func(request, *args, **kwargs)
         return wrapper
     return decorador
