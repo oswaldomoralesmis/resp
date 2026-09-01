@@ -7,7 +7,8 @@ from django.views.generic import ListView, CreateView, UpdateView, DetailView
 from django.urls import reverse_lazy
 from django.db import transaction, connection
 from django.core.management.color import no_style
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Value
+from django.db.models.functions import Concat
 from django.contrib import messages
 from django.http import Http404, HttpResponse
 from django.utils import timezone
@@ -427,12 +428,25 @@ class InformacionBasicaListView(LoginRequiredMixin, PermisoRequeridoMixin, ListV
             qs = qs.filter(carga_origen_id=carga_pk)
         elif self.request.GET.get('vista') != 'todas':
             qs = qs.filter(activo=True)
-        q = self.request.GET.get('q', '')
+        q = self.request.GET.get('q', '').strip()
         if q:
-            qs = qs.filter(
-                Q(servidor__nombre__icontains=q) | Q(servidor__rfc__icontains=q) |
-                Q(id_plaza__icontains=q)
+            # Búsqueda por nombre completo (paterno + materno + nombre) sin
+            # importar el orden en que se escriban los pedazos: cada palabra
+            # de 'q' se busca por separado (AND) en el nombre concatenado,
+            # así "lope elva", "lop cad elva" o solo "elva" encuentran a
+            # "LOPEZ CADENA ELVA" igual. RFC/ID de plaza siguen comparándose
+            # contra 'q' completo, como antes.
+            qs = qs.annotate(
+                nombre_busqueda=Concat(
+                    'servidor__primer_apellido', Value(' '),
+                    'servidor__segundo_apellido', Value(' '),
+                    'servidor__nombre',
+                )
             )
+            filtro_nombre = Q()
+            for token in q.split():
+                filtro_nombre &= Q(nombre_busqueda__icontains=token)
+            qs = qs.filter(filtro_nombre | Q(servidor__rfc__icontains=q) | Q(id_plaza__icontains=q))
         return qs.order_by('-quincena', 'servidor__rfc')
 
     def get_context_data(self, **kwargs):

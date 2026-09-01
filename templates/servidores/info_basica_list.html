@@ -17,7 +17,7 @@
     {% endif %}
     <form method="get" style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
       <div class="search-bar"><span>🔍</span>
-        <input type="text" name="q" value="{{ request.GET.q }}" placeholder="RFC, nombre, ID plaza...">
+        <input type="text" name="q" value="{{ request.GET.q }}" placeholder="RFC, nombre/apellidos (en cualquier orden), ID plaza...">
         <button type="submit">Buscar</button>
       </div>
       <div style="display:flex;gap:8px;">
@@ -32,7 +32,7 @@
           {% for r in registros %}
           <tr>
             <td><span class="badge-blue">{{ r.quincena }}</span></td>
-            <td>{{ r.servidor.primer_apellido }} {{ r.servidor.nombre }}</td>
+            <td>{{ r.servidor.primer_apellido }} {{ r.servidor.segundo_apellido }} {{ r.servidor.nombre }}</td>
             <td><code>{{ r.servidor.rfc }}</code></td>
             <td>{{ r.dependencia.clave }}</td>
             <td>{{ r.id_plaza }}</td>
