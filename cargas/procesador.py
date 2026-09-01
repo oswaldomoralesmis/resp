@@ -559,8 +559,19 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
             errores_fila.append('Apellido vacío (debe traer al menos uno: paterno o materno)')
         if not id_plaza:
             errores_fila.append('ID de plaza vacío')
-        elif not Puesto.objects.filter(id_plaza=id_plaza).exists():
-            errores_fila.append(f'La plaza {id_plaza} no existe (debe darse de alta primero en la carga inicial de estructura)')
+        else:
+            puesto_de_la_fila = Puesto.objects.filter(id_plaza=id_plaza).select_related('servidor_actual').first()
+            if not puesto_de_la_fila:
+                errores_fila.append(f'La plaza {id_plaza} no existe (debe darse de alta primero en la carga inicial de estructura)')
+            elif puesto_de_la_fila.servidor_actual_id and puesto_de_la_fila.servidor_actual.rfc != rfc:
+                # La plaza ya está ocupada por OTRO servidor: para pasarla a
+                # uno distinto primero tiene que quedar vacante (baja de quien
+                # la ocupa), no se reasigna directo desde una carga básica.
+                errores_fila.append(
+                    f'La plaza {id_plaza} ya está ocupada por el servidor con RFC '
+                    f'{puesto_de_la_fila.servidor_actual.rfc} — para asignarla a otro servidor primero '
+                    'debe quedar vacante (registre la baja del servidor actual)'
+                )
 
         # Los errores forzables solo se pueden aceptar si son el ÚNICO problema
         # de la fila (si además falta un campo obligatorio, sigue bloqueada).
