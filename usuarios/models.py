@@ -69,6 +69,11 @@ class OpcionAplicativo(models.Model):
     nombre = models.CharField(max_length=100, verbose_name='Nombre')
     modulo = models.CharField(max_length=50, verbose_name='Módulo')
     orden = models.IntegerField(default=0, verbose_name='Orden')
+    tiene_edicion = models.BooleanField(
+        default=False, verbose_name='Tiene permiso de edición',
+        help_text='Si además de "ver" esta opción se puede restringir por separado quién puede '
+                   'crear/editar dentro de ella (ver RolPermiso.puede_editar).',
+    )
 
     class Meta:
         verbose_name = 'Opción del Aplicativo'
@@ -80,13 +85,20 @@ class OpcionAplicativo(models.Model):
 
 
 class RolPermiso(models.Model):
-    """Si un rol (no-administrador) puede entrar a una OpcionAplicativo.
-    Sin fila = sin permiso (deniega por defecto)."""
+    """Si un rol (no-administrador) puede entrar a una OpcionAplicativo
+    ('permitido') y, si esa opción lo admite (tiene_edicion), si además
+    puede crear/editar ahí o solo consultar ('puede_editar'). Sin fila =
+    sin permiso (deniega por defecto)."""
     rol = models.CharField(max_length=20, choices=ROLES_CONFIGURABLES, verbose_name='Rol')
     opcion = models.ForeignKey(
         OpcionAplicativo, on_delete=models.CASCADE, related_name='permisos', verbose_name='Opción',
     )
-    permitido = models.BooleanField(default=False, verbose_name='Permitido')
+    permitido = models.BooleanField(default=False, verbose_name='Permitido (ver)')
+    puede_editar = models.BooleanField(
+        default=False, verbose_name='Puede editar',
+        help_text='Solo aplica si la opción tiene edición configurable. Sin esto, el rol solo '
+                   'puede consultar — no crear ni modificar registros.',
+    )
 
     class Meta:
         verbose_name = 'Permiso de Rol'

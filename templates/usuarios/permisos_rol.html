@@ -9,6 +9,8 @@
 <div class="alert-resp alert-info">
   ℹ️ Marque qué opciones del menú puede ver y usar cada rol. <strong>Administrador</strong> no aparece
   aquí porque siempre tiene acceso total a todo el sistema, sin excepción.
+  En Padrón, Inf. Básica Quincenal y Plazas, además de "Ver" se puede marcar "Editar" por separado —
+  sin "Editar", el rol solo puede consultar la información, no crear ni modificar registros.
 </div>
 
 <form method="post">
@@ -39,7 +41,16 @@
               <td>{{ fila.opcion.nombre }}</td>
               {% for permiso in fila.permisos %}
               <td style="text-align:center;">
-                <input type="checkbox" name="{{ permiso.campo }}" {% if permiso.permitido %}checked{% endif %} style="width:auto;">
+                {% if fila.opcion.tiene_edicion %}
+                <label style="display:block;font-size:11px;color:#666;margin-bottom:2px;">
+                  <input type="checkbox" name="{{ permiso.campo_ver }}" {% if permiso.permitido %}checked{% endif %} style="width:auto;"> Ver
+                </label>
+                <label style="display:block;font-size:11px;color:#666;">
+                  <input type="checkbox" name="{{ permiso.campo_editar }}" {% if permiso.puede_editar %}checked{% endif %} style="width:auto;"> Editar
+                </label>
+                {% else %}
+                <input type="checkbox" name="{{ permiso.campo_ver }}" {% if permiso.permitido %}checked{% endif %} style="width:auto;">
+                {% endif %}
               </td>
               {% endfor %}
             </tr>

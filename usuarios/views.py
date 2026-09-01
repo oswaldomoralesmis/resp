@@ -177,14 +177,21 @@ def permisos_rol(request):
         for opcion in opciones:
             for rol_key, _rol_label in ROLES_CONFIGURABLES:
                 permitido = request.POST.get(f'perm_{opcion.pk}_{rol_key}') == 'on'
+                # Editar solo tiene sentido si la opción lo admite y además
+                # se puede VER — de lo contrario se guarda desmarcado.
+                puede_editar = (
+                    opcion.tiene_edicion and permitido
+                    and request.POST.get(f'editar_{opcion.pk}_{rol_key}') == 'on'
+                )
                 RolPermiso.objects.update_or_create(
-                    rol=rol_key, opcion=opcion, defaults={'permitido': permitido},
+                    rol=rol_key, opcion=opcion,
+                    defaults={'permitido': permitido, 'puede_editar': puede_editar},
                 )
         messages.success(request, 'Permisos actualizados.')
         return redirect('permisos_rol')
 
     permisos_actuales = {
-        (p.opcion_id, p.rol): p.permitido
+        (p.opcion_id, p.rol): p
         for p in RolPermiso.objects.all()
     }
     modulos = {}
@@ -193,8 +200,10 @@ def permisos_rol(request):
             'opcion': opcion,
             'permisos': [
                 {
-                    'campo': f'perm_{opcion.pk}_{rol_key}',
-                    'permitido': permisos_actuales.get((opcion.pk, rol_key), False),
+                    'campo_ver': f'perm_{opcion.pk}_{rol_key}',
+                    'campo_editar': f'editar_{opcion.pk}_{rol_key}',
+                    'permitido': getattr(permisos_actuales.get((opcion.pk, rol_key)), 'permitido', False),
+                    'puede_editar': getattr(permisos_actuales.get((opcion.pk, rol_key)), 'puede_editar', False),
                 }
                 for rol_key, _rol_label in ROLES_CONFIGURABLES
             ],

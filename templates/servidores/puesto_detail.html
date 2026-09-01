@@ -14,7 +14,9 @@
     <div class="text-muted">{{ puesto.proyecto.dependencia.clave }} — {{ puesto.proyecto.dependencia.descripcion|truncatechars:40 }} &bull; {{ puesto.categoria }}</div>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    {% if 'plazas' in opciones_editables %}
     <a href="{% url 'puesto_update' puesto.pk %}" class="btn-institucional btn-sm">✏️ Editar</a>
+    {% endif %}
     {% if puesto.servidor_actual %}<a href="{% url 'servidor_detail' puesto.servidor_actual.pk %}" class="btn-outline btn-sm">👤 Ver Servidor</a>{% endif %}
   </div>
 </div>

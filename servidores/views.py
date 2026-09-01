@@ -27,7 +27,10 @@ from .forms import (
 )
 from catalogos.models import Dependencia, EstatusPlaza, Discapacidad, EnfermedadCronica, Idioma
 from cargas.models import PeriodoCarga, CargaLayout, periodo_vigente_hoy
-from usuarios.mixins import DependenciaScopedMixin, filtrar_por_dependencia, admin_requerido, PermisoRequeridoMixin
+from usuarios.mixins import (
+    DependenciaScopedMixin, filtrar_por_dependencia, admin_requerido,
+    PermisoRequeridoMixin, PermisoEdicionRequeridoMixin,
+)
 
 
 @login_required
@@ -214,7 +217,9 @@ class ServidorDetailView(LoginRequiredMixin, DependenciaScopedMixin, DetailView)
         return ctx
 
 
-class ServidorCreateView(LoginRequiredMixin, CreateView):
+class ServidorCreateView(LoginRequiredMixin, PermisoEdicionRequeridoMixin, CreateView):
+    permiso_clave = 'padron'
+    redirigir_sin_edicion = 'servidor_list'
     model = ServidorPublico
     form_class = ServidorPublicoForm
     template_name = 'servidores/form.html'
@@ -227,11 +232,13 @@ class ServidorCreateView(LoginRequiredMixin, CreateView):
         return ctx
 
 
-class ServidorUpdateView(LoginRequiredMixin, DependenciaScopedMixin, UpdateView):
+class ServidorUpdateView(LoginRequiredMixin, PermisoEdicionRequeridoMixin, DependenciaScopedMixin, UpdateView):
     """Edición de un Servidor Público, incluyendo los datos de la sección
     'Datos del Servidor Público' (domicilio, escolaridad, discapacidades,
     pueblo indígena, enfermedades crónicas e idiomas), que solo tiene sentido
     capturar sobre un servidor ya existente."""
+    permiso_clave = 'padron'
+    redirigir_sin_edicion = 'servidor_list'
     model = ServidorPublico
     form_class = ServidorPublicoForm
     template_name = 'servidores/form.html'
@@ -669,7 +676,9 @@ class PuestoDetailView(LoginRequiredMixin, DependenciaScopedMixin, DetailView):
         return ctx
 
 
-class PuestoUpdateView(LoginRequiredMixin, DependenciaScopedMixin, UpdateView):
+class PuestoUpdateView(LoginRequiredMixin, PermisoEdicionRequeridoMixin, DependenciaScopedMixin, UpdateView):
+    permiso_clave = 'plazas'
+    redirigir_sin_edicion = 'puesto_list'
     model = Puesto
     form_class = PuestoForm
     template_name = 'servidores/puesto_form.html'
@@ -701,11 +710,13 @@ class PuestoUpdateView(LoginRequiredMixin, DependenciaScopedMixin, UpdateView):
         return super().form_valid(form)
 
 
-class InformacionBasicaCreateView(LoginRequiredMixin, CreateView):
+class InformacionBasicaCreateView(LoginRequiredMixin, PermisoEdicionRequeridoMixin, CreateView):
     """No usa DependenciaFormRestrictMixin: su form_valid() ya está sobrescrito
     para sincronizar la Plaza tras guardar, y esa sincronización no debe
     ejecutarse si la validación de dependencia rechaza el POST. Se valida
     explícito al inicio de este mismo form_valid en su lugar."""
+    permiso_clave = 'info_basica'
+    redirigir_sin_edicion = 'info_basica_list'
     model = InformacionBasica
     form_class = InformacionBasicaForm
     template_name = 'servidores/info_basica_form.html'
@@ -751,7 +762,9 @@ class InformacionBasicaCreateView(LoginRequiredMixin, CreateView):
         return response
 
 
-class InformacionBasicaUpdateView(LoginRequiredMixin, DependenciaScopedMixin, UpdateView):
+class InformacionBasicaUpdateView(LoginRequiredMixin, PermisoEdicionRequeridoMixin, DependenciaScopedMixin, UpdateView):
+    permiso_clave = 'info_basica'
+    redirigir_sin_edicion = 'info_basica_list'
     model = InformacionBasica
     form_class = InformacionBasicaForm
     template_name = 'servidores/info_basica_form.html'

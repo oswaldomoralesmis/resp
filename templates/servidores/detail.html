@@ -14,7 +14,9 @@
     <div class="text-muted">Expediente: <strong>{{ servidor.expediente }}</strong> &bull; RFC: <strong>{{ servidor.rfc }}</strong> &bull; CURP: <strong>{{ servidor.curp }}</strong>{% if servidor.determinante %} &bull; Determinante: <strong>{{ servidor.determinante }}</strong>{% endif %}</div>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    {% if 'padron' in opciones_editables %}
     <a href="{% url 'servidor_update' servidor.pk %}" class="btn-institucional btn-sm">✏️ Editar</a>
+    {% endif %}
     <a href="{% url 'hoja_resp' servidor.pk %}" class="btn-verde btn-sm">🖨️ Hoja RESP</a>
     {% if servidor.activo %}<a href="{% url 'servidor_baja' servidor.pk %}" class="btn-rojo btn-sm">🚫 Registrar Baja</a>{% endif %}
   </div>

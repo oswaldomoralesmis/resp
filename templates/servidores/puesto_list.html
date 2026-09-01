@@ -50,7 +50,9 @@
             <td>{% if p.servidor_actual %}{{ p.servidor_actual.nombre_completo }}{% else %}—{% endif %}</td>
             <td>
               <a href="{% url 'puesto_detail' p.pk %}" class="btn-outline btn-sm">Ver</a>
+              {% if 'plazas' in opciones_editables %}
               <a href="{% url 'puesto_update' p.pk %}" class="btn-institucional btn-sm">Editar</a>
+              {% endif %}
             </td>
           </tr>
           {% empty %}

@@ -9,7 +9,9 @@
   <div class="card-header" style="justify-content:space-between;">
     <span>👤 Servidores Públicos</span>
     <div style="display:flex;gap:8px;">
+      {% if 'padron' in opciones_editables %}
       <a href="{% url 'servidor_create' %}" class="btn-institucional btn-sm">➕ Nuevo</a>
+      {% endif %}
       <a href="{% url 'exportar_excel' 'padron' %}" class="btn-dorado btn-sm">📥 Excel</a>
     </div>
   </div>
@@ -53,7 +55,9 @@
             <td>{% if s.activo %}<span class="badge-activo">Activo</span>{% else %}<span class="badge-inactivo">Baja</span>{% endif %}</td>
             <td>
               <a href="{% url 'servidor_detail' s.pk %}" class="btn-outline btn-sm">Ver</a>
+              {% if 'padron' in opciones_editables %}
               <a href="{% url 'servidor_update' s.pk %}" class="btn-institucional btn-sm">Editar</a>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}

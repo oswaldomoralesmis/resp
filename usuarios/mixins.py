@@ -82,6 +82,43 @@ def permiso_requerido(clave):
     return decorador
 
 
+MENSAJE_SOLO_LECTURA = 'No tiene permiso para editar esta sección — solo puede consultar.'
+
+
+def usuario_puede_editar(user, clave_opcion):
+    """Si 'user' puede crear/editar dentro de 'clave_opcion' (no solo
+    verla) — ver RolPermiso.puede_editar. El administrador siempre puede.
+    Exige 'permitido' además de 'puede_editar': no tiene sentido poder
+    editar una sección que ni siquiera se puede ver."""
+    if not user.is_authenticated:
+        return False
+    if user.es_administrador:
+        return True
+    from .models import RolPermiso
+    return RolPermiso.objects.filter(
+        rol=user.rol, opcion__clave=clave_opcion, permitido=True, puede_editar=True,
+    ).exists()
+
+
+class PermisoEdicionRequeridoMixin(UserPassesTestMixin):
+    """Para CreateView/UpdateView: exige que el rol pueda EDITAR (no solo
+    ver) la opción 'permiso_clave'. Si no, en vez del 403 crudo regresa a
+    'redirigir_sin_edicion' (la lista de esa misma sección, por defecto el
+    dashboard) con un aviso — a alguien que solo puede consultar le
+    corresponde volver a donde sí puede seguir viendo información."""
+    permiso_clave = None
+    redirigir_sin_edicion = 'dashboard'
+
+    def test_func(self):
+        return usuario_puede_editar(self.request.user, self.permiso_clave)
+
+    def handle_no_permission(self):
+        if self.request.user.is_authenticated:
+            messages.error(self.request, MENSAJE_SOLO_LECTURA)
+            return redirect(self.redirigir_sin_edicion)
+        return super().handle_no_permission()
+
+
 def puede_revisar_carga(user, carga):
     """Puede aceptar/rechazar una CargaLayout: el administrador (cualquiera),
     o un usuario con rol='validador' de la misma dependencia de la carga."""
