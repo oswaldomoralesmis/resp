@@ -573,6 +573,21 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
                     'debe quedar vacante (registre la baja del servidor actual)'
                 )
 
+        expediente_fila = sd(col(C_EXPEDIENTE, ''))
+        if expediente_fila:
+            # 'expediente' es unique en ServidorPublico — si la fila trae uno
+            # que ya usa OTRO RFC, se marca error aquí (en vez de dejar que
+            # reviente con IntegrityError al guardar, ya sea al crear o al
+            # actualizar un servidor existente).
+            otro_por_expediente = ServidorPublico.objects.filter(
+                expediente=expediente_fila
+            ).exclude(rfc=rfc).first()
+            if otro_por_expediente:
+                errores_fila.append(
+                    f'El expediente {expediente_fila} ya está asignado al servidor con RFC '
+                    f'{otro_por_expediente.rfc} — no puede repetirse'
+                )
+
         # Los errores forzables solo se pueden aceptar si son el ÚNICO problema
         # de la fila (si además falta un campo obligatorio, sigue bloqueada).
         avisos_forzados = []
@@ -593,7 +608,7 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
                                    'forzable': es_fila_forzable(errores_fila)})
             continue
 
-        expediente = sd(col(C_EXPEDIENTE, '')) or f'EXP-{rfc}'
+        expediente = expediente_fila or f'EXP-{rfc}'
 
         # ── Servidor Público: buscar o crear ─────────────────────────────────
         # Si el servidor ya existía pero estaba inactivo (dado de baja), el
@@ -640,25 +655,41 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
                         }
                     )
                     if not creado:
-                        # Actualizar campos que pueden cambiar quincenalmente
+                        # Actualizar datos del servidor si vienen distintos en
+                        # esta carga — permite corregir errores de captura
+                        # (nombre, apellidos, fecha de nacimiento, etc.) re-
+                        # subiendo el layout, sin tener que ir manualmente a
+                        # Padrón. A propósito NUNCA se tocan aquí 'rfc' (es la
+                        # llave con la que se buscó al servidor) ni 'curp'
+                        # (evita que un error de captura en OTRO campo de la
+                        # fila termine reasignando la CURP de alguien). Cada
+                        # campo solo se actualiza si la fila trae un valor no
+                        # vacío, para que una celda en blanco en una carga
+                        # descuidada no borre un dato bueno que ya existía.
                         cambios = False
-                        nuevo_correo = sd(col(C_CORREO, ''))
-                        nuevo_nss    = sd(col(C_NSS, ''))
-                        nueva_determinante = sd(col(C_DETERMINANTE, ''))
-                        if nuevo_correo and servidor.correo_institucional != nuevo_correo:
-                            servidor.correo_institucional = nuevo_correo; cambios = True
-                        if nuevo_nss and servidor.nss != nuevo_nss:
-                            servidor.nss = nuevo_nss; cambios = True
-                        if nueva_determinante and servidor.determinante != nueva_determinante:
-                            servidor.determinante = nueva_determinante; cambios = True
-                        if ap_mat and servidor.segundo_apellido != ap_mat:
-                            servidor.segundo_apellido = ap_mat; cambios = True
-                        ec = cache.estado_civil(col(C_ESTADO_CIVIL))
-                        if ec and servidor.estado_civil != ec:
-                            servidor.estado_civil = ec; cambios = True
-                        sin = cache.sindicato(col(C_SINDICATO))
-                        if sin and servidor.sindicato != sin:
-                            servidor.sindicato = sin; cambios = True
+
+                        def _actualizar(campo, nuevo_valor):
+                            nonlocal cambios
+                            if nuevo_valor and getattr(servidor, campo) != nuevo_valor:
+                                setattr(servidor, campo, nuevo_valor)
+                                cambios = True
+
+                        _actualizar('nombre', nombre)
+                        _actualizar('primer_apellido', ap_pat)
+                        _actualizar('segundo_apellido', ap_mat)
+                        _actualizar('expediente', expediente_fila)
+                        _actualizar('determinante', sd(col(C_DETERMINANTE, '')))
+                        _actualizar('fecha_nacimiento', parse_fecha(col(C_FECHA_NAC)))
+                        _actualizar('sexo', normalizar_sexo(col(C_GENERO)))
+                        _actualizar('estado_civil', cache.estado_civil(col(C_ESTADO_CIVIL)))
+                        _actualizar('entidad_nacimiento', cache.entidad(col(C_ENTIDAD)))
+                        _actualizar('pais_nacimiento', cache.pais(col(C_PAIS)))
+                        _actualizar('correo_institucional', sd(col(C_CORREO, '')))
+                        _actualizar('iss', normalizar_iss(col(C_ISS)))
+                        _actualizar('nss', sd(col(C_NSS, '')))
+                        _actualizar('sindicalizado', normalizar_sino(col(C_SINDICALIZADO)))
+                        _actualizar('sindicato', cache.sindicato(col(C_SINDICATO)))
+                        _actualizar('tiene_otra_plaza', normalizar_sino(col(C_OTRA_PLAZA)))
                         if not servidor.activo:
                             servidor.activo = True; cambios = True; reactivado = True
                         if cambios:
@@ -1029,32 +1060,34 @@ def procesar_layout_bajas(carga, dry_run=True, overrides=None):
                                    'forzable': es_fila_forzable(errores_fila)})
             continue
 
+        # Estas tres validaciones son independientes entre sí (son solo
+        # lecturas, ninguna tiene efecto secundario) — se acumulan TODAS las
+        # que apliquen para que el validador vea de una sola vez todo lo que
+        # está mal en la fila, en vez de corregir una, resubir, y recién ahí
+        # enterarse de la siguiente.
+        errores_post_gate = []
+
         servidor = ServidorPublico.objects.filter(rfc=rfc).first()
         if not servidor:
-            errores += 1
-            log.append(f'Fila {num_fila} RFC={rfc}: ERROR — no existe un servidor con ese RFC en el padrón')
-            filas_detalle.append({'fila': num_fila, 'rfc': rfc, 'curp': curp, 'nombre': nombre_completo,
-                                   'id_plaza': id_plaza, 'estado': 'ERROR',
-                                   'mensaje': 'No existe un servidor con ese RFC en el padrón'})
-            continue
+            errores_post_gate.append('No existe un servidor con ese RFC en el padrón')
 
         motivo = cache.motivo_baja(motivo_clave)
         if not motivo:
+            errores_post_gate.append(f'Motivo de baja "{motivo_clave}" no encontrado en el catálogo')
+
+        dependencia = cache.dependencia(col(CB_DEPENDENCIA))
+        if dependencia and dependencia.pk != carga.dependencia_id:
+            errores_post_gate.append(
+                f'La dependencia de la fila ({dependencia.clave}) no coincide con '
+                f'la dependencia de la carga ({carga.dependencia.clave})'
+            )
+
+        if errores_post_gate:
             errores += 1
-            log.append(f'Fila {num_fila} RFC={rfc}: ERROR — motivo de baja "{motivo_clave}" no encontrado en el catálogo')
+            log.append(f'Fila {num_fila} RFC={rfc}: ERROR — {", ".join(errores_post_gate)}')
             filas_detalle.append({'fila': num_fila, 'rfc': rfc, 'curp': curp, 'nombre': nombre_completo,
                                    'id_plaza': id_plaza, 'estado': 'ERROR',
-                                   'mensaje': f'Motivo de baja "{motivo_clave}" no encontrado en el catálogo'})
-            continue
-
-        dependencia    = cache.dependencia(col(CB_DEPENDENCIA))
-        if dependencia and dependencia.pk != carga.dependencia_id:
-            errores += 1
-            msg = (f'La dependencia de la fila ({dependencia.clave}) no coincide con '
-                   f'la dependencia de la carga ({carga.dependencia.clave})')
-            log.append(f'Fila {num_fila} RFC={rfc}: ERROR — {msg}')
-            filas_detalle.append({'fila': num_fila, 'rfc': rfc, 'curp': curp, 'nombre': nombre_completo,
-                                   'id_plaza': id_plaza, 'estado': 'ERROR', 'mensaje': msg})
+                                   'mensaje': ', '.join(errores_post_gate)})
             continue
         ejercicio_col  = si(col(CB_EJERCICIO), 0)
         periodo_col    = sd(col(CB_PERIODO, ''))
