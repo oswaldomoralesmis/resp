@@ -22,25 +22,20 @@
       <!-- IDENTIFICACIÓN -->
       <div class="form-section-title" style="margin-bottom:12px;">&#128203; Identificaci&oacute;n</div>
       <div class="row g-3 mb-4">
-        <div class="col-md-3">
+        <div class="col-md-4">
           <label for="{{ form.expediente.id_for_label }}" class="form-label fw-semibold">{{ form.expediente.label }} <span class="text-danger">*</span></label>
           {{ form.expediente }}
           {% if form.expediente.errors %}<div class="text-danger small mt-1">{{ form.expediente.errors|join:", " }}</div>{% endif %}
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
           <label for="{{ form.rfc.id_for_label }}" class="form-label fw-semibold">{{ form.rfc.label }} <span class="text-danger">*</span></label>
           {{ form.rfc }}
           {% if form.rfc.errors %}<div class="text-danger small mt-1">{{ form.rfc.errors|join:", " }}</div>{% endif %}
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
           <label for="{{ form.curp.id_for_label }}" class="form-label fw-semibold">{{ form.curp.label }} <span class="text-danger">*</span></label>
           {{ form.curp }}
           {% if form.curp.errors %}<div class="text-danger small mt-1">{{ form.curp.errors|join:", " }}</div>{% endif %}
-        </div>
-        <div class="col-md-3">
-          <label for="{{ form.determinante.id_for_label }}" class="form-label fw-semibold">{{ form.determinante.label }}</label>
-          {{ form.determinante }}
-          {% if form.determinante.errors %}<div class="text-danger small mt-1">{{ form.determinante.errors|join:", " }}</div>{% endif %}
         </div>
       </div>
 

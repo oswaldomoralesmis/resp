@@ -441,20 +441,25 @@ class InformacionBasicaListView(LoginRequiredMixin, PermisoRequeridoMixin, ListV
             # importar el orden en que se escriban los pedazos: cada palabra
             # de 'q' se busca por separado (AND) en el nombre concatenado,
             # así "lope elva", "lop cad elva" o solo "elva" encuentran a
-            # "LOPEZ CADENA ELVA" igual. RFC/ID de plaza siguen comparándose
-            # contra 'q' completo, como antes.
+            # "LOPEZ CADENA ELVA" igual. Se busca sobre la "fotografía" de
+            # ESTE registro (como quedó ese periodo), no sobre el dato actual
+            # de Padrón — por eso también se compara contra el RFC propio del
+            # registro además del de Padrón (por si alguna vez difieren).
             qs = qs.annotate(
                 nombre_busqueda=Concat(
-                    'servidor__primer_apellido', Value(' '),
-                    'servidor__segundo_apellido', Value(' '),
-                    'servidor__nombre',
+                    'primer_apellido', Value(' '),
+                    'segundo_apellido', Value(' '),
+                    'nombre',
                 )
             )
             filtro_nombre = Q()
             for token in q.split():
                 filtro_nombre &= Q(nombre_busqueda__icontains=token)
-            qs = qs.filter(filtro_nombre | Q(servidor__rfc__icontains=q) | Q(id_plaza__icontains=q))
-        return qs.order_by('-quincena', 'servidor__rfc')
+            qs = qs.filter(
+                filtro_nombre | Q(rfc__icontains=q) | Q(servidor__rfc__icontains=q) |
+                Q(id_plaza__icontains=q) | Q(determinante__icontains=q)
+            )
+        return qs.order_by('-quincena', 'rfc')
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -492,7 +497,7 @@ class PuestoListView(LoginRequiredMixin, PermisoRequeridoMixin, ListView):
         q = self.request.GET.get('q', '')
         if q:
             qs = qs.filter(
-                Q(id_plaza__icontains=q) | Q(proyecto__clave__icontains=q) |
+                Q(id_plaza__icontains=q) | Q(determinante__icontains=q) | Q(proyecto__clave__icontains=q) |
                 Q(proyecto__dependencia__clave__icontains=q) |
                 Q(servidor_actual__rfc__icontains=q)
             )
@@ -607,7 +612,7 @@ def exportar_plazas_excel(request):
             s.expediente if s else '',
             s.rfc if s else '',
             s.curp if s else '',
-            s.determinante if s else '',
+            p.determinante,
             s.nombre if s else '',
             s.primer_apellido if s else '',
             s.segundo_apellido if s else '',
@@ -742,22 +747,55 @@ class InformacionBasicaCreateView(LoginRequiredMixin, PermisoEdicionRequeridoMix
             if dep and dep.pk != user.dependencia_id:
                 form.add_error('dependencia', 'No tiene permiso para asignar esta dependencia.')
                 return self.form_invalid(form)
+        info = form.instance
+        if not info.nombre and not info.primer_apellido and info.servidor_id:
+            # Alta manual sin capturar a mano la "fotografía" del periodo:
+            # se copia el dato ACTUAL de Padrón como punto de partida (se
+            # puede corregir después si para este periodo en particular se
+            # quiere dejar algo distinto).
+            s = info.servidor
+            info.expediente = s.expediente
+            info.rfc = s.rfc
+            info.curp = s.curp
+            info.nombre = s.nombre
+            info.primer_apellido = s.primer_apellido
+            info.segundo_apellido = s.segundo_apellido or ''
+            info.fecha_nacimiento = s.fecha_nacimiento
+            info.sexo = s.sexo
+            info.estado_civil = s.estado_civil
+            info.entidad_nacimiento = s.entidad_nacimiento
+            info.pais_nacimiento = s.pais_nacimiento
+            info.correo_institucional = s.correo_institucional
+            info.iss = s.iss
+            info.nss = s.nss
+            info.sindicato = s.sindicato
+            info.sindicalizado = s.sindicalizado
+            info.tiene_otra_plaza = s.tiene_otra_plaza
+        if not info.determinante and info.id_plaza:
+            # El Determinante es propio de la Plaza, no del servidor — se
+            # copia el que ya tenga esa Plaza (si existe) como punto de
+            # partida, no el del servidor.
+            puesto_existente = Puesto.objects.filter(id_plaza=info.id_plaza).first()
+            if puesto_existente:
+                info.determinante = puesto_existente.determinante
         response = super().form_valid(form)
         info = self.object
-        sincronizar_puesto(
-            info.proyecto, info.programa, info.id_plaza, info.categoria, info.servidor,
-            unidad=info.unidad,
-            nombramiento=info.nombramiento,
-            nivel_estructura=info.nivel_estructura,
-            estatus_plaza=info.estatus_plaza,
-            cct=info.cct,
-            hsm=info.hsm,
-            total_percepciones=info.total_percepciones,
-            total_bonos=info.total_bonos,
-            total_neto=info.total_neto,
-            dias_pagados=info.dias_pagados,
-            id_plaza_jefe=info.id_plaza_jefe,
-        )
+        if info.activo:
+            sincronizar_puesto(
+                info.proyecto, info.programa, info.id_plaza, info.categoria, info.servidor,
+                unidad=info.unidad,
+                determinante=info.determinante,
+                nombramiento=info.nombramiento,
+                nivel_estructura=info.nivel_estructura,
+                estatus_plaza=info.estatus_plaza,
+                cct=info.cct,
+                hsm=info.hsm,
+                total_percepciones=info.total_percepciones,
+                total_bonos=info.total_bonos,
+                total_neto=info.total_neto,
+                dias_pagados=info.dias_pagados,
+                id_plaza_jefe=info.id_plaza_jefe,
+            )
         LogEvento.registrar('informacion_basica', info.pk, info.servidor, 'creado', 'manual', usuario=user)
         return response
 
@@ -792,19 +830,24 @@ class InformacionBasicaUpdateView(LoginRequiredMixin, PermisoEdicionRequeridoMix
                 return self.form_invalid(form)
         response = super().form_valid(form)
         info = self.object
-        sincronizar_puesto(
-            info.proyecto, info.programa, info.id_plaza, info.categoria, info.servidor,
-            unidad=info.unidad,
-            nombramiento=info.nombramiento,
-            nivel_estructura=info.nivel_estructura,
-            estatus_plaza=info.estatus_plaza,
-            cct=info.cct,
-            hsm=info.hsm,
-            total_percepciones=info.total_percepciones,
-            total_bonos=info.total_bonos,
-            total_neto=info.total_neto,
-            dias_pagados=info.dias_pagados,
-            id_plaza_jefe=info.id_plaza_jefe,
-        )
+        if info.activo:
+            # Si el registro editado NO es el vigente (es una fotografía de
+            # un periodo pasado), no debe tocar la Plaza actual — solo se
+            # sincroniza cuando se edita el registro que sigue activo.
+            sincronizar_puesto(
+                info.proyecto, info.programa, info.id_plaza, info.categoria, info.servidor,
+                unidad=info.unidad,
+                determinante=info.determinante,
+                nombramiento=info.nombramiento,
+                nivel_estructura=info.nivel_estructura,
+                estatus_plaza=info.estatus_plaza,
+                cct=info.cct,
+                hsm=info.hsm,
+                total_percepciones=info.total_percepciones,
+                total_bonos=info.total_bonos,
+                total_neto=info.total_neto,
+                dias_pagados=info.dias_pagados,
+                id_plaza_jefe=info.id_plaza_jefe,
+            )
         LogEvento.registrar('informacion_basica', info.pk, info.servidor, 'editado', 'manual', usuario=user)
         return response

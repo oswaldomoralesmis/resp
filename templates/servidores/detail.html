@@ -11,7 +11,7 @@
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
   <div>
     <h2 style="margin:0;color:var(--institucional-azul);">{{ servidor.nombre }} {{ servidor.primer_apellido }} {{ servidor.segundo_apellido }}</h2>
-    <div class="text-muted">Expediente: <strong>{{ servidor.expediente }}</strong> &bull; RFC: <strong>{{ servidor.rfc }}</strong> &bull; CURP: <strong>{{ servidor.curp }}</strong>{% if servidor.determinante %} &bull; Determinante: <strong>{{ servidor.determinante }}</strong>{% endif %}</div>
+    <div class="text-muted">Expediente: <strong>{{ servidor.expediente }}</strong> &bull; RFC: <strong>{{ servidor.rfc }}</strong> &bull; CURP: <strong>{{ servidor.curp }}</strong></div>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;">
     {% if 'padron' in opciones_editables %}
@@ -62,6 +62,7 @@
       <div><div class="form-label">Dependencia</div><div>{{ info_basica.dependencia }}</div></div>
       <div><div class="form-label">Unidad Administrativa</div><div>{{ info_basica.unidad }}</div></div>
       <div><div class="form-label">ID Plaza</div><div><strong>{{ info_basica.id_plaza }}</strong></div></div>
+      <div><div class="form-label">Determinante</div><div>{{ info_basica.determinante|default:"—" }}</div></div>
       <div><div class="form-label">Categoría</div><div>{{ info_basica.categoria }}</div></div>
       <div><div class="form-label">Tipo Contratación</div><div>{{ info_basica.nombramiento }}</div></div>
       <div><div class="form-label">Estatus Plaza</div><div>{{ info_basica.estatus_plaza }}</div></div>
@@ -83,21 +84,34 @@
 <div class="card">
   <div class="card-header">📅 Historial de Quincenas</div>
   <div class="card-body">
-    <table class="table-resp">
-      <thead><tr><th>Quincena</th><th>Dependencia</th><th>Plaza</th><th>Estatus Plaza</th><th>Neto</th><th>Vigencia</th></tr></thead>
-      <tbody>
-        {% for h in historial %}
-        <tr>
-          <td>{{ h.quincena }}</td>
-          <td>{{ h.dependencia.clave }}</td>
-          <td>{{ h.id_plaza }}</td>
-          <td>{{ h.estatus_plaza }}</td>
-          <td>${{ h.total_neto|floatformat:2 }}</td>
-          <td>{% if h.activo %}<span class="badge-activo">Vigente</span>{% else %}<span class="badge-inactivo">Dada de baja</span>{% endif %}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="text-muted" style="margin-bottom:10px;font-size:13px;">
+      Cada quincena es una fotografía de cómo quedó ese periodo (plaza y datos personales tal como se
+      capturaron en esa carga) — corregir Padrón hoy no cambia lo que ya quedó registrado aquí.
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="table-resp">
+        <thead><tr><th>Quincena</th><th>Nombre (de ese periodo)</th><th>Dependencia</th><th>Plaza</th><th>Determinante</th><th>Estatus Plaza</th><th>Neto</th><th>Vigencia</th><th>Acciones</th></tr></thead>
+        <tbody>
+          {% for h in historial %}
+          <tr>
+            <td>{{ h.quincena }}</td>
+            <td>{{ h.nombre_completo_periodo }}</td>
+            <td>{{ h.dependencia.clave }}</td>
+            <td>{{ h.id_plaza }}</td>
+            <td>{{ h.determinante|default:"—" }}</td>
+            <td>{{ h.estatus_plaza }}</td>
+            <td>${{ h.total_neto|floatformat:2 }}</td>
+            <td>{% if h.activo %}<span class="badge-activo">Vigente</span>{% else %}<span class="badge-inactivo">Dada de baja</span>{% endif %}</td>
+            <td>
+              {% if 'info_basica' in opciones_editables %}
+              <a href="{% url 'info_basica_update' h.pk %}" class="btn-institucional btn-sm">✏️ Ver/editar</a>
+              {% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 {% endif %}

@@ -36,7 +36,6 @@ class ServidorPublicoForm(forms.ModelForm):
             'expediente':          forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 41471'}),
             'rfc':                 forms.TextInput(attrs={'class': 'form-control text-uppercase', 'maxlength': '13', 'placeholder': 'Ej: GOCI7509233A6'}),
             'curp':                forms.TextInput(attrs={'class': 'form-control text-uppercase', 'maxlength': '18', 'placeholder': 'Ej: GOCI750923HTCNRS04'}),
-            'determinante':        forms.TextInput(attrs={'class': 'form-control text-uppercase', 'placeholder': 'Determinante'}),
             'nombre':              forms.TextInput(attrs={'class': 'form-control text-uppercase', 'placeholder': 'Nombre(s)'}),
             'primer_apellido':     forms.TextInput(attrs={'class': 'form-control text-uppercase', 'placeholder': 'Apellido paterno'}),
             'segundo_apellido':    forms.TextInput(attrs={'class': 'form-control text-uppercase', 'placeholder': 'Apellido materno'}),
@@ -56,7 +55,6 @@ class ServidorPublicoForm(forms.ModelForm):
             'expediente':          'No. Expediente',
             'rfc':                 'RFC',
             'curp':                'CURP',
-            'determinante':        'Determinante',
             'nombre':              'Nombre(s)',
             'primer_apellido':     'Primer Apellido',
             'segundo_apellido':    'Segundo Apellido',
@@ -173,6 +171,25 @@ class InformacionBasicaForm(forms.ModelForm):
             'inmueble':                    forms.Select(attrs={'class': 'form-select'}),
             'serc':                        forms.Select(attrs={'class': 'form-select'}),
             'exigibilidad_serc':           forms.Select(attrs={'class': 'form-select'}),
+            # Fotografía del Padrón en este periodo
+            'expediente':                  forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 41471'}),
+            'rfc':                         forms.TextInput(attrs={'class': 'form-control text-uppercase', 'maxlength': '13'}),
+            'curp':                        forms.TextInput(attrs={'class': 'form-control text-uppercase', 'maxlength': '18'}),
+            'determinante':                forms.TextInput(attrs={'class': 'form-control text-uppercase'}),
+            'nombre':                      forms.TextInput(attrs={'class': 'form-control text-uppercase', 'placeholder': 'Nombre(s)'}),
+            'primer_apellido':             forms.TextInput(attrs={'class': 'form-control text-uppercase', 'placeholder': 'Apellido paterno'}),
+            'segundo_apellido':            forms.TextInput(attrs={'class': 'form-control text-uppercase', 'placeholder': 'Apellido materno'}),
+            'fecha_nacimiento':            forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}, format='%Y-%m-%d'),
+            'sexo':                        forms.Select(attrs={'class': 'form-select'}),
+            'estado_civil':                forms.Select(attrs={'class': 'form-select'}),
+            'entidad_nacimiento':          forms.Select(attrs={'class': 'form-select'}),
+            'pais_nacimiento':             forms.Select(attrs={'class': 'form-select'}),
+            'correo_institucional':        forms.EmailInput(attrs={'class': 'form-control'}),
+            'iss':                         forms.Select(attrs={'class': 'form-select'}),
+            'nss':                         forms.TextInput(attrs={'class': 'form-control'}),
+            'sindicato':                   forms.Select(attrs={'class': 'form-select'}),
+            'sindicalizado':               forms.Select(attrs={'class': 'form-select'}),
+            'tiene_otra_plaza':            forms.Select(attrs={'class': 'form-select'}),
         }
 
 
@@ -207,7 +224,7 @@ class PuestoForm(forms.ModelForm):
     class Meta:
         model  = Puesto
         fields = [
-            'proyecto', 'programa', 'unidad', 'id_plaza', 'categoria',
+            'proyecto', 'programa', 'unidad', 'id_plaza', 'categoria', 'determinante',
             'nombramiento', 'nivel_estructura', 'estatus_plaza', 'cct',
             'hsm', 'total_percepciones', 'total_bonos', 'total_neto', 'dias_pagados',
             'servidor_actual', 'id_plaza_jefe',
@@ -218,6 +235,7 @@ class PuestoForm(forms.ModelForm):
             'unidad':             UnidadSelect(attrs={'class': 'form-select'}),
             'id_plaza':           forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 50694'}),
             'categoria':          forms.Select(attrs={'class': 'form-select'}),
+            'determinante':       forms.TextInput(attrs={'class': 'form-control text-uppercase', 'placeholder': 'Determinante'}),
             'nombramiento':       forms.Select(attrs={'class': 'form-select'}),
             'nivel_estructura':   forms.Select(attrs={'class': 'form-select'}),
             'estatus_plaza':      forms.Select(attrs={'class': 'form-select'}),
@@ -236,6 +254,7 @@ class PuestoForm(forms.ModelForm):
             'unidad':             'Unidad Administrativa',
             'id_plaza':           'ID de Plaza',
             'categoria':          'Categoría',
+            'determinante':       'Determinante',
             'nombramiento':       'Tipo de Contratación',
             'nivel_estructura':   'Nivel de Estructura',
             'estatus_plaza':      'Estatus de Plaza',

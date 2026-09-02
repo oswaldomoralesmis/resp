@@ -23,7 +23,7 @@
   <div class="card-body">
     <form method="get" style="margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap;">
       <div class="search-bar"><span>🔍</span>
-        <input type="text" name="q" value="{{ q }}" placeholder="ID plaza, clave proyecto, dependencia, RFC...">
+        <input type="text" name="q" value="{{ q }}" placeholder="ID plaza, Determinante, clave proyecto, dependencia, RFC...">
         <button type="submit">Buscar</button>
       </div>
       <select name="estatus" class="form-select" style="max-width:180px;" onchange="this.form.submit()">
@@ -35,7 +35,7 @@
     </form>
     <div style="overflow-x:auto;">
       <table class="table-resp">
-        <thead><tr><th>Dependencia</th><th>Unidad</th><th>Programa</th><th>Proyecto</th><th>ID Plaza</th><th>Categoría</th><th>Sueldo Neto</th><th>Estatus</th><th>Trabajador Asignado</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Dependencia</th><th>Unidad</th><th>Programa</th><th>Proyecto</th><th>ID Plaza</th><th>Determinante</th><th>Categoría</th><th>Sueldo Neto</th><th>Estatus</th><th>Trabajador Asignado</th><th>Acciones</th></tr></thead>
         <tbody>
           {% for p in puestos %}
           <tr>
@@ -44,6 +44,7 @@
             <td>{{ p.programa.clave }}</td>
             <td>{{ p.proyecto.clave }}</td>
             <td><span class="badge-blue">{{ p.id_plaza }}</span></td>
+            <td>{{ p.determinante|default:"—" }}</td>
             <td>{{ p.categoria.clave }}</td>
             <td>${{ p.total_neto|floatformat:2 }}</td>
             <td>{% if p.servidor_actual %}<span class="badge-activo">{{ p.estatus_plaza.descripcion|default:"Ocupada" }}</span>{% else %}<span class="badge-inactivo">{{ p.estatus_plaza.descripcion|default:"Vacante" }}</span>{% endif %}</td>
@@ -56,7 +57,7 @@
             </td>
           </tr>
           {% empty %}
-          <tr><td colspan="10" class="text-muted text-center" style="padding:30px;">Sin plazas registradas.</td></tr>
+          <tr><td colspan="11" class="text-muted text-center" style="padding:30px;">Sin plazas registradas.</td></tr>
           {% endfor %}
         </tbody>
       </table>

@@ -27,6 +27,7 @@
     <div class="card-body">
       <div class="grid-2">
         <div><div class="form-label">Dependencia</div><div>{{ puesto.proyecto.dependencia.clave|default:"—" }} — {{ puesto.proyecto.dependencia.descripcion|default:"" }}</div></div>
+        <div><div class="form-label">Determinante</div><div>{{ puesto.determinante|default:"—" }}</div></div>
         <div><div class="form-label">Unidad Administrativa</div><div>{{ puesto.unidad|default:"—" }}</div></div>
         <div><div class="form-label">Programa</div><div>{{ puesto.programa }}</div></div>
         <div><div class="form-label">Proyecto</div><div>{{ puesto.proyecto }}</div></div>
@@ -68,22 +69,34 @@
 <div class="card">
   <div class="card-header">📅 Historial de Asignaciones (por quincena)</div>
   <div class="card-body">
-    <table class="table-resp">
-      <thead><tr><th>Quincena</th><th>Servidor</th><th>RFC</th><th>Dependencia</th><th>Tipo Contratación</th><th>Neto</th><th>Vigencia</th></tr></thead>
-      <tbody>
-        {% for h in historial %}
-        <tr>
-          <td>{{ h.quincena }}</td>
-          <td>{% if h.servidor %}<a href="{% url 'servidor_detail' h.servidor.pk %}">{{ h.servidor.nombre_completo }}</a>{% else %}—{% endif %}</td>
-          <td><code>{{ h.servidor.rfc|default:"—" }}</code></td>
-          <td>{{ h.dependencia.clave }}</td>
-          <td>{{ h.nombramiento|default:"—" }}</td>
-          <td>${{ h.total_neto|floatformat:2 }}</td>
-          <td>{% if h.activo %}<span class="badge-activo">Vigente</span>{% else %}<span class="badge-inactivo">Reemplazada</span>{% endif %}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="text-muted" style="margin-bottom:10px;font-size:13px;">
+      El nombre/RFC de cada fila es la fotografía de ese periodo (tal como se capturó en esa carga), no
+      necesariamente el dato actual de Padrón del servidor.
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="table-resp">
+        <thead><tr><th>Quincena</th><th>Servidor (de ese periodo)</th><th>RFC (de ese periodo)</th><th>Determinante</th><th>Dependencia</th><th>Tipo Contratación</th><th>Neto</th><th>Vigencia</th><th>Acciones</th></tr></thead>
+        <tbody>
+          {% for h in historial %}
+          <tr>
+            <td>{{ h.quincena }}</td>
+            <td>{% if h.servidor %}<a href="{% url 'servidor_detail' h.servidor.pk %}">{{ h.nombre_completo_periodo }}</a>{% else %}—{% endif %}</td>
+            <td><code>{{ h.rfc|default:h.servidor.rfc|default:"—" }}</code></td>
+            <td>{{ h.determinante|default:"—" }}</td>
+            <td>{{ h.dependencia.clave }}</td>
+            <td>{{ h.nombramiento|default:"—" }}</td>
+            <td>${{ h.total_neto|floatformat:2 }}</td>
+            <td>{% if h.activo %}<span class="badge-activo">Vigente</span>{% else %}<span class="badge-inactivo">Reemplazada</span>{% endif %}</td>
+            <td>
+              {% if 'info_basica' in opciones_editables %}
+              <a href="{% url 'info_basica_update' h.pk %}" class="btn-institucional btn-sm">✏️ Ver/editar</a>
+              {% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 {% else %}

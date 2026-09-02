@@ -19,7 +19,6 @@ class ServidorPublico(models.Model):
     expediente = models.CharField(max_length=20, unique=True, verbose_name='No. Expediente')
     rfc = models.CharField(max_length=13, unique=True, verbose_name='RFC')
     curp = models.CharField(max_length=18, unique=True, verbose_name='CURP')
-    determinante = models.CharField(max_length=20, blank=True, verbose_name='Determinante')
     nombre = models.CharField(max_length=50, verbose_name='Nombre(s)')
     primer_apellido = models.CharField(max_length=50, verbose_name='Primer Apellido')
     segundo_apellido = models.CharField(max_length=50, blank=True, null=True, verbose_name='Segundo Apellido')
@@ -123,6 +122,10 @@ class Puesto(models.Model):
     programa = models.ForeignKey(Programa, on_delete=models.PROTECT, related_name='puestos', verbose_name='Programa')
     unidad = models.ForeignKey(UnidadAdministrativa, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Unidad Administrativa')
     id_plaza = models.CharField(max_length=20, unique=True, verbose_name='ID de Plaza')
+    determinante = models.CharField(
+        max_length=20, blank=True, verbose_name='Determinante',
+        help_text='Es propio de la plaza, no del servidor — un servidor con más de una plaza '
+                   'puede tener un Determinante distinto en cada una.')
     categoria = models.ForeignKey(Categoria, on_delete=models.PROTECT, verbose_name='Categoría')
     nombramiento = models.ForeignKey(TipoContratacion, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Tipo de Contratación')
     nivel_estructura = models.ForeignKey(NivelEstructura, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Nivel de Estructura')
@@ -227,6 +230,11 @@ class InformacionBasica(models.Model):
     nivel_estructura = models.ForeignKey(NivelEstructura, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Nivel de Estructura')
     id_plaza_jefe = models.CharField(max_length=20, blank=True, verbose_name='ID Plaza Jefe Inmediato')
     puesto_jefe = models.CharField(max_length=20, blank=True, verbose_name='Puesto Jefe Inmediato')
+    # Determinante de ESTA plaza en este periodo (es propio de la plaza, no
+    # del servidor — ver Puesto.determinante). Igual que el resto de la
+    # "fotografía", queda fijo al crear el registro y solo se pone al día al
+    # cerrarlo cuando llega la siguiente carga (ver cargas/procesador.py).
+    determinante = models.CharField(max_length=20, blank=True, verbose_name='Determinante (del periodo)')
     hsm = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, verbose_name='HSM (Hora-Semana-Mes)')
     total_percepciones = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='Total Percepciones')
     total_bonos = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='Total Bonos')
@@ -236,6 +244,38 @@ class InformacionBasica(models.Model):
     # Servidor
     servidor = models.ForeignKey(ServidorPublico, on_delete=models.PROTECT, related_name='informacion_basica', verbose_name='Servidor Público')
     cct = models.ForeignKey(CentroTrabajo, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Centro de Trabajo')
+    # Fotografía del Padrón en este periodo: copia de los datos personales del
+    # servidor TAL COMO ESTABAN al momento de esta carga. 'servidor' (arriba)
+    # siempre apunta al registro vigente de ServidorPublico, que puede seguir
+    # cambiando después (corrección de nombre, etc.); estos campos NO se
+    # vuelven a tocar una vez creado el registro, así que permiten reconstruir
+    # cómo se veía la persona exactamente en este periodo, sin que una
+    # corrección posterior en Padrón reescriba el historial.
+    expediente = models.CharField(max_length=20, blank=True, verbose_name='No. Expediente (del periodo)')
+    rfc = models.CharField(max_length=13, blank=True, verbose_name='RFC (del periodo)')
+    curp = models.CharField(max_length=18, blank=True, verbose_name='CURP (del periodo)')
+    nombre = models.CharField(max_length=50, blank=True, verbose_name='Nombre(s) (del periodo)')
+    primer_apellido = models.CharField(max_length=50, blank=True, verbose_name='Primer Apellido (del periodo)')
+    segundo_apellido = models.CharField(max_length=50, blank=True, verbose_name='Segundo Apellido (del periodo)')
+    fecha_nacimiento = models.DateField(null=True, blank=True, verbose_name='Fecha de Nacimiento (del periodo)')
+    sexo = models.CharField(max_length=10, choices=SEXO_CHOICES, blank=True, verbose_name='Género (del periodo)')
+    estado_civil = models.ForeignKey(
+        EstadoCivil, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='informacion_basica_periodo', verbose_name='Estado Civil (del periodo)')
+    entidad_nacimiento = models.ForeignKey(
+        EntidadFederativa, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='informacion_basica_periodo', verbose_name='Entidad de Nacimiento (del periodo)')
+    pais_nacimiento = models.ForeignKey(
+        Pais, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='informacion_basica_periodo', verbose_name='País de Nacimiento (del periodo)')
+    correo_institucional = models.EmailField(blank=True, verbose_name='Correo Institucional (del periodo)')
+    iss = models.CharField(max_length=10, choices=ISS_CHOICES, blank=True, verbose_name='Instituto de Seguridad Social (del periodo)')
+    nss = models.CharField(max_length=20, blank=True, verbose_name='Número de Seguridad Social (del periodo)')
+    sindicato = models.ForeignKey(
+        Sindicato, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='informacion_basica_periodo', verbose_name='Sindicato (del periodo)')
+    sindicalizado = models.CharField(max_length=5, choices=SINO_NULL, blank=True, verbose_name='¿Sindicalizado? (del periodo)')
+    tiene_otra_plaza = models.CharField(max_length=5, choices=SINO_NULL, blank=True, verbose_name='¿Tiene otra plaza? (del periodo)')
     # Persona-Puesto
     oblig_declaracion = models.CharField(max_length=5, choices=SINO_NULL, default='N', verbose_name='Obligado a Declaración Patrimonial')
     tipo_declaracion = models.ForeignKey(TipoDeclaracion, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Tipo de Declaración')
@@ -278,6 +318,15 @@ class InformacionBasica(models.Model):
 
     def __str__(self):
         return f"{self.servidor} - {self.quincena} - {self.id_plaza}"
+
+    @property
+    def nombre_completo_periodo(self):
+        """Nombre tal como quedó capturado en ESTE periodo (fotografía).
+        Si el registro es de antes de que existiera esta fotografía, usa el
+        dato actual de Padrón como respaldo."""
+        if self.primer_apellido or self.nombre:
+            return f"{self.primer_apellido} {self.segundo_apellido} {self.nombre}".strip()
+        return self.servidor.nombre_completo if self.servidor_id else ''
 
 
 class BajaServidorPublico(models.Model):

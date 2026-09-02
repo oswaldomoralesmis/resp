@@ -70,6 +70,10 @@
         {% if form.id_plaza.errors %}<div class="text-danger small mt-1">{{ form.id_plaza.errors|join:", " }}</div>{% endif %}
       </div>
       <div class="col-md-3">
+        <label for="{{ form.determinante.id_for_label }}" class="form-label fw-semibold">Determinante</label>
+        {{ form.determinante }}
+      </div>
+      <div class="col-md-3">
         <label for="{{ form.puesto.id_for_label }}" class="form-label fw-semibold">Puesto (clave) <span class="text-danger">*</span></label>
         {{ form.puesto }}
         {% if form.puesto.errors %}<div class="text-danger small mt-1">{{ form.puesto.errors|join:", " }}</div>{% endif %}
@@ -144,6 +148,88 @@
       <div class="col-md-6">
         <label for="{{ form.cct.id_for_label }}" class="form-label fw-semibold">Centro de Trabajo</label>
         {{ form.cct }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOTOGRAFÍA DE PADRÓN EN ESTE PERIODO -->
+<div class="card mb-3">
+  <div class="card-header">&#128100; Fotograf&iacute;a de Padr&oacute;n en este Periodo</div>
+  <div class="card-body">
+    <div class="alert-resp alert-info" style="margin-bottom:14px;">
+      &#8505;&#65039; C&oacute;mo se ve&iacute;an los datos personales del servidor EN ESTA QUINCENA. Corregir esto
+      NO modifica el registro vigente de Padr&oacute;n; y corregir Padr&oacute;n despu&eacute;s tampoco reescribe
+      lo que quede guardado aqu&iacute;.
+    </div>
+    <div class="row g-3">
+      <div class="col-md-2">
+        <label for="{{ form.expediente.id_for_label }}" class="form-label fw-semibold">Expediente</label>
+        {{ form.expediente }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.rfc.id_for_label }}" class="form-label fw-semibold">RFC</label>
+        {{ form.rfc }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.curp.id_for_label }}" class="form-label fw-semibold">CURP</label>
+        {{ form.curp }}
+      </div>
+      <div class="col-md-4">
+        <label for="{{ form.nombre.id_for_label }}" class="form-label fw-semibold">Nombre(s)</label>
+        {{ form.nombre }}
+      </div>
+      <div class="col-md-4">
+        <label for="{{ form.primer_apellido.id_for_label }}" class="form-label fw-semibold">Primer Apellido</label>
+        {{ form.primer_apellido }}
+      </div>
+      <div class="col-md-4">
+        <label for="{{ form.segundo_apellido.id_for_label }}" class="form-label fw-semibold">Segundo Apellido</label>
+        {{ form.segundo_apellido }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.fecha_nacimiento.id_for_label }}" class="form-label fw-semibold">Fecha de Nacimiento</label>
+        {{ form.fecha_nacimiento }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.sexo.id_for_label }}" class="form-label fw-semibold">G&eacute;nero</label>
+        {{ form.sexo }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.estado_civil.id_for_label }}" class="form-label fw-semibold">Estado Civil</label>
+        {{ form.estado_civil }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.entidad_nacimiento.id_for_label }}" class="form-label fw-semibold">Entidad de Nacimiento</label>
+        {{ form.entidad_nacimiento }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.pais_nacimiento.id_for_label }}" class="form-label fw-semibold">Pa&iacute;s de Nacimiento</label>
+        {{ form.pais_nacimiento }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.correo_institucional.id_for_label }}" class="form-label fw-semibold">Correo Institucional</label>
+        {{ form.correo_institucional }}
+      </div>
+      <div class="col-md-2">
+        <label for="{{ form.iss.id_for_label }}" class="form-label fw-semibold">ISS</label>
+        {{ form.iss }}
+      </div>
+      <div class="col-md-2">
+        <label for="{{ form.nss.id_for_label }}" class="form-label fw-semibold">NSS</label>
+        {{ form.nss }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.sindicalizado.id_for_label }}" class="form-label fw-semibold">&#191;Sindicalizado?</label>
+        {{ form.sindicalizado }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.sindicato.id_for_label }}" class="form-label fw-semibold">Sindicato</label>
+        {{ form.sindicato }}
+      </div>
+      <div class="col-md-3">
+        <label for="{{ form.tiene_otra_plaza.id_for_label }}" class="form-label fw-semibold">&#191;Tiene otra plaza?</label>
+        {{ form.tiene_otra_plaza }}
       </div>
     </div>
   </div>

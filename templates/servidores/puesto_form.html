@@ -26,6 +26,10 @@
           <div class="form-text">El ID de plaza no se puede modificar.</div>
         </div>
         <div class="col-md-3">
+          <label for="{{ form.determinante.id_for_label }}" class="form-label fw-semibold">{{ form.determinante.label }}</label>
+          {{ form.determinante }}
+        </div>
+        <div class="col-md-3">
           <label for="{{ form.dependencia.id_for_label }}" class="form-label fw-semibold">{{ form.dependencia.label }}</label>
           {{ form.dependencia }}
           <div class="form-text">Filtra unidad, programa y proyecto según el catálogo.</div>

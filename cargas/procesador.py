@@ -480,6 +480,8 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
 
         total += 1
         errores_fila = []
+        snapshot_puesto_anterior = None
+        snapshot_servidor_anterior = None
 
         def col(i, default=None):
             try:
@@ -561,6 +563,31 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
             errores_fila.append('ID de plaza vacío')
         else:
             puesto_de_la_fila = Puesto.objects.filter(id_plaza=id_plaza).select_related('servidor_actual').first()
+            if puesto_de_la_fila:
+                # Estado de la Plaza justo ANTES de tocar nada con esta fila —
+                # incluye cualquier corrección manual hecha desde la última
+                # carga (edición directa de Puesto). Se usa más abajo para
+                # "cerrar" con ese estado el registro histórico que esta fila
+                # va a reemplazar, en vez de dejarlo congelado con los datos
+                # de cuando se creó.
+                snapshot_puesto_anterior = {
+                    'proyecto':            puesto_de_la_fila.proyecto,
+                    'programa':            puesto_de_la_fila.programa,
+                    'unidad':              puesto_de_la_fila.unidad,
+                    'determinante':        puesto_de_la_fila.determinante,
+                    'categoria':           puesto_de_la_fila.categoria,
+                    'nombramiento':        puesto_de_la_fila.nombramiento,
+                    'nivel_estructura':    puesto_de_la_fila.nivel_estructura,
+                    'estatus_plaza':       puesto_de_la_fila.estatus_plaza,
+                    'cct':                 puesto_de_la_fila.cct,
+                    'hsm':                 puesto_de_la_fila.hsm,
+                    'total_percepciones':  puesto_de_la_fila.total_percepciones,
+                    'total_bonos':         puesto_de_la_fila.total_bonos,
+                    'total_neto':          puesto_de_la_fila.total_neto,
+                    'dias_pagados':        puesto_de_la_fila.dias_pagados,
+                    'id_plaza_jefe':       puesto_de_la_fila.id_plaza_jefe,
+                    'puesto_jefe':         puesto_de_la_fila.id_plaza_jefe,
+                }
             if not puesto_de_la_fila:
                 errores_fila.append(f'La plaza {id_plaza} no existe (debe darse de alta primero en la carga inicial de estructura)')
             elif puesto_de_la_fila.servidor_actual_id and puesto_de_la_fila.servidor_actual.rfc != rfc:
@@ -610,6 +637,27 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
 
         expediente = expediente_fila or f'EXP-{rfc}'
 
+        # Datos personales de la fila — se calculan una sola vez aquí porque
+        # se usan en tres lugares: alta de ServidorPublico, actualización de
+        # ServidorPublico existente, y la "fotografía" de InformacionBasica
+        # de este periodo (para que los tres queden siempre consistentes
+        # entre sí, sin repetir la lectura de columna cada vez).
+        # 'determinante_val' es aparte: es propio de la PLAZA, no del
+        # servidor (ver Puesto.determinante) — se usa para sincronizar la
+        # Plaza de esta fila y para la fotografía de InformacionBasica.
+        determinante_val     = sd(col(C_DETERMINANTE, ''))
+        fecha_nacimiento_val = parse_fecha(col(C_FECHA_NAC))
+        sexo_val             = normalizar_sexo(col(C_GENERO))
+        estado_civil_val     = cache.estado_civil(col(C_ESTADO_CIVIL))
+        entidad_nac_val      = cache.entidad(col(C_ENTIDAD))
+        pais_nac_val         = cache.pais(col(C_PAIS))
+        correo_val           = sd(col(C_CORREO, ''))
+        iss_val              = normalizar_iss(col(C_ISS))
+        nss_val              = sd(col(C_NSS, ''))
+        sindicalizado_val    = normalizar_sino(col(C_SINDICALIZADO))
+        sindicato_val        = cache.sindicato(col(C_SINDICATO))
+        otra_plaza_val       = normalizar_sino(col(C_OTRA_PLAZA))
+
         # ── Servidor Público: buscar o crear ─────────────────────────────────
         # Si el servidor ya existía pero estaba inactivo (dado de baja), el
         # solo hecho de aparecer en un layout de Información Básica implica
@@ -635,26 +683,49 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
                         rfc=rfc,
                         defaults={
                             'curp':                  curp,
-                            'determinante':          sd(col(C_DETERMINANTE, '')),
                             'expediente':            expediente,
                             'nombre':                nombre,
                             'primer_apellido':       ap_pat,
                             'segundo_apellido':      ap_mat,
-                            'fecha_nacimiento':      parse_fecha(col(C_FECHA_NAC)) or date(1900, 1, 1),
-                            'sexo':                  normalizar_sexo(col(C_GENERO)),
-                            'estado_civil':          cache.estado_civil(col(C_ESTADO_CIVIL)),
-                            'entidad_nacimiento':    cache.entidad(col(C_ENTIDAD)),
-                            'pais_nacimiento':       cache.pais(col(C_PAIS)),
-                            'correo_institucional':  sd(col(C_CORREO, '')),
-                            'iss':                   normalizar_iss(col(C_ISS)),
-                            'nss':                   sd(col(C_NSS, '')),
-                            'sindicalizado':         normalizar_sino(col(C_SINDICALIZADO)),
-                            'sindicato':             cache.sindicato(col(C_SINDICATO)),
-                            'tiene_otra_plaza':      normalizar_sino(col(C_OTRA_PLAZA)),
+                            'fecha_nacimiento':      fecha_nacimiento_val or date(1900, 1, 1),
+                            'sexo':                  sexo_val,
+                            'estado_civil':          estado_civil_val,
+                            'entidad_nacimiento':    entidad_nac_val,
+                            'pais_nacimiento':       pais_nac_val,
+                            'correo_institucional':  correo_val,
+                            'iss':                   iss_val,
+                            'nss':                   nss_val,
+                            'sindicalizado':         sindicalizado_val,
+                            'sindicato':             sindicato_val,
+                            'tiene_otra_plaza':      otra_plaza_val,
                             'activo':                True,
                         }
                     )
                     if not creado:
+                        # Estado del servidor justo ANTES de tocar nada con
+                        # esta fila — incluye cualquier corrección manual
+                        # hecha desde Padrón desde la última carga. Se usa
+                        # más abajo para "cerrar" con ese estado el registro
+                        # histórico que esta fila va a reemplazar.
+                        snapshot_servidor_anterior = {
+                            'expediente':            servidor.expediente,
+                            'rfc':                   servidor.rfc,
+                            'curp':                  servidor.curp,
+                            'nombre':                servidor.nombre,
+                            'primer_apellido':       servidor.primer_apellido,
+                            'segundo_apellido':      servidor.segundo_apellido or '',
+                            'fecha_nacimiento':      servidor.fecha_nacimiento,
+                            'sexo':                  servidor.sexo,
+                            'estado_civil_id':       servidor.estado_civil_id,
+                            'entidad_nacimiento_id': servidor.entidad_nacimiento_id,
+                            'pais_nacimiento_id':    servidor.pais_nacimiento_id,
+                            'correo_institucional':  servidor.correo_institucional,
+                            'iss':                   servidor.iss,
+                            'nss':                   servidor.nss,
+                            'sindicato_id':          servidor.sindicato_id,
+                            'sindicalizado':         servidor.sindicalizado,
+                            'tiene_otra_plaza':      servidor.tiene_otra_plaza,
+                        }
                         # Actualizar datos del servidor si vienen distintos en
                         # esta carga — permite corregir errores de captura
                         # (nombre, apellidos, fecha de nacimiento, etc.) re-
@@ -678,18 +749,17 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
                         _actualizar('primer_apellido', ap_pat)
                         _actualizar('segundo_apellido', ap_mat)
                         _actualizar('expediente', expediente_fila)
-                        _actualizar('determinante', sd(col(C_DETERMINANTE, '')))
-                        _actualizar('fecha_nacimiento', parse_fecha(col(C_FECHA_NAC)))
-                        _actualizar('sexo', normalizar_sexo(col(C_GENERO)))
-                        _actualizar('estado_civil', cache.estado_civil(col(C_ESTADO_CIVIL)))
-                        _actualizar('entidad_nacimiento', cache.entidad(col(C_ENTIDAD)))
-                        _actualizar('pais_nacimiento', cache.pais(col(C_PAIS)))
-                        _actualizar('correo_institucional', sd(col(C_CORREO, '')))
-                        _actualizar('iss', normalizar_iss(col(C_ISS)))
-                        _actualizar('nss', sd(col(C_NSS, '')))
-                        _actualizar('sindicalizado', normalizar_sino(col(C_SINDICALIZADO)))
-                        _actualizar('sindicato', cache.sindicato(col(C_SINDICATO)))
-                        _actualizar('tiene_otra_plaza', normalizar_sino(col(C_OTRA_PLAZA)))
+                        _actualizar('fecha_nacimiento', fecha_nacimiento_val)
+                        _actualizar('sexo', sexo_val)
+                        _actualizar('estado_civil', estado_civil_val)
+                        _actualizar('entidad_nacimiento', entidad_nac_val)
+                        _actualizar('pais_nacimiento', pais_nac_val)
+                        _actualizar('correo_institucional', correo_val)
+                        _actualizar('iss', iss_val)
+                        _actualizar('nss', nss_val)
+                        _actualizar('sindicalizado', sindicalizado_val)
+                        _actualizar('sindicato', sindicato_val)
+                        _actualizar('tiene_otra_plaza', otra_plaza_val)
                         if not servidor.activo:
                             servidor.activo = True; cambios = True; reactivado = True
                         if cambios:
@@ -845,11 +915,24 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
         # invalida la transacción en la que corren el resto de las filas.
         try:
             with transaction.atomic():
+                # Antes de desactivarlo, el registro saliente se "cierra" con
+                # el estado que tenían Padrón y la Plaza justo hasta este
+                # momento — así incorpora cualquier corrección manual hecha
+                # en Padrón/Plazas durante todo el tiempo que estuvo vigente,
+                # en vez de quedar congelado para siempre con los datos de
+                # cuando se creó (que es lo que sí debe pasarle al registro
+                # NUEVO que se crea abajo: ese sí nace fijo con lo que trae
+                # ESTA fila).
+                campos_cierre = {'activo': False}
+                if snapshot_servidor_anterior:
+                    campos_cierre.update(snapshot_servidor_anterior)
+                if snapshot_puesto_anterior:
+                    campos_cierre.update(snapshot_puesto_anterior)
                 InformacionBasica.objects.filter(
                     servidor=servidor,
                     id_plaza=id_plaza,
                     activo=True,
-                ).update(activo=False)
+                ).update(**campos_cierre)
 
                 ib_creada = InformacionBasica.objects.create(
                     carga_origen               = carga,
@@ -861,6 +944,7 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
                     proyecto                   = proyecto,
                     # Puesto
                     id_plaza                   = id_plaza,
+                    determinante               = determinante_val,
                     categoria                  = categoria,
                     puesto                     = id_plaza,
                     nombramiento               = nombramiento,
@@ -878,6 +962,28 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
                     # Servidor
                     servidor                   = servidor,
                     cct                        = cct,
+                    # Fotografía del Padrón en este periodo (ver comentario
+                    # en el modelo InformacionBasica) — se guarda tal cual
+                    # trae la fila, para que una corrección posterior en
+                    # Padrón no reescriba cómo se veían estos datos en esta
+                    # quincena en particular.
+                    expediente                 = expediente,
+                    rfc                        = rfc,
+                    curp                       = curp,
+                    nombre                     = nombre,
+                    primer_apellido            = ap_pat,
+                    segundo_apellido           = ap_mat or '',
+                    fecha_nacimiento           = fecha_nacimiento_val,
+                    sexo                       = sexo_val,
+                    estado_civil               = estado_civil_val,
+                    entidad_nacimiento         = entidad_nac_val,
+                    pais_nacimiento            = pais_nac_val,
+                    correo_institucional       = correo_val,
+                    iss                        = iss_val,
+                    nss                        = nss_val,
+                    sindicato                  = sindicato_val,
+                    sindicalizado              = sindicalizado_val,
+                    tiene_otra_plaza           = otra_plaza_val,
                     # Persona-Puesto
                     oblig_declaracion          = oblig_declaracion_val,
                     tipo_declaracion           = tipo_decla,
@@ -909,6 +1015,7 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
                 sincronizar_puesto(
                     proyecto, programa, id_plaza, categoria, servidor,
                     unidad=unidad,
+                    determinante=determinante_val,
                     nombramiento=nombramiento,
                     nivel_estructura=nivel_est,
                     estatus_plaza=estatus,
