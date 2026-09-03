@@ -712,7 +712,39 @@ class PuestoUpdateView(LoginRequiredMixin, PermisoEdicionRequeridoMixin, Depende
             if proyecto and proyecto.dependencia_id != user.dependencia_id:
                 form.add_error('proyecto', 'No tiene permiso para asignar un proyecto de otra dependencia.')
                 return self.form_invalid(form)
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        puesto = self.object
+        # Editar la Plaza debe reflejarse en el registro de Información
+        # Básica VIGENTE de esa plaza (misma lógica inversa a como editar
+        # Inf. Básica ya sincroniza la Plaza) — pero solo si el servidor que
+        # ocupa la plaza no cambió con esta edición: si cambió de ocupante,
+        # ese es un caso de reasignación que no se resuelve aquí, y tocar el
+        # registro del ocupante ANTERIOR mezclaría datos de dos personas
+        # distintas. Los registros históricos (activo=False) nunca se tocan.
+        if puesto.servidor_actual_id:
+            activos = InformacionBasica.objects.filter(
+                id_plaza=puesto.id_plaza, activo=True, servidor_id=puesto.servidor_actual_id,
+            )
+            for info in activos:
+                info.proyecto = puesto.proyecto
+                info.programa = puesto.programa
+                info.unidad = puesto.unidad
+                info.categoria = puesto.categoria
+                info.determinante = puesto.determinante
+                info.nombramiento = puesto.nombramiento
+                info.nivel_estructura = puesto.nivel_estructura
+                info.estatus_plaza = puesto.estatus_plaza
+                info.cct = puesto.cct
+                info.hsm = puesto.hsm
+                info.total_percepciones = puesto.total_percepciones
+                info.total_bonos = puesto.total_bonos
+                info.total_neto = puesto.total_neto
+                info.dias_pagados = puesto.dias_pagados
+                info.id_plaza_jefe = puesto.id_plaza_jefe
+                info.puesto_jefe = puesto.id_plaza_jefe
+                info.save()
+                LogEvento.registrar('informacion_basica', info.pk, info.servidor, 'editado', 'manual', usuario=user)
+        return response
 
 
 class InformacionBasicaCreateView(LoginRequiredMixin, PermisoEdicionRequeridoMixin, CreateView):
