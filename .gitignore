@@ -19,7 +19,7 @@ staticfiles/
 
 # Excepto estos archivos
 #!media/manuales/Manual_de_Usuario.pdf
-#!media/manuales/Manual_de_Adminin.pdf
+!media/Manual_OperadorRESP.pdf
 !Catalogo_Plazas.xlsx
 !Catalogo_Programas.xlsx
 !Catalogo_Proyectos.xlsx
