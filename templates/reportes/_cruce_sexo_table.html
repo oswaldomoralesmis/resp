@@ -1,0 +1,37 @@
+{% load humanize %}
+{% comment %}
+Tabla cruzada campo × sexo, reutilizable. Uso:
+{% include "reportes/_cruce_sexo_table.html" with icono="📝" titulo="Por Tipo de Contratación" items=stats.por_contratacion %}
+Cada item debe traer: label, hombres, mujeres, total, pct_hombres, pct_mujeres.
+{% endcomment %}
+<div class="card">
+  <div class="card-header">{{ icono }} {{ titulo }}</div>
+  <div class="card-body" style="padding:0;max-height:380px;overflow-y:auto;">
+    <div style="overflow-x:auto;">
+      <table class="table-resp" style="font-size:12.5px;margin-bottom:0;">
+        <thead style="position:sticky;top:0;background:#fff;">
+          <tr><th>{{ etiqueta_columna|default:"Concepto" }}</th><th>Hombres</th><th>Mujeres</th><th>Total</th><th style="min-width:140px;">% Mujeres / Hombres</th></tr>
+        </thead>
+        <tbody>
+          {% for d in items %}
+          <tr>
+            <td>{{ d.label|truncatechars:34 }}</td>
+            <td>{{ d.hombres|intcomma }}</td>
+            <td>{{ d.mujeres|intcomma }}</td>
+            <td><strong>{{ d.total|intcomma }}</strong></td>
+            <td>
+              <div style="display:flex;width:100%;height:16px;border-radius:3px;overflow:hidden;background:#eee;">
+                <div style="width:{{ d.pct_mujeres }}%;background:#7b1550;" title="Mujeres {{ d.pct_mujeres }}%"></div>
+                <div style="width:{{ d.pct_hombres }}%;background:#c9a227;" title="Hombres {{ d.pct_hombres }}%"></div>
+              </div>
+              <div style="font-size:10.5px;color:#888;margin-top:2px;">{{ d.pct_mujeres }}% / {{ d.pct_hombres }}%</div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="text-muted text-center" style="padding:16px;">Sin datos.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

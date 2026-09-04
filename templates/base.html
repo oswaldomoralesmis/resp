@@ -52,6 +52,15 @@
     {% if 'reporte_estadisticas' in opciones_permitidas %}
     <a href="{% url 'reporte_estadisticas' %}" class="nav-link"><span class="nav-icon">📈</span> Estadísticas</a>
     {% endif %}
+    {% if 'reporte_paridad' in opciones_permitidas %}
+    <a href="{% url 'reporte_paridad' %}" class="nav-link"><span class="nav-icon">⚖️</span> Monitor de Paridad</a>
+    {% endif %}
+    {% if 'reporte_ocupacion' in opciones_permitidas %}
+    <a href="{% url 'reporte_ocupacion' %}" class="nav-link"><span class="nav-icon">📌</span> Ocupación de Plazas</a>
+    {% endif %}
+    {% if 'reporte_discapacidad' in opciones_permitidas %}
+    <a href="{% url 'reporte_discapacidad' %}" class="nav-link"><span class="nav-icon">♿</span> Monitor de Discapacidad</a>
+    {% endif %}
     <span class="nav-section">Administración</span>
     {% if 'catalogos' in opciones_permitidas %}
     <a href="{% url 'catalogo_index' %}" class="nav-link"><span class="nav-icon">🗂️</span> Catálogos</a>

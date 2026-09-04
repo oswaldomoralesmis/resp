@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Monitor de Paridad{% endblock %}
+{% block page_title %}Monitor de Paridad de Género{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+  <a href="{% url 'reporte_paridad_pdf' %}" class="btn-dorado btn-sm">📄 Exportar PDF</a>
+</div>
+
+<div class="grid-2" style="margin-bottom:16px;">
+  <div class="stat-card">
+    <div class="stat-icon azul">👤</div>
+    <div><div class="stat-number">{{ stats.total_personas|intcomma }}</div><div class="stat-label">Servidores Públicos Activos</div></div>
+  </div>
+  <div class="card">
+    <div class="card-header">🚻 Por Género</div>
+    <div class="card-body">
+      <div style="display:flex;width:100%;height:26px;border-radius:5px;overflow:hidden;">
+        {% for d in stats.por_sexo_personas %}
+        <div style="width:{{ d.porcentaje }}%;background:{% if d.label == 'Femenino' %}#7b1550{% elif d.label == 'Masculino' %}#c9a227{% else %}#888{% endif %};display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600;" title="{{ d.label }} {{ d.porcentaje }}%">
+          {% if d.porcentaje > 8 %}{{ d.porcentaje }}%{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap;">
+        {% for d in stats.por_sexo_personas %}
+        <div style="font-size:13px;">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{% if d.label == 'Femenino' %}#7b1550{% elif d.label == 'Masculino' %}#c9a227{% else %}#888{% endif %};margin-right:6px;"></span>
+          {{ d.label }}: <strong>{{ d.total|intcomma }}</strong> ({{ d.porcentaje }}%)
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="text-muted" style="margin-bottom:14px;font-size:12.5px;">
+  ℹ️ Los cruces de abajo cuentan <strong>plazas ocupadas vigentes</strong> (Información Básica activa) — un servidor con más
+  de una plaza puede contar más de una vez, igual que en el Monitor de Paridad de la APF.
+</div>
+
+<div class="form-section-title">💼 Cruces por Género</div>
+<div class="grid-2" style="margin-bottom:16px;">
+  {% include "reportes/_cruce_sexo_table.html" with icono="📝" titulo="Por Tipo de Contratación" etiqueta_columna="Contratación" items=stats.por_contratacion %}
+  {% include "reportes/_cruce_sexo_table.html" with icono="🏷️" titulo="Por Categoría (Top 15)" etiqueta_columna="Categoría" items=stats.por_categoria %}
+</div>
+<div class="grid-2" style="margin-bottom:16px;">
+  {% include "reportes/_cruce_sexo_table.html" with icono="🏢" titulo="Por Dependencia (Top 15)" etiqueta_columna="Dependencia" items=stats.por_dependencia %}
+</div>
+
+<div class="form-section-title">📈 Evolución Histórica por Género</div>
+<div class="text-muted" style="margin-bottom:14px;font-size:12.5px;">
+  ℹ️ Usa TODO el histórico de Información Básica (vigente y ya reemplazada) — cada quincena es una fotografía fija de
+  cómo estaba la persona en ese momento. Si un servidor tuvo más de una quincena en el mismo mes/año, solo se cuenta
+  una vez (la más reciente de ese periodo).
+</div>
+<div class="grid-2" style="margin-bottom:16px;">
+  {% include "reportes/_cruce_sexo_table.html" with icono="🗓️" titulo="Por Mes" etiqueta_columna="Periodo" items=stats.evolucion_mensual %}
+  {% include "reportes/_cruce_sexo_table.html" with icono="📆" titulo="Por Año" etiqueta_columna="Periodo" items=stats.evolucion_anual %}
+</div>
+
+{% endblock %}

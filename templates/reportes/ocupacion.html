@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Ocupación de Plazas{% endblock %}
+{% block page_title %}Ocupación de Plazas{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+  <a href="{% url 'reporte_ocupacion_pdf' %}" class="btn-dorado btn-sm">📄 Exportar PDF</a>
+</div>
+
+<div class="grid-3" style="margin-bottom:16px;">
+  <div class="stat-card">
+    <div class="stat-icon azul">📌</div>
+    <div><div class="stat-number">{{ stats.total|intcomma }}</div><div class="stat-label">Total de Plazas</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon verde">👤</div>
+    <div><div class="stat-number">{{ stats.ocupadas|intcomma }} <span style="font-size:14px;color:#999;">({{ stats.pct_ocupadas }}%)</span></div><div class="stat-label">Ocupadas</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon rojo">🪑</div>
+    <div><div class="stat-number">{{ stats.vacantes|intcomma }} <span style="font-size:14px;color:#999;">({{ stats.pct_vacantes }}%)</span></div><div class="stat-label">Vacantes</div></div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-body">
+    <div style="display:flex;width:100%;height:26px;border-radius:5px;overflow:hidden;">
+      <div style="width:{{ stats.pct_ocupadas }}%;background:#1a6b4a;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600;">
+        {% if stats.pct_ocupadas > 8 %}{{ stats.pct_ocupadas }}%{% endif %}
+      </div>
+      <div style="width:{{ stats.pct_vacantes }}%;background:#c9a227;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600;">
+        {% if stats.pct_vacantes > 8 %}{{ stats.pct_vacantes }}%{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="form-section-title">📊 Cruces por Ocupación</div>
+<div class="grid-2" style="margin-bottom:16px;">
+  {% include "reportes/_ocupacion_table.html" with icono="📝" titulo="Por Tipo de Contratación" etiqueta_columna="Contratación" items=stats.por_contratacion %}
+  {% include "reportes/_ocupacion_table.html" with icono="🏷️" titulo="Por Categoría (Top 15)" etiqueta_columna="Categoría" items=stats.por_categoria %}
+</div>
+<div class="grid-2" style="margin-bottom:16px;">
+  {% include "reportes/_ocupacion_table.html" with icono="🏢" titulo="Por Dependencia (Top 15)" etiqueta_columna="Dependencia" items=stats.por_dependencia %}
+</div>
+
+{% endblock %}

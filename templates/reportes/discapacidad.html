@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Monitor de Discapacidad{% endblock %}
+{% block page_title %}Monitor de Discapacidad{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+  <a href="{% url 'reporte_discapacidad_pdf' %}" class="btn-dorado btn-sm">📄 Exportar PDF</a>
+</div>
+
+<div class="grid-2" style="margin-bottom:16px;">
+  <div class="stat-card">
+    <div class="stat-icon azul">👤</div>
+    <div><div class="stat-number">{{ stats.total_personas|intcomma }}</div><div class="stat-label">Servidores Públicos Activos</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon dorado">♿</div>
+    <div><div class="stat-number">{{ stats.total_con_discapacidad|intcomma }} <span style="font-size:14px;color:#999;">({{ stats.porcentaje }}%)</span></div><div class="stat-label">Con Discapacidad Registrada</div></div>
+  </div>
+</div>
+
+<div class="text-muted" style="margin-bottom:14px;font-size:12.5px;">
+  ℹ️ Excluye "Ninguna" y "Sin respuesta" del catálogo de Discapacidad. Un servidor puede tener más de un tipo
+  registrado, así que puede contar más de una vez en el cruce por tipo.
+</div>
+
+<div class="form-section-title">♿ Por Tipo de Discapacidad y Género</div>
+<div class="grid-2" style="margin-bottom:16px;">
+  {% include "reportes/_cruce_sexo_table.html" with icono="♿" titulo="Por Tipo de Discapacidad" etiqueta_columna="Tipo" items=stats.por_tipo_sexo %}
+  {% include "reportes/_cruce_sexo_table.html" with icono="🎂" titulo="Por Rango de Edad" etiqueta_columna="Edad" items=stats.por_rango_edad %}
+</div>
+
+<div class="form-section-title">💼 Por Tipo de Contratación y Sueldo Promedio</div>
+<div class="grid-2" style="margin-bottom:16px;">
+  {% include "reportes/_cruce_sexo_table.html" with icono="📝" titulo="Por Tipo de Contratación" etiqueta_columna="Contratación" items=stats.por_contratacion %}
+  <div class="card">
+    <div class="card-header">💰 Sueldo Neto Promedio por Género</div>
+    <div class="card-body" style="padding:0;">
+      {% for d in stats.sueldo_por_sexo %}
+      <div style="display:flex;justify-content:space-between;gap:8px;padding:9px 16px;border-bottom:1px solid #f0f0f0;">
+        <span style="font-size:13px;">{{ d.label }}</span>
+        <span class="badge-blue">${{ d.promedio|floatformat:2|intcomma }}</span>
+      </div>
+      {% empty %}
+      <div style="padding:16px;color:#999;font-size:13px;">Sin datos.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}
