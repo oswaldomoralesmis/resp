@@ -20,6 +20,7 @@ staticfiles/
 # Excepto estos archivos
 #!media/manuales/Manual_de_Usuario.pdf
 !media/Manual_OperadorRESP.pdf
+!media/Manual_ValidadorRESP.pdf
 !Catalogo_Plazas.xlsx
 !Catalogo_Programas.xlsx
 !Catalogo_Proyectos.xlsx

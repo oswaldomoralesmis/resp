@@ -95,7 +95,11 @@
 <header class="topbar">
   <div class="topbar-title">{% block page_title %}RESP{% endblock %}</div>
   <div class="topbar-actions">
-    <a href="/media/Manual_OperadorRESP.pdf" target="_blank" rel="noopener" class="btn-outline btn-sm" title="Manual de Usuario">📖 Ayuda</a>
+    {% if request.user.rol == 'validador' %}
+    <a href="/media/Manual_ValidadorRESP.pdf" target="_blank" rel="noopener" class="btn-outline btn-sm" title="Manual de Usuario (Validador)">📖 Ayuda</a>
+    {% else %}
+    <a href="/media/Manual_OperadorRESP.pdf" target="_blank" rel="noopener" class="btn-outline btn-sm" title="Manual de Usuario (Operador)">📖 Ayuda</a>
+    {% endif %}
     {% if request.user.is_authenticated and request.user.contrasena_temporal %}
     <a href="{% url 'cambiar_contrasena' %}" class="badge-pendiente" style="text-decoration:none;">⚠️ Cambiar contraseña temporal</a>
     {% endif %}
