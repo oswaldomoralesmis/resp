@@ -20,6 +20,7 @@ from reportlab.graphics.shapes import Drawing, Rect, String
 from reportlab.graphics.charts.piecharts import Pie
 from reportlab.graphics.charts.linecharts import HorizontalLineChart
 from reportlab.graphics.charts.legends import Legend
+from reportlab.graphics.widgets.markers import makeMarker
 
 AZUL_INSTITUCIONAL = colors.HexColor('#0b3d6b')
 GRIS_CLARO = colors.HexColor('#f2f2f2')
@@ -119,13 +120,26 @@ def _linea_evolucion(datos, width=460, height=200):
     chart.valueAxis.labelTextFormat = '%d%%'
     chart.lines[0].strokeColor = DORADO
     chart.lines[0].strokeWidth = 1.6
+    chart.lines[0].symbol = makeMarker('FilledCircle')
+    chart.lines[0].symbol.strokeColor = DORADO
+    chart.lines[0].symbol.fillColor = DORADO
+    chart.lines[0].symbol.size = 4
     chart.lines[1].strokeColor = MORADO
     chart.lines[1].strokeWidth = 1.6
+    chart.lines[1].symbol = makeMarker('FilledCircle')
+    chart.lines[1].symbol.strokeColor = MORADO
+    chart.lines[1].symbol.fillColor = MORADO
+    chart.lines[1].symbol.size = 4
     chart.lineLabelFormat = None
     d.add(chart)
 
     leyenda = Legend()
-    leyenda.x, leyenda.y = width - 10, height - 8
+    # Ojo: el (x, y) de Legend es el punto de arranque del CUADRITO de color,
+    # y el texto se dibuja a partir de ahí hacia la DERECHA — no es la
+    # esquina derecha del bloque completo (aunque el nombre 'alignment' lo
+    # sugiera). Dejar suficiente margen a la derecha para que el texto más
+    # largo ('Hombres'/'Mujeres') no quede recortado fuera del Drawing.
+    leyenda.x, leyenda.y = width - 95, height - 8
     leyenda.dx, leyenda.dy = 8, 8
     leyenda.fontSize = 8
     leyenda.alignment = 'right'
