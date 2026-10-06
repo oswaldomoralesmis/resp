@@ -24,7 +24,7 @@
 
 <div class="grid-2">
   <div class="card">
-    <div class="card-header">👤 Datos Personales</div>
+    <div class="card-header">🪪 Identificación</div>
     <div class="card-body">
       <div class="grid-2">
         <div><div class="form-label">Nombre(s)</div><div>{{ servidor.nombre }}</div></div>
@@ -33,23 +33,110 @@
         <div><div class="form-label">Fecha de Nacimiento</div><div>{{ servidor.fecha_nacimiento }}</div></div>
         <div><div class="form-label">Género</div><div>{{ servidor.sexo }}</div></div>
         <div><div class="form-label">Estado Civil</div><div>{{ servidor.estado_civil|default:"—" }}</div></div>
-        <div><div class="form-label">Entidad Nacimiento</div><div>{{ servidor.entidad_nacimiento|default:"—" }}</div></div>
-        <div><div class="form-label">País de Nacimiento</div><div>{{ servidor.pais_nacimiento|default:"—" }}</div></div>
+        <div><div class="form-label">Estatus</div><div>{% if servidor.activo %}<span class="badge-activo">Activo</span>{% else %}<span class="badge-inactivo">Baja</span>{% endif %}</div></div>
       </div>
     </div>
   </div>
   <div class="card">
-    <div class="card-header">🏛️ Datos Laborales</div>
+    <div class="card-header">📇 Datos Personales</div>
     <div class="card-body">
       <div class="grid-2">
         <div><div class="form-label">Correo Institucional</div><div>{{ servidor.correo_institucional|default:"—" }}</div></div>
+        <div><div class="form-label">Correo Personal</div><div>{{ datos_personales.correo_personal|default:"—" }}</div></div>
+        <div><div class="form-label">Tipo de Sangre</div><div>{{ datos_personales.tipo_sangre|default:"—" }}</div></div>
+        <div><div class="form-label">Factor RH</div><div>{{ datos_personales.factor_rh|default:"—" }}</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">🔐 Seguridad Social y Sindicato</div>
+    <div class="card-body">
+      <div class="grid-2">
         <div><div class="form-label">ISS</div><div>{{ servidor.iss }}</div></div>
         <div><div class="form-label">NSS</div><div>{{ servidor.nss|default:"—" }}</div></div>
         <div><div class="form-label">Sindicalizado</div><div>{{ servidor.get_sindicalizado_display }}</div></div>
         <div><div class="form-label">Sindicato</div><div>{{ servidor.sindicato|default:"—" }}</div></div>
         <div><div class="form-label">Otra Plaza</div><div>{{ servidor.get_tiene_otra_plaza_display }}</div></div>
-        <div><div class="form-label">Estatus</div><div>{% if servidor.activo %}<span class="badge-activo">Activo</span>{% else %}<span class="badge-inactivo">Baja</span>{% endif %}</div></div>
       </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">🏠 Domicilio</div>
+    <div class="card-body">
+      {% if datos_personales %}
+      <div class="grid-2">
+        <div><div class="form-label">Calle y Número</div><div>{{ datos_personales.calle|default:"—" }} {{ datos_personales.num_exterior }}{% if datos_personales.num_interior %} Int. {{ datos_personales.num_interior }}{% endif %}</div></div>
+        <div><div class="form-label">Colonia</div><div>{{ datos_personales.colonia|default:"—" }}</div></div>
+        <div><div class="form-label">Municipio</div><div>{{ datos_personales.municipio|default:"—" }}</div></div>
+        <div><div class="form-label">Entidad</div><div>{{ datos_personales.entidad|default:"—" }}</div></div>
+        <div><div class="form-label">País</div><div>{{ datos_personales.pais|default:"—" }}</div></div>
+        <div><div class="form-label">C.P.</div><div>{{ datos_personales.cp|default:"—" }}</div></div>
+      </div>
+      {% else %}
+      <div class="text-muted">Sin domicilio capturado.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">🎓 Escolaridad y Origen</div>
+    <div class="card-body">
+      <div class="grid-2">
+        <div><div class="form-label">Nivel de Escolaridad</div><div>{{ datos_complementarios.nivel_escolaridad|default:"—" }}</div></div>
+        <div><div class="form-label">Entidad de Nacimiento</div><div>{{ servidor.entidad_nacimiento|default:"—" }}</div></div>
+        <div><div class="form-label">País de Nacimiento</div><div>{{ servidor.pais_nacimiento|default:"—" }}</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">🪶 Pueblo Indígena/Afromexicano</div>
+    <div class="card-body">
+      <div class="form-label">Pueblo</div>
+      <div>{{ datos_complementarios.pueblo_indigena|default:"—" }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="grid-3">
+  <div class="card">
+    <div class="card-header">♿ Discapacidades</div>
+    <div class="card-body">
+      {% if discapacidades %}
+      <ul style="margin:0;padding-left:18px;">
+        {% for d in discapacidades %}<li>{{ d.discapacidad.tipo }}{% if d.discapacidad.descripcion %} — {{ d.discapacidad.descripcion }}{% endif %}</li>{% endfor %}
+      </ul>
+      {% else %}
+      <div class="text-muted">Ninguna registrada.</div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">🩺 Enfermedades Crónicas</div>
+    <div class="card-body">
+      {% if enfermedades %}
+      <ul style="margin:0;padding-left:18px;">
+        {% for e in enfermedades %}<li>{{ e.enfermedad.descripcion }}</li>{% endfor %}
+      </ul>
+      {% else %}
+      <div class="text-muted">Ninguna registrada.</div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">🗣️ Idiomas / Lenguas</div>
+    <div class="card-body">
+      {% if idiomas %}
+      <ul style="margin:0;padding-left:18px;">
+        {% for i in idiomas %}<li>{{ i.idioma.descripcion }}{% if i.nivel %} — {{ i.nivel }}{% endif %}</li>{% endfor %}
+      </ul>
+      {% else %}
+      <div class="text-muted">Ninguno registrado.</div>
+      {% endif %}
     </div>
   </div>
 </div>

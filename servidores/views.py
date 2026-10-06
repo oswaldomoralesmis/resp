@@ -213,6 +213,11 @@ class ServidorDetailView(LoginRequiredMixin, DependenciaScopedMixin, DetailView)
         ).order_by('-quincena')[:10]
         ctx['bajas'] = self.object.bajas.select_related('motivo_baja', 'dependencia').order_by('-fecha_baja')
         ctx['eventos_log'] = self.object.eventos_log.select_related('usuario', 'carga')[:30]
+        ctx['datos_personales'] = getattr(self.object, 'datos_personales', None)
+        ctx['datos_complementarios'] = getattr(self.object, 'datos_complementarios', None)
+        ctx['discapacidades'] = self.object.discapacidades.select_related('discapacidad')
+        ctx['enfermedades'] = self.object.enfermedades.select_related('enfermedad')
+        ctx['idiomas'] = self.object.idiomas.select_related('idioma')
         ctx['titulo'] = f'Servidor: {self.object.nombre_completo}'
         return ctx
 

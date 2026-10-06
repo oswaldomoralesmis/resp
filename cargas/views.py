@@ -713,11 +713,110 @@ class AccesoExcepcionDeleteView(PermisoRequeridoMixin, DeleteView):
     success_url = reverse_lazy('excepcion_list')
 
 
+# Catálogos de apoyo que se agregan como hojas independientes a la plantilla
+# 'basica', uno por hoja (claves de CATALOGOS_EXPORT en catalogos/exportador.py).
+# Incluye los que antes vivían como texto fijo dentro de la hoja "Catálogos"
+# (tipo_contratacion, tipo_personal, tipo_funcion, estatus_plaza, estado_civil,
+# tipo_declaracion) — esa hoja se elimina y estos quedan con datos reales de la BD.
+CATALOGOS_PLANTILLA_BASICA = [
+    'tipo_contratacion', 'tipo_personal', 'tipo_funcion', 'estatus_plaza',
+    'estado_civil', 'tipo_declaracion', 'entidad', 'municipio', 'pais',
+    'sindicato', 'nivel_escolaridad', 'idioma', 'discapacidad', 'enfermedad',
+    'pueblo', 'area', 'motivo_baja',
+]
+
+# El resto de lo que vivía en la hoja "Catálogos" no tiene tabla en BD: son
+# choices fijos definidos en servidores/models.py (ISS_CHOICES, SINO_NULL,
+# SEXO_CHOICES) o claves de solo-referencia del layout (RESPONSABILIDADES).
+# Se separan igual, una hoja por catálogo, pero con valores fijos.
+CATALOGOS_ESTATICOS_BASICA = [
+    ('Género', [('M', 'Masculino'), ('F', 'Femenino')]),
+    ('ISS', [('ISSET', 'ISSET'), ('IMSS', 'IMSS'), ('ISSSTE', 'ISSSTE')]),
+    ('ORDP - OPAAER', [('S', 'Sí'), ('N', 'No'), ('NULL', 'No aplica')]),
+    ('Responsabilidades', [
+        ('A', 'Elaborar'), ('B', 'Revisar'),
+        ('C', 'Firmar/Autorizar'), ('NULL', 'No participa'),
+    ]),
+]
+
+
+def _escribir_encabezado(ws, encabezados, header_fill, header_font):
+    from openpyxl.styles import Alignment
+    for col, encabezado in enumerate(encabezados, 1):
+        celda = ws.cell(row=1, column=col, value=encabezado)
+        celda.fill = header_fill
+        celda.font = header_font
+        celda.alignment = Alignment(horizontal='center')
+
+
+def _agregar_hojas_catalogo(wb, claves):
+    """Agrega una hoja por catálogo (clave en CATALOGOS_EXPORT) con los
+    registros actuales de la BD, con el mismo estilo de encabezado que
+    'exportar_catalogo_excel' en catalogos/views.py."""
+    from openpyxl.styles import Font, PatternFill
+    from openpyxl.utils import get_column_letter
+    from catalogos.exportador import CATALOGOS_EXPORT
+
+    header_fill = PatternFill(start_color='1B4F72', end_color='1B4F72', fill_type='solid')
+    header_font = Font(color='FFFFFF', bold=True)
+
+    for clave in claves:
+        cfg = CATALOGOS_EXPORT[clave]
+        titulo = cfg['titulo'][:31]
+        if titulo in wb.sheetnames:
+            continue  # ya existe (plantilla editada a mano) — no duplicar
+
+        qs = cfg['model'].objects.all()
+        if cfg.get('select_related'):
+            qs = qs.select_related(*cfg['select_related'])
+        qs = qs.order_by(*cfg['order_by'])
+
+        ws = wb.create_sheet(title=titulo)
+        columnas = cfg['columnas']
+        _escribir_encabezado(ws, [encabezado for encabezado, _f in columnas], header_fill, header_font)
+
+        fila_num = 2
+        for obj in qs:
+            for col, (_h, extraer) in enumerate(columnas, 1):
+                ws.cell(row=fila_num, column=col, value=extraer(obj))
+            fila_num += 1
+
+        for i in range(1, len(columnas) + 1):
+            ws.column_dimensions[get_column_letter(i)].width = 20
+
+
+def _agregar_hojas_estaticas(wb, catalogos):
+    """Igual que _agregar_hojas_catalogo pero para catálogos sin tabla en BD
+    (choices fijos en código) — mismo estilo, columnas Clave/Descripción."""
+    from openpyxl.styles import Font, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    header_fill = PatternFill(start_color='1B4F72', end_color='1B4F72', fill_type='solid')
+    header_font = Font(color='FFFFFF', bold=True)
+
+    for titulo, filas in catalogos:
+        titulo = titulo[:31]
+        if titulo in wb.sheetnames:
+            continue
+
+        ws = wb.create_sheet(title=titulo)
+        _escribir_encabezado(ws, ['Clave', 'Descripción'], header_fill, header_font)
+        for fila_num, (clave, descripcion) in enumerate(filas, 2):
+            ws.cell(row=fila_num, column=1, value=clave)
+            ws.cell(row=fila_num, column=2, value=descripcion)
+
+        for i in (1, 2):
+            ws.column_dimensions[get_column_letter(i)].width = 20
+
+
 @login_required
 def descargar_plantilla(request, tipo):
-    """Sirve el archivo de plantilla Excel para el tipo de layout solicitado."""
+    """Sirve el archivo de plantilla Excel para el tipo de layout solicitado.
+    Para 'basica' se parte del .xlsx estático de la raíz del proyecto y se le
+    agregan, al vuelo, las hojas de catálogo que aún faltaban (siempre con
+    los valores vigentes en la BD) — ver CATALOGOS_PLANTILLA_BASICA."""
     import os
-    from django.http import FileResponse, Http404
+    from django.http import FileResponse, HttpResponse, Http404
 
     nombres = {
         'basica':      'Layout_Informacion_Basica.xlsx',
@@ -734,6 +833,20 @@ def descargar_plantilla(request, tipo):
 
     if not os.path.exists(ruta):
         raise Http404(f"El archivo {nombre_archivo} no está disponible en el servidor.")
+
+    if tipo == 'basica':
+        import openpyxl
+        wb = openpyxl.load_workbook(ruta)
+        if 'Catálogos' in wb.sheetnames:
+            del wb['Catálogos']
+        _agregar_hojas_catalogo(wb, CATALOGOS_PLANTILLA_BASICA)
+        _agregar_hojas_estaticas(wb, CATALOGOS_ESTATICOS_BASICA)
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="{nombre_archivo}"'
+        wb.save(response)
+        return response
 
     response = FileResponse(
         open(ruta, 'rb'),
