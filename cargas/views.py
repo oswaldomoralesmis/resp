@@ -20,7 +20,7 @@ from .models import (
     generar_periodos_ejercicio, tipos_permitidos_periodo, periodo_vigente_hoy,
 )
 from .forms import CargaLayoutForm, PeriodoCargaForm, AccesoExcepcionCargaForm, GenerarPeriodosForm
-from .procesador import procesar_layout_basica, procesar_layout_bajas
+from .procesador import procesar_layout_basica, procesar_layout_bajas, procesar_layout_personales
 from .comprobante import generar_comprobante_pdf
 from usuarios.mixins import (
     AdministradorRequiredMixin, DependenciaScopedMixin, filtrar_por_dependencia,
@@ -35,6 +35,8 @@ def _correr_procesador(carga, dry_run, overrides):
         return procesar_layout_basica(carga, dry_run=dry_run, overrides=overrides)
     elif carga.tipo == 'bajas':
         return procesar_layout_bajas(carga, dry_run=dry_run, overrides=overrides)
+    elif carga.tipo == 'personales':
+        return procesar_layout_personales(carga, dry_run=dry_run, overrides=overrides)
     return {'ok': 0, 'errores': 0, 'total': 0,
             'log': f'Tipo "{carga.tipo}" aún no implementado.', 'filas': []}
 
@@ -739,6 +741,15 @@ CATALOGOS_ESTATICOS_BASICA = [
     ]),
 ]
 
+# Catálogos de apoyo para la plantilla 'personales' (Layout_Datos_Personales):
+# domicilio (Municipios/Entidades/Países), grado de estudios, estado civil y
+# lugar de nacimiento (mismas hojas Entidades/Países, reutilizadas) — más ISS
+# como catálogo fijo (no tiene tabla en BD, ver ISS_CHOICES en servidores/models.py).
+CATALOGOS_PLANTILLA_PERSONALES = ['entidad', 'municipio', 'pais', 'nivel_escolaridad', 'estado_civil']
+CATALOGOS_ESTATICOS_PERSONALES = [
+    ('ISS', [('ISSET', 'ISSET'), ('IMSS', 'IMSS'), ('ISSSTE', 'ISSSTE')]),
+]
+
 
 def _escribir_encabezado(ws, encabezados, header_fill, header_font):
     from openpyxl.styles import Alignment
@@ -809,12 +820,36 @@ def _agregar_hojas_estaticas(wb, catalogos):
             ws.column_dimensions[get_column_letter(i)].width = 20
 
 
+def _actualizar_hoja_bajas(wb):
+    """Reemplaza la hoja estática 'Catálogo Motivos Baja' (desalineada del
+    catálogo real: traía descripciones inventadas para varias claves, p.ej.
+    'F'→Fallecimiento y '2'→Incapacidad física permanente, que no existen así
+    en la tabla MotivoBaja) por la hoja dinámica 'Motivos de Baja' con las
+    claves/descripciones vigentes en la BD."""
+    if 'Catálogo Motivos Baja' in wb.sheetnames:
+        del wb['Catálogo Motivos Baja']
+    _agregar_hojas_catalogo(wb, ['motivo_baja'])
+
+    # El renglón de ayuda (bajo los encabezados) listaba un ejemplo fijo de
+    # claves ('M/B/C/D/F/J/P/A') que ya no corresponde al catálogo real — la
+    # tabla MotivoBaja mezcla claves numéricas (1-36) y letras heredadas, así
+    # que listar "las principales" a mano se desactualiza igual. Mejor
+    # remitir a la hoja del catálogo.
+    ws = wb['Layout_Bajas']
+    for fila in ws.iter_rows(min_row=1, max_row=4):
+        for celda in fila:
+            if celda.value and 'MOTIVO' in str(celda.value).upper():
+                ws.cell(row=celda.row + 1, column=celda.column, value="Ver hoja 'Motivos de Baja'")
+                break
+
+
 @login_required
 def descargar_plantilla(request, tipo):
     """Sirve el archivo de plantilla Excel para el tipo de layout solicitado.
-    Para 'basica' se parte del .xlsx estático de la raíz del proyecto y se le
-    agregan, al vuelo, las hojas de catálogo que aún faltaban (siempre con
-    los valores vigentes en la BD) — ver CATALOGOS_PLANTILLA_BASICA."""
+    Para 'basica' y 'bajas' se parte del .xlsx estático de la raíz del
+    proyecto y se le agregan/reemplazan, al vuelo, las hojas de catálogo con
+    los valores vigentes en la BD — ver CATALOGOS_PLANTILLA_BASICA y
+    _actualizar_hoja_bajas."""
     import os
     from django.http import FileResponse, HttpResponse, Http404
 
@@ -841,6 +876,29 @@ def descargar_plantilla(request, tipo):
             del wb['Catálogos']
         _agregar_hojas_catalogo(wb, CATALOGOS_PLANTILLA_BASICA)
         _agregar_hojas_estaticas(wb, CATALOGOS_ESTATICOS_BASICA)
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="{nombre_archivo}"'
+        wb.save(response)
+        return response
+
+    if tipo == 'bajas':
+        import openpyxl
+        wb = openpyxl.load_workbook(ruta)
+        _actualizar_hoja_bajas(wb)
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="{nombre_archivo}"'
+        wb.save(response)
+        return response
+
+    if tipo == 'personales':
+        import openpyxl
+        wb = openpyxl.load_workbook(ruta)
+        _agregar_hojas_catalogo(wb, CATALOGOS_PLANTILLA_PERSONALES)
+        _agregar_hojas_estaticas(wb, CATALOGOS_ESTATICOS_PERSONALES)
         response = HttpResponse(
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )

@@ -68,11 +68,12 @@ from catalogos.models import (
     Programa, Proyecto, Categoria, TipoContratacion, TipoPersonal,
     TipoFuncion, NivelEstructura, EstatusPlaza, CentroTrabajo,
     TipoDeclaracion, Area, EntidadFederativa, Pais, Inmueble,
-    EstadoCivil, Sindicato, MotivoBaja,
+    EstadoCivil, Sindicato, MotivoBaja, Municipio, NivelEscolaridad,
 )
 from .validadores import rfc_formato_valido, curp_formato_valido, curp_digito_verificador_valido
 from servidores.models import (
     ServidorPublico, InformacionBasica, Puesto, BajaServidorPublico,
+    DatosPersonales, DatosComplementarios,
     sincronizar_puesto, reportar_puesto_vacante,
 )
 
@@ -292,6 +293,15 @@ def normalizar_iss(v):
     return 'ISSET'
 
 
+def normalizar_factor_rh(v):
+    s = sv(v)
+    if s.startswith('POSIT'):
+        return 'Positivo'
+    if s.startswith('NEGAT'):
+        return 'Negativo'
+    return ''
+
+
 # ── Caché de catálogos ────────────────────────────────────────────────────────
 class Cache:
     def __init__(self):
@@ -412,6 +422,19 @@ class Cache:
     def estado_civil(self, v):
         k = sv(v)
         return self._get(f'ec_{k}', lambda: EstadoCivil.objects.filter(clave=k).first())
+
+    def municipio(self, entidad, v):
+        # Municipio.clave NO es única globalmente (solo dentro de su entidad:
+        # p.ej. la clave '004' existe en 30 entidades distintas), por eso
+        # necesita la entidad ya resuelta como parte de la llave de búsqueda.
+        k = sd(v)
+        if not entidad or not k:
+            return None
+        return self._get(f'mun_{entidad.pk}_{k}', lambda: Municipio.objects.filter(entidad=entidad, clave=k).first())
+
+    def nivel_escolaridad(self, v):
+        k = si(v)
+        return self._get(f'nesc_{k}', lambda: NivelEscolaridad.objects.filter(clave=k).first())
 
     def sindicato(self, v):
         k = sv(v)
@@ -1252,6 +1275,240 @@ def procesar_layout_bajas(carga, dry_run=True, overrides=None):
             filas_detalle.append({'fila': num_fila, 'rfc': rfc, 'curp': curp, 'nombre': nombre_completo,
                                    'id_plaza': id_plaza, 'estado': 'ERROR',
                                    'mensaje': f'Error al registrar la baja — {e}'})
+
+    return {
+        'ok':      ok,
+        'errores': errores,
+        'total':   total,
+        'log':     '\n'.join(log),
+        'filas':   filas_detalle,
+    }
+
+
+# ── Layout de Datos Personales — índices de columna (base 0) ─────────────────
+CP_EXPEDIENTE     = 0
+CP_RFC            = 1
+CP_CURP           = 2
+CP_NOMBRE         = 3
+CP_PATERNO        = 4
+CP_MATERNO        = 5
+CP_CALLE          = 6
+CP_NUM_EXT        = 7
+CP_NUM_INT        = 8
+CP_COLONIA        = 9
+CP_MUNICIPIO      = 10
+CP_ENTIDAD        = 11   # domicilio
+CP_PAIS           = 12   # domicilio
+CP_CP             = 13
+CP_ISS            = 14
+CP_NSS            = 15
+CP_TIPO_SANGRE    = 16
+CP_FACTOR_RH      = 17
+CP_GRADO_ESTUDIOS = 18   # clave NivelEscolaridad
+CP_ESTADO_CIVIL   = 19   # clave EstadoCivil
+CP_ENTIDAD_NAC    = 20   # clave EntidadFederativa — lugar de nacimiento
+CP_PAIS_NAC       = 21   # clave Pais — lugar de nacimiento
+
+
+def procesar_layout_personales(carga, dry_run=True, overrides=None):
+    """Igual que procesar_layout_bajas: dry_run=True valida sin escribir
+    (vista previa al subir), dry_run=False aplica de verdad (al aceptar).
+    'overrides' funciona igual que en procesar_layout_basica (ver ahí).
+
+    Solo se usa una vez al año (quincena '06' — ver QUINCENA_DATOS_PERSONALES
+    en cargas/models.py). Igual que bajas, el servidor debe existir ya (este
+    layout no da de alta servidores): actualiza DatosPersonales (domicilio,
+    tipo de sangre, factor RH), DatosComplementarios (grado de estudios) y
+    los campos de ServidorPublico que no vienen en el layout básico quincenal
+    (ISS, NSS, estado civil, lugar de nacimiento). Cada campo solo se
+    sobrescribe si la fila trae un valor no vacío — igual que en básica —
+    para que una celda en blanco no borre un dato bueno que ya existía."""
+    overrides = overrides or {}
+    ruta = carga.archivo.path
+    log = []
+    filas_detalle = []
+    ok = errores = total = 0
+
+    try:
+        wb = load_workbook(ruta, read_only=True, data_only=True)
+    except Exception as e:
+        return {'ok': 0, 'errores': 1, 'total': 0, 'log': f'No se pudo abrir el archivo: {e}', 'filas': []}
+
+    hoja = wb['Layout_Personales'] if 'Layout_Personales' in wb.sheetnames else wb.active
+    filas = list(hoja.iter_rows(values_only=True))
+
+    # Igual que en bajas: los encabezados traen subtítulo en la misma celda
+    # ("RFC\nRFC con homoclave"), por eso la búsqueda es por substring.
+    inicio_datos = 1
+    for idx, fila in enumerate(filas):
+        fila_str = [str(c).upper().strip() if c else '' for c in fila]
+        if any('RFC' in s for s in fila_str) or any('CURP' in s for s in fila_str):
+            inicio_datos = idx + 1
+            break
+
+    cache = Cache()
+
+    for num_fila, fila in enumerate(filas[inicio_datos:], start=inicio_datos + 1):
+        if not any(c is not None for c in fila):
+            continue
+
+        total += 1
+
+        def col(i, default=None):
+            try:
+                v = fila[i]
+                if v is None or str(v).strip().upper() in ('NULL', 'NONE', 'N/A', ''):
+                    return default
+                return v
+            except IndexError:
+                return default
+
+        rfc     = sv(col(CP_RFC))
+        curp    = sv(col(CP_CURP))
+        nombre  = sd(col(CP_NOMBRE, '')).upper()
+        paterno = sd(col(CP_PATERNO, '')).upper()
+        materno = sd(col(CP_MATERNO, '')).upper()
+        nombre_completo = f'{nombre} {paterno} {materno}'.strip()
+
+        errores_fila = []
+        errores_fila_forzables = []
+        if not rfc:
+            errores_fila.append('RFC vacío')
+        elif not rfc_formato_valido(rfc):
+            errores_fila_forzables.append('RFC con formato inválido')
+        if not curp:
+            errores_fila.append('CURP vacío')
+        elif not curp_formato_valido(curp):
+            errores_fila_forzables.append('CURP con formato inválido')
+
+        avisos_forzados = []
+        override = overrides.get(num_fila)
+        if errores_fila_forzables:
+            if not errores_fila and override and override.get('decision') == 'aceptada':
+                motivo = override.get('motivo', '')
+                avisos_forzados = [f'{msg} — ACEPTADO por el validador: {motivo}' for msg in errores_fila_forzables]
+            else:
+                errores_fila.extend(errores_fila_forzables)
+
+        if errores_fila:
+            errores += 1
+            log.append(f'Fila {num_fila}: OMITIDA — {", ".join(errores_fila)}')
+            filas_detalle.append({'fila': num_fila, 'rfc': rfc, 'curp': curp, 'nombre': nombre_completo,
+                                   'id_plaza': '', 'estado': 'OMITIDA', 'mensaje': ', '.join(errores_fila),
+                                   'forzable': es_fila_forzable(errores_fila)})
+            continue
+
+        # Estas validaciones son solo lecturas (sin efecto secundario) — se
+        # acumulan todas las que apliquen para que el validador vea de una
+        # sola vez todo lo que está mal en la fila.
+        errores_post_gate = []
+        servidor = ServidorPublico.objects.filter(rfc=rfc).first()
+        if not servidor:
+            errores_post_gate.append('No existe un servidor con ese RFC en el padrón')
+
+        info_actual = None
+        if servidor:
+            info_actual = InformacionBasica.objects.filter(servidor=servidor, activo=True).select_related('dependencia').first()
+            if info_actual and info_actual.dependencia_id != carga.dependencia_id:
+                errores_post_gate.append(
+                    f'La dependencia actual del servidor ({info_actual.dependencia.clave}) no coincide con '
+                    f'la dependencia de la carga ({carga.dependencia.clave})'
+                )
+
+        if errores_post_gate:
+            errores += 1
+            log.append(f'Fila {num_fila} RFC={rfc}: ERROR — {", ".join(errores_post_gate)}')
+            filas_detalle.append({'fila': num_fila, 'rfc': rfc, 'curp': curp, 'nombre': nombre_completo,
+                                   'id_plaza': '', 'estado': 'ERROR', 'mensaje': ', '.join(errores_post_gate)})
+            continue
+
+        # ── Valores de la fila ────────────────────────────────────────────
+        calle_val        = sd(col(CP_CALLE, ''))
+        num_ext_val      = sd(col(CP_NUM_EXT, ''))
+        num_int_val      = sd(col(CP_NUM_INT, ''))
+        colonia_val      = sd(col(CP_COLONIA, ''))
+        entidad_val      = cache.entidad(col(CP_ENTIDAD))
+        municipio_val    = cache.municipio(entidad_val, col(CP_MUNICIPIO))
+        pais_val         = cache.pais(col(CP_PAIS))
+        cp_val           = sd(col(CP_CP, ''))
+        iss_val          = normalizar_iss(col(CP_ISS)) if col(CP_ISS) else None
+        nss_val          = sd(col(CP_NSS, ''))
+        tipo_sangre_val  = sv(col(CP_TIPO_SANGRE))
+        factor_rh_val    = normalizar_factor_rh(col(CP_FACTOR_RH))
+        nivel_esc_val    = cache.nivel_escolaridad(col(CP_GRADO_ESTUDIOS))
+        estado_civil_val = cache.estado_civil(col(CP_ESTADO_CIVIL))
+        entidad_nac_val  = cache.entidad(col(CP_ENTIDAD_NAC))
+        pais_nac_val     = cache.pais(col(CP_PAIS_NAC))
+
+        avisos = list(avisos_forzados)
+        if col(CP_ENTIDAD) and not entidad_val:
+            avisos.append(f'Entidad de domicilio "{col(CP_ENTIDAD)}" no encontrada')
+        if col(CP_MUNICIPIO) and entidad_val and not municipio_val:
+            avisos.append(f'Municipio "{col(CP_MUNICIPIO)}" no encontrado en {entidad_val.nombre}')
+        if col(CP_GRADO_ESTUDIOS) and not nivel_esc_val:
+            avisos.append(f'Grado de estudios "{col(CP_GRADO_ESTUDIOS)}" no encontrado en el catálogo')
+        if col(CP_ESTADO_CIVIL) and not estado_civil_val:
+            avisos.append(f'Estado civil "{col(CP_ESTADO_CIVIL)}" no encontrado en el catálogo')
+        if col(CP_ENTIDAD_NAC) and not entidad_nac_val:
+            avisos.append(f'Entidad de nacimiento "{col(CP_ENTIDAD_NAC)}" no encontrada')
+
+        if dry_run:
+            ok += 1
+            if avisos:
+                log.append(f'Fila {num_fila} RFC={rfc}: OK — Avisos: {"; ".join(avisos)}')
+            filas_detalle.append({'fila': num_fila, 'rfc': rfc, 'curp': curp, 'nombre': nombre_completo,
+                                   'id_plaza': '', 'estado': 'OK', 'mensaje': '; '.join(avisos)})
+            continue
+
+        # Fila completa en un solo savepoint, igual que en bajas.
+        try:
+            with transaction.atomic():
+                datos_personales, _ = DatosPersonales.objects.get_or_create(servidor=servidor)
+                if calle_val:       datos_personales.calle = calle_val
+                if num_ext_val:     datos_personales.num_exterior = num_ext_val
+                if num_int_val:     datos_personales.num_interior = num_int_val
+                if colonia_val:     datos_personales.colonia = colonia_val
+                if municipio_val:   datos_personales.municipio = municipio_val
+                if entidad_val:     datos_personales.entidad = entidad_val
+                if pais_val:        datos_personales.pais = pais_val
+                if cp_val:          datos_personales.cp = cp_val
+                if tipo_sangre_val: datos_personales.tipo_sangre = tipo_sangre_val
+                if factor_rh_val:   datos_personales.factor_rh = factor_rh_val
+                datos_personales.save()
+
+                if nivel_esc_val:
+                    datos_complementarios, _ = DatosComplementarios.objects.get_or_create(servidor=servidor)
+                    datos_complementarios.nivel_escolaridad = nivel_esc_val
+                    datos_complementarios.save()
+
+                cambios = False
+
+                def _actualizar(campo, nuevo_valor):
+                    nonlocal cambios
+                    if nuevo_valor and getattr(servidor, campo) != nuevo_valor:
+                        setattr(servidor, campo, nuevo_valor)
+                        cambios = True
+
+                if iss_val:
+                    _actualizar('iss', iss_val)
+                _actualizar('nss', nss_val)
+                _actualizar('estado_civil', estado_civil_val)
+                _actualizar('entidad_nacimiento', entidad_nac_val)
+                _actualizar('pais_nacimiento', pais_nac_val)
+                if cambios:
+                    servidor.save()
+
+            ok += 1
+            if avisos:
+                log.append(f'Fila {num_fila} RFC={rfc}: OK — Avisos: {"; ".join(avisos)}')
+            filas_detalle.append({'fila': num_fila, 'rfc': rfc, 'curp': curp, 'nombre': nombre_completo,
+                                   'id_plaza': '', 'estado': 'OK', 'mensaje': '; '.join(avisos)})
+
+        except Exception as e:
+            errores += 1
+            log.append(f'Fila {num_fila} RFC={rfc}: ERROR al actualizar los datos — {e}')
+            filas_detalle.append({'fila': num_fila, 'rfc': rfc, 'curp': curp, 'nombre': nombre_completo,
+                                   'id_plaza': '', 'estado': 'ERROR', 'mensaje': f'Error al actualizar los datos — {e}'})
 
     return {
         'ok':      ok,

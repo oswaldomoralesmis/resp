@@ -23,9 +23,11 @@
 
 <div class="grid-2">
   <div class="card">
-    <div class="card-header">🏛️ Ubicación Institucional</div>
+    <div class="card-header">🏛️ Datos de la Plaza</div>
     <div class="card-body">
       <div class="grid-2">
+        <div><div class="form-label">ID de Plaza</div><div><strong>{{ puesto.id_plaza }}</strong></div></div>
+        <div><div class="form-label">Estatus de Plaza</div><div>{{ puesto.estatus_plaza|default:"—" }}</div></div>
         <div><div class="form-label">Dependencia</div><div>{{ puesto.proyecto.dependencia.clave|default:"—" }} — {{ puesto.proyecto.dependencia.descripcion|default:"" }}</div></div>
         <div><div class="form-label">Determinante</div><div>{{ puesto.determinante|default:"—" }}</div></div>
         <div><div class="form-label">Unidad Administrativa</div><div>{{ puesto.unidad|default:"—" }}</div></div>
@@ -35,31 +37,61 @@
         <div><div class="form-label">Tipo de Contratación</div><div>{{ puesto.nombramiento|default:"—" }}</div></div>
         <div><div class="form-label">Nivel de Estructura</div><div>{{ puesto.nivel_estructura|default:"—" }}</div></div>
         <div><div class="form-label">Centro de Trabajo</div><div>{{ puesto.cct|default:"—" }}</div></div>
-        <div><div class="form-label">ID Plaza Jefe</div><div>{{ puesto.id_plaza_jefe|default:"—" }}</div></div>
       </div>
     </div>
   </div>
   <div class="card">
-    <div class="card-header">💰 Ocupación y Percepciones</div>
+    <div class="card-header">💰 Sueldo</div>
     <div class="card-body">
       <div class="grid-2">
-        <div><div class="form-label">Estatus de Plaza</div><div>{{ puesto.estatus_plaza|default:"—" }}</div></div>
-        <div>
-          <div class="form-label">Trabajador Asignado</div>
-          <div>
-            {% if puesto.servidor_actual %}
-              <span class="badge-activo">Ocupada</span> {{ puesto.servidor_actual.nombre_completo }}
-            {% else %}
-              <span class="badge-inactivo">Vacante</span>
-            {% endif %}
-          </div>
-        </div>
         <div><div class="form-label">HSM</div><div>{{ puesto.hsm|default:"—" }}</div></div>
         <div><div class="form-label">Días Pagados</div><div>{{ puesto.dias_pagados }}</div></div>
         <div><div class="form-label">Percepciones</div><div>${{ puesto.total_percepciones|floatformat:2 }}</div></div>
         <div><div class="form-label">Bonos</div><div>${{ puesto.total_bonos|floatformat:2 }}</div></div>
         <div><div class="form-label">Neto</div><div style="color:var(--institucional-verde);font-weight:700;">${{ puesto.total_neto|floatformat:2 }}</div></div>
         <div><div class="form-label">Última actualización</div><div>{{ puesto.fecha_actualizacion|date:"d/m/Y H:i" }}</div></div>
+      </div>
+      <div class="text-muted" style="margin-top:10px;font-size:12px;">
+        Estos son los montos VIGENTES de la plaza (se actualizan con cada carga de Información Básica) — para lo que se pagó en una quincena específica, ver el Historial de Asignaciones más abajo.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">👤 Servidor Público Asignado</div>
+    <div class="card-body">
+      <div><div class="form-label">Estatus</div>
+        <div>
+          {% if puesto.servidor_actual %}<span class="badge-activo">Ocupada</span>{% else %}<span class="badge-inactivo">Vacante</span>{% endif %}
+        </div>
+      </div>
+      {% if puesto.servidor_actual %}
+      <div class="grid-2" style="margin-top:10px;">
+        <div><div class="form-label">Nombre</div><div><a href="{% url 'servidor_detail' puesto.servidor_actual.pk %}">{{ puesto.servidor_actual.nombre_completo }}</a></div></div>
+        <div><div class="form-label">Expediente</div><div>{{ puesto.servidor_actual.expediente }}</div></div>
+        <div><div class="form-label">RFC</div><div><code>{{ puesto.servidor_actual.rfc }}</code></div></div>
+        <div><div class="form-label">CURP</div><div><code>{{ puesto.servidor_actual.curp }}</code></div></div>
+      </div>
+      {% else %}
+      <div class="text-muted" style="margin-top:10px;">Esta plaza no tiene ningún servidor asignado actualmente.</div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">👔 Jefe Inmediato</div>
+    <div class="card-body">
+      <div><div class="form-label">ID Plaza Jefe</div><div>{{ puesto.id_plaza_jefe|default:"—" }}</div></div>
+      <div style="margin-top:10px;">
+        {% if not puesto.id_plaza_jefe %}
+          <div class="text-muted">Esta plaza no tiene jefe inmediato asignado.</div>
+        {% elif jefe_actual %}
+          <div class="form-label">Jefe Inmediato</div>
+          <div><a href="{% url 'servidor_detail' jefe_actual.pk %}">{{ jefe_actual.nombre_completo }}</a> <code>{{ jefe_actual.rfc }}</code></div>
+        {% else %}
+          <div class="text-muted">La plaza jefe ({{ puesto.id_plaza_jefe }}) no existe o no tiene servidor asignado.</div>
+        {% endif %}
       </div>
     </div>
   </div>

@@ -682,6 +682,7 @@ class PuestoDetailView(LoginRequiredMixin, DependenciaScopedMixin, DetailView):
         ctx['bajas'] = BajaServidorPublico.objects.filter(
             id_plaza=self.object.id_plaza
         ).select_related('servidor', 'motivo_baja', 'dependencia').order_by('-fecha_baja')
+        ctx['jefe_actual'] = self.object.jefe_actual
         ctx['titulo'] = f'Plaza: {self.object.id_plaza}'
         return ctx
 
