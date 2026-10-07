@@ -26,10 +26,12 @@
   <div class="card">
     <div class="card-header">⚡ Acciones Rápidas</div>
     <div class="card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      {% if 'padron' in opciones_editables %}
       <a href="{% url 'servidor_create' %}" class="btn-institucional" style="justify-content:center;">➕ Nuevo Servidor</a>
+      {% endif %}
       <a href="{% url 'calendario_cargas' %}" class="btn-verde" style="justify-content:center;">📅 Ir al Calendario</a>
       {% if 'padron' in opciones_permitidas %}
-      <a href="{% url 'servidor_list' %}" class="btn-outline" style="justify-content:center;">📄 Ver Padrón</a>
+      <a href="{% url 'servidor_list' %}" class="btn-outline" style="justify-content:center;">📄 Ver Servidores Públicos</a>
       <a href="{% url 'exportar_excel' 'padron' %}" class="btn-dorado" style="justify-content:center;">📥 Exportar Excel</a>
       {% endif %}
     </div>

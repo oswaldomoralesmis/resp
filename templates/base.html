@@ -18,7 +18,7 @@
     <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"><span class="nav-icon">📊</span> Dashboard</a>
     <span class="nav-section">Servidores Públicos</span>
     {% if 'padron' in opciones_permitidas %}
-    <a href="{% url 'servidor_list' %}" class="nav-link {% if 'servidor' in request.resolver_match.url_name|default:'' %}active{% endif %}"><span class="nav-icon">👤</span> Padrón</a>
+    <a href="{% url 'servidor_list' %}" class="nav-link {% if 'servidor' in request.resolver_match.url_name|default:'' %}active{% endif %}"><span class="nav-icon">👤</span> Servidores Públicos</a>
     {% endif %}
     {% if 'info_basica' in opciones_permitidas %}
     <a href="{% url 'info_basica_list' %}" class="nav-link {% if 'info_basica' in request.resolver_match.url_name|default:'' %}active{% endif %}"><span class="nav-icon">📋</span> Inf. Básica Quincenal</a>
