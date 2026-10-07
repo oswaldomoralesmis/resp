@@ -29,7 +29,7 @@ from catalogos.models import Dependencia, EstatusPlaza, Discapacidad, Enfermedad
 from cargas.models import PeriodoCarga, CargaLayout, periodo_vigente_hoy
 from usuarios.mixins import (
     DependenciaScopedMixin, filtrar_por_dependencia, admin_requerido,
-    PermisoRequeridoMixin, PermisoEdicionRequeridoMixin,
+    PermisoRequeridoMixin, PermisoEdicionRequeridoMixin, permiso_requerido,
 )
 
 
@@ -544,6 +544,7 @@ PLAZAS_EXPORT_HEADERS = [
 
 
 @login_required
+@permiso_requerido('plazas')
 def exportar_plazas_excel(request):
     """Exporta las plazas en el mismo formato de 53 columnas que el Layout de
     Información Básica (mismo orden que cargas/procesador.py: C_FTE_FINAN..

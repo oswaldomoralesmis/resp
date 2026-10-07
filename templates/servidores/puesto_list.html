@@ -18,7 +18,9 @@
 <div class="card">
   <div class="card-header" style="justify-content:space-between;">
     <span>📌 Plazas por Dependencia-Unidad-Programa-Proyecto</span>
+    {% if 'plazas' in opciones_permitidas %}
     <a href="{% url 'puesto_exportar' %}" class="btn-dorado btn-sm">📥 Exportar Excel</a>
+    {% endif %}
   </div>
   <div class="card-body">
     <form method="get" style="margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap;">

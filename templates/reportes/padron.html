@@ -10,7 +10,9 @@
     </select>
   </form>
   <div style="display:flex;gap:8px;">
+    {% if 'reporte_padron' in opciones_permitidas %}
     <a href="{% url 'exportar_excel' 'padron' %}" class="btn-dorado btn-sm">📥 Exportar Excel</a>
+    {% endif %}
     <button onclick="window.print()" class="btn-institucional btn-sm">🖨️ Imprimir</button>
   </div>
 </div>

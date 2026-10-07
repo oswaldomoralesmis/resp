@@ -7,7 +7,7 @@ from django.db.models.functions import Cast, Substr
 from django.http import HttpResponse
 from servidores.models import ServidorPublico, InformacionBasica, BajaServidorPublico, Puesto, DiscapacidadServidor
 from catalogos.models import Dependencia
-from usuarios.mixins import filtrar_por_dependencia, permiso_requerido
+from usuarios.mixins import filtrar_por_dependencia, permiso_requerido, usuario_tiene_permiso, _denegar_acceso
 from .pdf import generar_pdf_paridad, generar_pdf_ocupacion, generar_pdf_discapacidad
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
@@ -487,8 +487,21 @@ def reporte_discapacidad_pdf(request):
     return response
 
 
+# Exportar comparte los mismos datos que su(s) módulo(s) de origen, así que
+# debe exigir el mismo permiso — de otro modo, un rol sin acceso a ninguno
+# podría descargar el padrón completo con solo tener sesión iniciada. Este
+# link se ofrece desde dos páginas con permisos distintos (Padrón —
+# servidores/list.html— y Reporte de Padrón —reportes/padron.html—), así que
+# basta con tener acceso a CUALQUIERA de las dos para poder exportar.
+PERMISOS_POR_TIPO_EXPORT = {'padron': ('padron', 'reporte_padron')}
+
+
 @login_required
 def exportar_excel(request, tipo):
+    claves_permiso = PERMISOS_POR_TIPO_EXPORT.get(tipo)
+    if claves_permiso and not any(usuario_tiene_permiso(request.user, c) for c in claves_permiso):
+        return _denegar_acceso(request)
+
     wb = openpyxl.Workbook()
     ws = wb.active
     header_fill = PatternFill(start_color='1B4F72', end_color='1B4F72', fill_type='solid')

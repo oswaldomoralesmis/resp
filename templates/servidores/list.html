@@ -12,7 +12,9 @@
       {% if 'padron' in opciones_editables %}
       <a href="{% url 'servidor_create' %}" class="btn-institucional btn-sm">➕ Nuevo</a>
       {% endif %}
+      {% if 'padron' in opciones_permitidas %}
       <a href="{% url 'exportar_excel' 'padron' %}" class="btn-dorado btn-sm">📥 Excel</a>
+      {% endif %}
     </div>
   </div>
   <div class="card-body">
