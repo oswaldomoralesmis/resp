@@ -211,7 +211,19 @@ def make_delete_view(model, success_url, titulo_prefix, back_url, template='cata
             ctx['titulo']   = f'{titulo_prefix}: {self.object}'
             ctx['back_url'] = reverse_lazy(back_url)
             collector = Collector(using=self.object._state.db)
-            collector.collect([self.object])
+            try:
+                collector.collect([self.object])
+            except ProtectedError as e:
+                # Si hay una FK con on_delete=PROTECT apuntando a este registro
+                # (ej. InformacionBasica.nombramiento -> TipoContratacion), ni
+                # siquiera se puede armar la lista de "se eliminarán en cascada"
+                # — collect() truena antes de devolver nada. Mostrar de una vez
+                # que no se puede borrar, en vez de dejar que reviente con un
+                # 500 solo por haber entrado a ver la página de confirmación.
+                ctx['protegido_por'] = sorted({
+                    obj._meta.verbose_name_plural for obj in e.protected_objects
+                })
+                return ctx
             ctx['relacionados'] = [
                 (rel_model._meta.verbose_name_plural, len(instancias))
                 for rel_model, instancias in collector.data.items()
@@ -393,9 +405,10 @@ CategoriaUpdateView = make_update_view(Categoria, CategoriaForm,
 
 # ── Catálogos simples (clave + descripcion) ───────────────────────────────────
 TipoContratacionListView   = make_list_view(TipoContratacion,  'catalogos/simple_list.html', 'Tipos de Contratación',  ['clave','descripcion'],
-                                            extra_ctx={'export_slug': 'tipo_contratacion'})
+                                            extra_ctx={'permite_eliminar': True, 'export_slug': 'tipo_contratacion'})
 TipoContratacionCreateView = make_create_view(TipoContratacion,  TipoContratacionForm,  'tipo_contratacion_list', 'Nuevo Tipo Contratación',  'tipo_contratacion_list')
 TipoContratacionUpdateView = make_update_view(TipoContratacion,  TipoContratacionForm,  'tipo_contratacion_list', 'Editar',                    'tipo_contratacion_list')
+TipoContratacionDeleteView = make_delete_view(TipoContratacion,  'tipo_contratacion_list', 'Eliminar Tipo de Contratación', 'tipo_contratacion_list')
 
 TipoPersonalListView   = make_list_view(TipoPersonal,    'catalogos/simple_list.html', 'Tipos de Personal',      ['clave','descripcion'],
                                         extra_ctx={'export_slug': 'tipo_personal'})

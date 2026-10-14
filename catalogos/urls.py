@@ -32,6 +32,7 @@ urlpatterns = [
     path('tipo-contratacion/',               views.TipoContratacionListView.as_view(),   name='tipo_contratacion_list'),
     path('tipo-contratacion/nuevo/',         views.TipoContratacionCreateView.as_view(), name='tipo_contratacion_create'),
     path('tipo-contratacion/<int:pk>/editar/',views.TipoContratacionUpdateView.as_view(),name='tipo_contratacion_update'),
+    path('tipo-contratacion/<int:pk>/eliminar/',views.TipoContratacionDeleteView.as_view(),name='tipo_contratacion_delete'),
     # Tipos de Personal
     path('tipo-personal/',               views.TipoPersonalListView.as_view(),    name='tipo_personal_list'),
     path('tipo-personal/nuevo/',         views.TipoPersonalCreateView.as_view(),  name='tipo_personal_create'),

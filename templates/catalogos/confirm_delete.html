@@ -11,6 +11,13 @@
   <div class="card-header">&#9888;&#65039; Confirmar Eliminaci&oacute;n</div>
   <div class="card-body">
     <p>&#191;Eliminar <strong>{{ object }}</strong>?</p>
+    {% if protegido_por %}
+    <div class="alert-resp alert-danger">
+      &#128683; No se puede eliminar: est&aacute; en uso en
+      {% for nombre in protegido_por %}{{ nombre }}{% if not forloop.last %}, {% endif %}{% endfor %}.
+    </div>
+    <a href="{{ back_url }}" class="btn-outline">&#10005; Volver</a>
+    {% else %}
     {% if relacionados %}
     <div class="alert-resp alert-warning">
       &#9888;&#65039; Tambi&eacute;n se eliminar&aacute;n los registros relacionados:
@@ -28,6 +35,7 @@
         <a href="{{ back_url }}" class="btn-outline">&#10005; Cancelar</a>
       </div>
     </form>
+    {% endif %}
   </div>
 </div>
 {% endblock %}
