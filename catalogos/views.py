@@ -416,9 +416,10 @@ TipoPersonalCreateView = make_create_view(TipoPersonal,    TipoPersonalForm,    
 TipoPersonalUpdateView = make_update_view(TipoPersonal,    TipoPersonalForm,    'tipo_personal_list',    'Editar',                    'tipo_personal_list')
 
 TipoFuncionListView   = make_list_view(TipoFuncion,     'catalogos/simple_list.html', 'Tipos de Función',       ['clave','descripcion'],
-                                       extra_ctx={'export_slug': 'tipo_funcion'})
+                                       extra_ctx={'permite_eliminar': True, 'export_slug': 'tipo_funcion'})
 TipoFuncionCreateView = make_create_view(TipoFuncion,     TipoFuncionForm,     'tipo_funcion_list',     'Nuevo Tipo Función',         'tipo_funcion_list')
 TipoFuncionUpdateView = make_update_view(TipoFuncion,     TipoFuncionForm,     'tipo_funcion_list',     'Editar',                    'tipo_funcion_list')
+TipoFuncionDeleteView = make_delete_view(TipoFuncion,     'tipo_funcion_list',     'Eliminar Tipo de Función',   'tipo_funcion_list')
 
 NivelEstructuraListView   = make_list_view(NivelEstructura,  'catalogos/simple_list.html', 'Niveles de Estructura',  ['clave','descripcion'],
                                            extra_ctx={'export_slug': 'nivel_estructura'})

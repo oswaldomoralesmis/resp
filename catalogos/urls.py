@@ -41,6 +41,7 @@ urlpatterns = [
     path('tipo-funcion/',               views.TipoFuncionListView.as_view(),      name='tipo_funcion_list'),
     path('tipo-funcion/nuevo/',         views.TipoFuncionCreateView.as_view(),    name='tipo_funcion_create'),
     path('tipo-funcion/<int:pk>/editar/',views.TipoFuncionUpdateView.as_view(),   name='tipo_funcion_update'),
+    path('tipo-funcion/<int:pk>/eliminar/',views.TipoFuncionDeleteView.as_view(), name='tipo_funcion_delete'),
     # Niveles de Estructura
     path('nivel-estructura/',               views.NivelEstructuraListView.as_view(),   name='nivel_estructura_list'),
     path('nivel-estructura/nuevo/',         views.NivelEstructuraCreateView.as_view(), name='nivel_estructura_create'),
