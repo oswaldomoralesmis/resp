@@ -26,6 +26,9 @@
     {% if 'plazas' in opciones_permitidas %}
     <a href="{% url 'puesto_list' %}" class="nav-link {% if request.resolver_match.url_name == 'puesto_list' %}active{% endif %}"><span class="nav-icon">📌</span> Plazas</a>
     {% endif %}
+    {% if 'validar_complementarios' in opciones_permitidas %}
+    <a href="{% url 'complementarios_pendientes_list' %}" class="nav-link {% if request.resolver_match.url_name == 'complementarios_pendientes_list' %}active{% endif %}"><span class="nav-icon">✅</span> Validar Complementarios</a>
+    {% endif %}
     <span class="nav-section">Carga de Información</span>
     {% if 'calendario_cargas' in opciones_permitidas %}
     <a href="{% url 'calendario_cargas' %}" class="nav-link {% if request.resolver_match.url_name == 'calendario_cargas' or request.resolver_match.url_name == 'carga_new' %}active{% endif %}"><span class="nav-icon">📅</span> Calendario (Cargar Layout)</a>
@@ -76,6 +79,9 @@
     {% endif %}
     {% if request.user.es_administrador %}
     <a href="{% url 'permisos_rol' %}" class="nav-link {% if request.resolver_match.url_name == 'permisos_rol' %}active{% endif %}"><span class="nav-icon">🛡️</span> Permisos por Rol</a>
+    {% endif %}
+    {% if request.user.es_administrador or request.user.rol == 'oic' %}
+    <a href="{% url 'log_exportacion_list' %}" class="nav-link {% if request.resolver_match.url_name == 'log_exportacion_list' %}active{% endif %}"><span class="nav-icon">🧾</span> Historial de Exportaciones</a>
     {% endif %}
   </nav>
   <div class="sidebar-footer">

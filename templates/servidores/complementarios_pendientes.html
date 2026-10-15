@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Validar Complementarios{% endblock %}
+{% block page_title %}Pendientes de Validar — Datos Complementarios{% endblock %}
+{% block content %}
+<div class="breadcrumb-resp">
+  <a href="{% url 'dashboard' %}">🏠 Inicio</a><span class="sep">›</span><span>Validar Complementarios</span>
+</div>
+<div class="card">
+  <div class="card-header">✅ Pendientes de Validar {% if page_obj %}<span class="badge-blue">{{ page_obj.paginator.count }}</span>{% endif %}</div>
+  <div class="card-body">
+    <form method="get" class="mb-3">
+      <div class="search-bar"><span>🔍</span><input type="text" name="q" value="{{ q }}" placeholder="RFC, expediente o nombre..."><button type="submit">Buscar</button></div>
+    </form>
+    <div style="overflow-x:auto;">
+      <table class="table-resp">
+        <thead><tr><th>Expediente</th><th>RFC</th><th>Nombre</th><th>Escolaridad</th><th>Pueblo</th><th>Estatus</th><th>Acciones</th></tr></thead>
+        <tbody>
+          {% for s in servidores %}
+          <tr>
+            <td>{{ s.expediente }}</td><td>{{ s.rfc }}</td><td>{{ s.nombre_completo }}</td>
+            <td>{{ s.datos_complementarios.nivel_escolaridad|default:"—" }}</td>
+            <td>{{ s.datos_complementarios.pueblo_indigena|default:"—" }}</td>
+            <td><span class="badge-pendiente">Pendiente</span></td>
+            <td style="white-space:nowrap;">
+              <a href="{% url 'servidor_detail' s.pk %}" class="btn-institucional btn-sm">Ver</a>
+              <form method="post" action="{% url 'complementarios_validar' s.pk %}" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'complementarios_pendientes_list' %}">
+                <button type="submit" class="btn-outline btn-sm">Validar</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}<tr><td colspan="7" class="text-muted text-center" style="padding:28px;">Nada pendiente de validar.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if is_paginated %}<div class="pagination-resp mt-3">{% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&q={{ q }}" class="page-btn">&#8249;</a>{% endif %}<span class="page-btn active">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>{% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&q={{ q }}" class="page-btn">&#8250;</a>{% endif %}</div>{% endif %}
+  </div>
+</div>
+{% endblock %}

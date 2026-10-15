@@ -29,7 +29,12 @@
           <tr>
             <td><strong>{{ r.clave }}</strong></td><td>{{ r.descripcion }}</td>
             <td>{{ r.tipo_plaza }}</td><td><span class="badge-blue">{{ r.tp }}</span></td><td>{{ r.nivel }}</td>
-            <td><a href="{% url 'categoria_update' r.pk %}" class="btn-institucional btn-sm">Editar</a></td>
+            <td style="white-space:nowrap;">
+              <a href="{% url 'categoria_update' r.pk %}" class="btn-institucional btn-sm">Editar</a>
+              {% if permite_eliminar %}
+              <a href="{% url 'categoria_delete' r.pk %}" class="btn-outline btn-sm" style="color:#b91c1c;border-color:#b91c1c;">Eliminar</a>
+              {% endif %}
+            </td>
           </tr>
           {% empty %}<tr><td colspan="6" class="text-muted text-center" style="padding:28px;">Sin registros.</td></tr>{% endfor %}
         </tbody>

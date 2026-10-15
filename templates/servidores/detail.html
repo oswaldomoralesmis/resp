@@ -84,13 +84,27 @@
 
 <div class="grid-2">
   <div class="card">
-    <div class="card-header">🎓 Escolaridad y Origen</div>
+    <div class="card-header" style="justify-content:space-between;">
+      <span>🎓 Escolaridad y Origen</span>
+      {% if datos_complementarios.validado %}
+      <span class="badge-activo" title="Validado por {{ datos_complementarios.validado_por|default:'—' }} el {{ datos_complementarios.fecha_validacion|date:'d/m/Y' }}">&#10003; Validado</span>
+      {% else %}
+      <span class="badge-pendiente">Pendiente de validar</span>
+      {% endif %}
+    </div>
     <div class="card-body">
       <div class="grid-2">
         <div><div class="form-label">Nivel de Escolaridad</div><div>{{ datos_complementarios.nivel_escolaridad|default:"—" }}</div></div>
         <div><div class="form-label">Entidad de Nacimiento</div><div>{{ servidor.entidad_nacimiento|default:"—" }}</div></div>
         <div><div class="form-label">País de Nacimiento</div><div>{{ servidor.pais_nacimiento|default:"—" }}</div></div>
       </div>
+      {% if puede_validar_complementarios and not datos_complementarios.validado %}
+      <form method="post" action="{% url 'complementarios_validar' servidor.pk %}" style="margin-top:10px;">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{% url 'servidor_detail' servidor.pk %}">
+        <button type="submit" class="btn-institucional btn-sm">Validar</button>
+      </form>
+      {% endif %}
     </div>
   </div>
   <div class="card">

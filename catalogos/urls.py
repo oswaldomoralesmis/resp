@@ -8,10 +8,12 @@ urlpatterns = [
     path('fuentes/',                    views.FuenteListView.as_view(),           name='fuente_list'),
     path('fuentes/nueva/',              views.FuenteCreateView.as_view(),         name='fuente_create'),
     path('fuentes/<int:pk>/editar/',    views.FuenteUpdateView.as_view(),         name='fuente_update'),
+    path('fuentes/<int:pk>/eliminar/',  views.FuenteDeleteView.as_view(),         name='fuente_delete'),
     # Dependencias
     path('dependencias/',               views.DependenciaListView.as_view(),      name='dependencia_list'),
     path('dependencias/nueva/',         views.DependenciaCreateView.as_view(),    name='dependencia_create'),
     path('dependencias/<int:pk>/editar/',views.DependenciaUpdateView.as_view(),   name='dependencia_update'),
+    path('dependencias/<int:pk>/eliminar/',views.DependenciaDeleteView.as_view(), name='dependencia_delete'),
     # Unidades Administrativas
     path('unidades/',                   views.UnidadListView.as_view(),           name='unidad_list'),
     path('unidades/nueva/',             views.UnidadCreateView.as_view(),         name='unidad_create'),
@@ -28,6 +30,7 @@ urlpatterns = [
     path('categorias/',                 views.CategoriaListView.as_view(),        name='categoria_list'),
     path('categorias/nueva/',           views.CategoriaCreateView.as_view(),      name='categoria_create'),
     path('categorias/<int:pk>/editar/', views.CategoriaUpdateView.as_view(),      name='categoria_update'),
+    path('categorias/<int:pk>/eliminar/', views.CategoriaDeleteView.as_view(),    name='categoria_delete'),
     # Tipos de Contratación
     path('tipo-contratacion/',               views.TipoContratacionListView.as_view(),   name='tipo_contratacion_list'),
     path('tipo-contratacion/nuevo/',         views.TipoContratacionCreateView.as_view(), name='tipo_contratacion_create'),
@@ -37,6 +40,7 @@ urlpatterns = [
     path('tipo-personal/',               views.TipoPersonalListView.as_view(),    name='tipo_personal_list'),
     path('tipo-personal/nuevo/',         views.TipoPersonalCreateView.as_view(),  name='tipo_personal_create'),
     path('tipo-personal/<int:pk>/editar/',views.TipoPersonalUpdateView.as_view(), name='tipo_personal_update'),
+    path('tipo-personal/<int:pk>/eliminar/',views.TipoPersonalDeleteView.as_view(), name='tipo_personal_delete'),
     # Tipos de Función
     path('tipo-funcion/',               views.TipoFuncionListView.as_view(),      name='tipo_funcion_list'),
     path('tipo-funcion/nuevo/',         views.TipoFuncionCreateView.as_view(),    name='tipo_funcion_create'),
@@ -46,22 +50,27 @@ urlpatterns = [
     path('nivel-estructura/',               views.NivelEstructuraListView.as_view(),   name='nivel_estructura_list'),
     path('nivel-estructura/nuevo/',         views.NivelEstructuraCreateView.as_view(), name='nivel_estructura_create'),
     path('nivel-estructura/<int:pk>/editar/',views.NivelEstructuraUpdateView.as_view(),name='nivel_estructura_update'),
+    path('nivel-estructura/<int:pk>/eliminar/',views.NivelEstructuraDeleteView.as_view(),name='nivel_estructura_delete'),
     # Estatus de Plaza
     path('estatus-plaza/',               views.EstatusPlazaListView.as_view(),    name='estatus_plaza_list'),
     path('estatus-plaza/nuevo/',         views.EstatusPlazaCreateView.as_view(),  name='estatus_plaza_create'),
     path('estatus-plaza/<int:pk>/editar/',views.EstatusPlazaUpdateView.as_view(), name='estatus_plaza_update'),
+    path('estatus-plaza/<int:pk>/eliminar/',views.EstatusPlazaDeleteView.as_view(), name='estatus_plaza_delete'),
     # Centros de Trabajo
     path('centros-trabajo/',               views.CentroTrabajoListView.as_view(),   name='centro_trabajo_list'),
     path('centros-trabajo/nuevo/',         views.CentroTrabajoCreateView.as_view(), name='centro_trabajo_create'),
     path('centros-trabajo/<int:pk>/editar/',views.CentroTrabajoUpdateView.as_view(),name='centro_trabajo_update'),
+    path('centros-trabajo/<int:pk>/eliminar/',views.CentroTrabajoDeleteView.as_view(),name='centro_trabajo_delete'),
     # Tipos de Declaración
     path('tipo-declaracion/',               views.TipoDeclaracionListView.as_view(),   name='tipo_declaracion_list'),
     path('tipo-declaracion/nuevo/',         views.TipoDeclaracionCreateView.as_view(), name='tipo_declaracion_create'),
     path('tipo-declaracion/<int:pk>/editar/',views.TipoDeclaracionUpdateView.as_view(),name='tipo_declaracion_update'),
+    path('tipo-declaracion/<int:pk>/eliminar/',views.TipoDeclaracionDeleteView.as_view(),name='tipo_declaracion_delete'),
     # Áreas
     path('areas/',               views.AreaListView.as_view(),    name='area_list'),
     path('areas/nueva/',         views.AreaCreateView.as_view(),  name='area_create'),
     path('areas/<int:pk>/editar/',views.AreaUpdateView.as_view(), name='area_update'),
+    path('areas/<int:pk>/eliminar/',views.AreaDeleteView.as_view(), name='area_delete'),
     # Niveles de Escolaridad
     path('nivel-escolaridad/',               views.NivelEscolaridadListView.as_view(),   name='nivel_escolaridad_list'),
     path('nivel-escolaridad/nuevo/',         views.NivelEscolaridadCreateView.as_view(), name='nivel_escolaridad_create'),
@@ -86,6 +95,7 @@ urlpatterns = [
     path('motivos-baja/',               views.MotivoBajaListView.as_view(),   name='motivo_baja_list'),
     path('motivos-baja/nuevo/',         views.MotivoBajaCreateView.as_view(), name='motivo_baja_create'),
     path('motivos-baja/<int:pk>/editar/',views.MotivoBajaUpdateView.as_view(),name='motivo_baja_update'),
+    path('motivos-baja/<int:pk>/eliminar/',views.MotivoBajaDeleteView.as_view(),name='motivo_baja_delete'),
     # Idiomas
     path('idiomas/',               views.IdiomaListView.as_view(),   name='idioma_list'),
     path('idiomas/nuevo/',         views.IdiomaCreateView.as_view(), name='idioma_create'),
@@ -120,6 +130,7 @@ urlpatterns = [
     path('inmuebles/',               views.InmuebleListView.as_view(),   name='inmueble_list'),
     path('inmuebles/nuevo/',         views.InmuebleCreateView.as_view(), name='inmueble_create'),
     path('inmuebles/<int:pk>/editar/',views.InmuebleUpdateView.as_view(),name='inmueble_update'),
+    path('inmuebles/<int:pk>/eliminar/',views.InmuebleDeleteView.as_view(),name='inmueble_delete'),
     # Descarga plantillas / Importación / Exportación
     path('descargar/<str:catalogo>/', views.descargar_catalogo, name='descargar_catalogo'),
     path('importar/<str:catalogo>/',  views.importar_catalogo,  name='importar_catalogo'),

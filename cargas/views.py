@@ -22,6 +22,9 @@ from .models import (
 from .forms import CargaLayoutForm, PeriodoCargaForm, AccesoExcepcionCargaForm, GenerarPeriodosForm
 from .procesador import procesar_layout_basica, procesar_layout_bajas, procesar_layout_personales
 from .comprobante import generar_comprobante_pdf
+from .notificaciones import (
+    notificar_carga_pendiente_revision, notificar_carga_aceptada, notificar_carga_rechazada,
+)
 from usuarios.mixins import (
     AdministradorRequiredMixin, DependenciaScopedMixin, filtrar_por_dependencia,
     admin_requerido, puede_revisar_carga, PermisoRequeridoMixin, permiso_requerido,
@@ -66,6 +69,7 @@ def _procesar_carga_en_segundo_plano(carga_pk, dry_run, overrides=None, revisado
                 carga.detalle_filas = resultado['filas']
                 carga.estado = 'pendiente_revision'
                 carga.save()
+                notificar_carga_pendiente_revision(carga)
             else:
                 with transaction.atomic():
                     resultado = _correr_procesador(carga, dry_run=False, overrides=overrides)
@@ -79,6 +83,7 @@ def _procesar_carga_en_segundo_plano(carga_pk, dry_run, overrides=None, revisado
                     carga.fecha_revision = timezone.now()
                     carga.save()
                 _registrar_eventos_de_carga(carga, resultado['filas'], revisado_por_pk)
+                notificar_carga_aceptada(carga)
         except Exception as e:
             # Si falló validando (dry_run), no hay nada útil que revisar
             # todavía: con_errores, hay que resubir. Si falló aplicando de
@@ -508,6 +513,7 @@ def carga_rechazar(request, pk):
     carga.revisado_por = request.user
     carga.fecha_revision = timezone.now()
     carga.save()
+    notificar_carga_rechazada(carga)
 
     messages.success(request, 'Carga rechazada. No se aplicó ningún cambio al padrón.')
     return redirect('carga_detalle', pk=carga.pk)

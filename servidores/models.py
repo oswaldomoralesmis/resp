@@ -78,6 +78,10 @@ class DatosComplementarios(models.Model):
     pueblo_indigena = models.ForeignKey(Pueblo, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Pueblo Indígena/Afromexicano')
     validado = models.BooleanField(default=False, verbose_name='Validado')
     fecha_validacion = models.DateTimeField(null=True, blank=True)
+    validado_por = models.ForeignKey(
+        'usuarios.UsuarioRESP', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='complementarios_validados', verbose_name='Validado por',
+    )
 
     class Meta:
         verbose_name = 'Datos Complementarios'
@@ -367,6 +371,7 @@ class LogEvento(models.Model):
         ('informacion_basica', 'Información Básica'),
         ('baja', 'Baja de Servidor Público'),
         ('datos_personales', 'Datos Personales'),
+        ('datos_complementarios', 'Datos Complementarios'),
     ]
     ACCION_CHOICES = [
         ('creado', 'Creado'),
@@ -406,4 +411,37 @@ class LogEvento(models.Model):
         return cls.objects.create(
             modelo=modelo, objeto_id=objeto_id, servidor=servidor, accion=accion,
             origen=origen, usuario=usuario, carga=carga,
+        )
+
+
+class LogExportacion(models.Model):
+    """Auditoría de quién exportó qué a Excel y cuántas filas. A diferencia
+    de LogEvento (una edición puntual de un registro concreto), aquí no hay
+    un solo objeto al que amarrar el evento —es 'se exportó un archivo
+    completo'— así que no reusa MODELO_CHOICES/objeto_id de LogEvento. Sirve
+    como rastro de qué información salió del sistema, para el rol OIC
+    (Órgano Interno de Control) y para administradores."""
+    usuario = models.ForeignKey(
+        'usuarios.UsuarioRESP', on_delete=models.SET_NULL, null=True, verbose_name='Usuario',
+    )
+    fecha = models.DateTimeField(auto_now_add=True, verbose_name='Fecha')
+    modulo = models.CharField(
+        max_length=50, verbose_name='Módulo',
+        help_text="Ej. 'padron', 'plazas', 'catalogo:tipo_contratacion'.",
+    )
+    descripcion = models.CharField(max_length=200, verbose_name='Descripción')
+    total_registros = models.IntegerField(default=0, verbose_name='Total de Registros')
+
+    class Meta:
+        verbose_name = 'Log de Exportación'
+        verbose_name_plural = 'Log de Exportaciones'
+        ordering = ['-fecha']
+
+    def __str__(self):
+        return f"{self.descripcion} — {self.total_registros} registro(s)"
+
+    @classmethod
+    def registrar(cls, usuario, modulo, descripcion, total_registros):
+        return cls.objects.create(
+            usuario=usuario, modulo=modulo, descripcion=descripcion, total_registros=total_registros,
         )

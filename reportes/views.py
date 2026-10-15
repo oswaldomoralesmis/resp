@@ -5,17 +5,12 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Avg, Count, ExpressionWrapper, F, IntegerField, Q, Value
 from django.db.models.functions import Cast, Substr
 from django.http import HttpResponse
-from servidores.models import ServidorPublico, InformacionBasica, BajaServidorPublico, Puesto, DiscapacidadServidor
+from servidores.models import ServidorPublico, InformacionBasica, BajaServidorPublico, Puesto, DiscapacidadServidor, LogExportacion
 from catalogos.models import Dependencia
 from usuarios.mixins import filtrar_por_dependencia, permiso_requerido, usuario_tiene_permiso, _denegar_acceso
 from .pdf import generar_pdf_paridad, generar_pdf_ocupacion, generar_pdf_discapacidad
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
-
-
-@login_required
-def reporte_index(request):
-    return render(request, 'reportes/index.html', {'titulo': 'Reportes y Estadísticas'})
 
 
 @login_required
@@ -533,6 +528,8 @@ def exportar_excel(request, tipo):
             ws.cell(row=row, column=11, value=s.nss)
             ws.cell(row=row, column=12, value='Sí' if s.activo else 'No')
 
+        LogExportacion.registrar(request.user, 'padron', 'Padrón de Servidores Públicos', servidores_export.count())
+
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
@@ -541,9 +538,8 @@ def exportar_excel(request, tipo):
     return response
 
 
-# Override reporte_index to include items
+@login_required
 def reporte_index(request):
-    from django.contrib.auth.decorators import login_required
     items = [
         {'icono': '📄', 'nombre': 'Padrón General', 'desc': 'Listado completo de servidores activos', 'url': '/reportes/padron/'},
         {'icono': '⚖️', 'nombre': 'Declaración Patrimonial', 'desc': 'Sujetos obligados a declarar', 'url': '/reportes/declaracion-patrimonial/'},

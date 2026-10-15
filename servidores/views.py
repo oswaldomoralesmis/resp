@@ -18,7 +18,7 @@ from openpyxl.utils import get_column_letter
 from .models import (
     ServidorPublico, InformacionBasica, BajaServidorPublico, Puesto,
     DatosPersonales, DatosComplementarios, DiscapacidadServidor,
-    EnfermedadCronicaServidor, IdiomaServidor, LogEvento,
+    EnfermedadCronicaServidor, IdiomaServidor, LogEvento, LogExportacion,
     sincronizar_puesto, liberar_puestos_de,
 )
 from .forms import (
@@ -30,7 +30,9 @@ from cargas.models import PeriodoCarga, CargaLayout, periodo_vigente_hoy
 from usuarios.mixins import (
     DependenciaScopedMixin, filtrar_por_dependencia, admin_requerido,
     PermisoRequeridoMixin, PermisoEdicionRequeridoMixin, permiso_requerido,
+    AuditoriaRequiredMixin, puede_validar_complementarios,
 )
+from django.core.exceptions import PermissionDenied
 
 
 @login_required
@@ -218,6 +220,7 @@ class ServidorDetailView(LoginRequiredMixin, DependenciaScopedMixin, DetailView)
         ctx['discapacidades'] = self.object.discapacidades.select_related('discapacidad')
         ctx['enfermedades'] = self.object.enfermedades.select_related('enfermedad')
         ctx['idiomas'] = self.object.idiomas.select_related('idioma')
+        ctx['puede_validar_complementarios'] = puede_validar_complementarios(self.request.user, self.object)
         ctx['titulo'] = f'Servidor: {self.object.nombre_completo}'
         return ctx
 
@@ -661,6 +664,7 @@ def exportar_plazas_excel(request):
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename="RESP_Plazas.xlsx"'
     wb.save(response)
+    LogExportacion.registrar(request.user, 'plazas', 'Plazas (Formato Layout Información Básica)', puestos.count())
     return response
 
 
@@ -890,3 +894,69 @@ class InformacionBasicaUpdateView(LoginRequiredMixin, PermisoEdicionRequeridoMix
             )
         LogEvento.registrar('informacion_basica', info.pk, info.servidor, 'editado', 'manual', usuario=user)
         return response
+
+
+class LogExportacionListView(LoginRequiredMixin, AuditoriaRequiredMixin, ListView):
+    model = LogExportacion
+    template_name = 'servidores/log_exportacion_list.html'
+    context_object_name = 'registros'
+    paginate_by = 40
+
+    def get_queryset(self):
+        return LogExportacion.objects.select_related('usuario')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['titulo'] = 'Historial de Exportaciones'
+        return ctx
+
+
+class ComplementariosPendientesListView(LoginRequiredMixin, PermisoRequeridoMixin, ListView):
+    permiso_clave = 'validar_complementarios'
+    model = ServidorPublico
+    template_name = 'servidores/complementarios_pendientes.html'
+    context_object_name = 'servidores'
+    paginate_by = 30
+
+    def get_queryset(self):
+        qs = filtrar_por_dependencia(
+            ServidorPublico.objects.filter(activo=True),
+            self.request.user, 'informacion_basica__dependencia_id',
+        ).filter(
+            Q(datos_complementarios__isnull=True) | Q(datos_complementarios__validado=False)
+        ).select_related('datos_complementarios').distinct()
+        q = self.request.GET.get('q', '')
+        if q:
+            qs = qs.filter(
+                Q(rfc__icontains=q) | Q(nombre__icontains=q) |
+                Q(primer_apellido__icontains=q) | Q(expediente__icontains=q)
+            )
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['titulo'] = 'Pendientes de Validar — Datos Complementarios'
+        ctx['q'] = self.request.GET.get('q', '')
+        return ctx
+
+
+@login_required
+def complementarios_validar(request, pk):
+    """Marca los Datos Complementarios de un servidor como validados. Si
+    todavía no tiene fila de DatosComplementarios (nunca capturó
+    escolaridad/pueblo indígena), se crea vacía al validar — queda
+    constancia de que ya se revisó, aunque no haya nada que capturar."""
+    if request.method != 'POST':
+        raise PermissionDenied
+    servidor = get_object_or_404(ServidorPublico, pk=pk)
+    if not puede_validar_complementarios(request.user, servidor):
+        raise PermissionDenied
+    datos, _ = DatosComplementarios.objects.get_or_create(servidor=servidor)
+    datos.validado = True
+    datos.fecha_validacion = timezone.now()
+    datos.validado_por = request.user
+    datos.save()
+    LogEvento.registrar('datos_complementarios', datos.pk, servidor, 'editado', 'manual', usuario=request.user)
+    messages.success(request, f'Datos complementarios de {servidor} marcados como validados.')
+    next_url = request.POST.get('next') or reverse_lazy('complementarios_pendientes_list')
+    return redirect(next_url)
