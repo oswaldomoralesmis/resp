@@ -18,7 +18,6 @@
     <a href="{% url 'servidor_update' servidor.pk %}" class="btn-institucional btn-sm">✏️ Editar</a>
     {% endif %}
     <a href="{% url 'hoja_resp' servidor.pk %}" class="btn-verde btn-sm">🖨️ Hoja RESP</a>
-    {% if servidor.activo %}<a href="{% url 'servidor_baja' servidor.pk %}" class="btn-rojo btn-sm">🚫 Registrar Baja</a>{% endif %}
   </div>
 </div>
 

@@ -19,7 +19,7 @@ from .models import (
     ServidorPublico, InformacionBasica, BajaServidorPublico, Puesto,
     DatosPersonales, DatosComplementarios, DiscapacidadServidor,
     EnfermedadCronicaServidor, IdiomaServidor, LogEvento, LogExportacion,
-    SEXO_CHOICES, sincronizar_puesto, liberar_puestos_de,
+    SEXO_CHOICES, sincronizar_puesto,
 )
 from .forms import (
     ServidorPublicoForm, DatosPersonalesForm, DatosComplementariosForm,
@@ -367,49 +367,12 @@ class ServidorUpdateView(LoginRequiredMixin, PermisoEdicionRequeridoMixin, Depen
         ))
 
 
-@login_required
-def servidor_baja(request, pk):
-    qs = filtrar_por_dependencia(
-        ServidorPublico.objects.all(), request.user, 'informacion_basica__dependencia_id'
-    ).distinct()
-    servidor = get_object_or_404(qs, pk=pk)
-    if request.method == 'POST':
-        form = BajaForm(request.POST)
-        if not request.user.es_administrador:
-            form.fields['dependencia'].queryset = form.fields['dependencia'].queryset.filter(
-                pk=request.user.dependencia_id
-            )
-        if form.is_valid():
-            if not request.user.es_administrador and form.cleaned_data['dependencia'].pk != request.user.dependencia_id:
-                form.add_error('dependencia', 'No tiene permiso para asignar esta dependencia.')
-            else:
-                baja = form.save(commit=False)
-                baja.servidor = servidor
-                baja.registrado_por = request.user
-                baja.save()
-                LogEvento.registrar('baja', baja.pk, servidor, 'creado', 'manual', usuario=request.user)
-                servidor.activo = False
-                servidor.save()
-                InformacionBasica.objects.filter(servidor=servidor, activo=True).update(activo=False)
-                liberar_puestos_de(servidor)
-                return redirect('servidor_list')
-    else:
-        form = BajaForm()
-        if not request.user.es_administrador:
-            form.fields['dependencia'].queryset = form.fields['dependencia'].queryset.filter(
-                pk=request.user.dependencia_id
-            )
-            form.fields['dependencia'].initial = request.user.dependencia_id
-    return render(request, 'servidores/baja_form.html', {
-        'form': form, 'servidor': servidor, 'titulo': f'Registrar Baja: {servidor.nombre_completo}'
-    })
-
-
 class BajaUpdateView(LoginRequiredMixin, DependenciaScopedMixin, UpdateView):
-    """Corrige los datos administrativos de una baja ya registrada (por
-    layout o manual). No permite cambiar el servidor ni la plaza liberada
-    —eso ya tuvo su efecto al darla de alta— solo dependencia/fecha/
-    motivo/ejercicio/periodo, igual que el alta manual (BajaForm)."""
+    """Corrige los datos administrativos de una baja ya registrada por el
+    Layout de Bajas (único alta posible — ver cargas/procesador.py:
+    procesar_layout_bajas; el alta manual se quitó a propósito). No permite
+    cambiar el servidor ni la plaza liberada —eso ya tuvo su efecto al darla
+    de alta— solo dependencia/fecha/motivo/ejercicio/periodo."""
     model = BajaServidorPublico
     form_class = BajaForm
     template_name = 'servidores/baja_edit_form.html'
