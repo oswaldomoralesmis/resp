@@ -497,6 +497,28 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
     cache = Cache()
     vistos_rfc = set()  # RFC ya "creados" en este mismo dry run (simula get_or_create sin escribir)
 
+    # ── Pre-paso: ID_PLAZA como llave única dentro del archivo ───────────────
+    # Si la misma plaza aparece en más de un renglón del layout (p.ej. un
+    # movimiento capturado por error y corregido más abajo en el mismo
+    # archivo), solo debe aplicarse UN movimiento por plaza — el del último
+    # renglón — para no pisarse entre sí dentro de la misma carga. Este
+    # recorrido previo solo registra en qué número de fila está la ÚLTIMA
+    # ocurrencia de cada id_plaza; el renglón en sí se sigue leyendo y
+    # validando normalmente más abajo, en el bucle principal.
+    ultima_fila_de_plaza = {}
+    for num_fila_pre, fila_pre in enumerate(filas[inicio_datos:], start=inicio_datos + 1):
+        if not any(c is not None for c in fila_pre):
+            continue
+        try:
+            valor_plaza = fila_pre[C_ID_PUESTO]
+        except IndexError:
+            valor_plaza = None
+        if valor_plaza is None or str(valor_plaza).strip().upper() in ('NULL', 'NONE', 'N/A', ''):
+            continue
+        id_plaza_pre = sd(valor_plaza)
+        if id_plaza_pre:
+            ultima_fila_de_plaza[id_plaza_pre] = num_fila_pre
+
     for num_fila, fila in enumerate(filas[inicio_datos:], start=inicio_datos + 1):
         if not any(c is not None for c in fila):
             continue
@@ -522,6 +544,24 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
         ap_pat   = sd(col(C_PRIMER_AP, '')).upper()
         ap_mat   = sd(col(C_SEGUNDO_AP, '')).upper() or None
         id_plaza = sd(col(C_ID_PUESTO, ''))
+
+        # ── Fila duplicada: esta misma plaza vuelve a aparecer más adelante
+        # en el archivo — se omite por completo (ni se valida ni se aplica),
+        # queda constancia de cuál es el renglón que sí se va a considerar.
+        if id_plaza and ultima_fila_de_plaza.get(id_plaza) != num_fila:
+            errores += 1
+            fila_valida = ultima_fila_de_plaza[id_plaza]
+            log.append(
+                f'Fila {num_fila}: DUPLICADA — la plaza {id_plaza} se repite en este mismo archivo; '
+                f'se considera únicamente el último renglón de esa plaza (fila {fila_valida})'
+            )
+            filas_detalle.append({
+                'fila': num_fila, 'rfc': rfc, 'curp': curp,
+                'nombre': f'{nombre} {ap_pat} {ap_mat or ""}'.strip(), 'id_plaza': id_plaza,
+                'estado': 'DUPLICADA',
+                'mensaje': f'Plaza repetida en este archivo — se aplica el renglón {fila_valida}',
+            })
+            continue
 
         # ── Fila vacía: reporta una plaza sin trabajador → liberar el puesto ──
         # Las plazas NO se crean desde el layout (eso lo hace la carga inicial

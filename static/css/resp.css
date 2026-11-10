@@ -171,6 +171,7 @@ button { cursor: pointer; font-family: inherit; }
 .stat-icon.verde  { background: rgba(30,107,60,.12);  color: var(--verde); }
 .stat-icon.dorado { background: rgba(196,153,85,.12); color: var(--dorado-oscuro); }
 .stat-icon.rojo   { background: rgba(192,57,43,.12);  color: var(--rojo); }
+.stat-icon.gris   { background: rgba(112,111,111,.12); color: var(--gris-med); }
 .stat-number { font-size: 28px; font-weight: 800; color: var(--gris-osc); line-height: 1; }
 .stat-label  { font-size: 12px; color: var(--gris-med); margin-top: 2px; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
 

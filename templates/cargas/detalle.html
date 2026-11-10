@@ -135,7 +135,7 @@
       <span>&#128203; Listado de Registros ({{ filas_vista|length }})</span>
       <label style="font-size:12px;font-weight:400;display:flex;align-items:center;gap:6px;cursor:pointer;">
         <input type="checkbox" id="filtro-solo-errores" onchange="filtrarSoloErrores(this.checked)">
-        Mostrar solo con error/omitidos
+        Mostrar solo con error/omitidos/duplicados
       </label>
     </div>
     <div id="tabla-registros-wrap" style="overflow-x:auto;max-height:500px;overflow-y:auto;border:1px solid #eee;border-radius:6px;margin-bottom:20px;">
@@ -154,9 +154,10 @@
         </thead>
         <tbody>
           {% for r in filas_vista %}
-          <tr class="{% if r.estado == 'ERROR' or r.estado == 'OMITIDA' %}fila-con-error{% endif %}" style="
+          <tr class="{% if r.estado == 'ERROR' or r.estado == 'OMITIDA' or r.estado == 'DUPLICADA' %}fila-con-error{% endif %}" style="
             {% if r.estado == 'ERROR' %}background:#fff5f5;{% endif %}
             {% if r.estado == 'OMITIDA' %}background:#fff8f0;{% endif %}
+            {% if r.estado == 'DUPLICADA' %}background:#f5f0fa;{% endif %}
           ">
             <td style="color:#999;">{{ r.fila }}</td>
             <td style="font-family:monospace;">{{ r.rfc|default:"—" }}</td>
@@ -166,6 +167,7 @@
             <td>
               {% if r.estado == 'ERROR' %}<span class="badge-inactivo">ERROR</span>
               {% elif r.estado == 'OMITIDA' %}<span class="badge-pendiente">OMITIDA</span>
+              {% elif r.estado == 'DUPLICADA' %}<span class="badge-blue">DUPLICADA</span>
               {% else %}<span class="badge-activo">OK</span>
                 {% if r.informacion_basica_id %}
                 <br><a href="{% url 'info_basica_update' r.informacion_basica_id %}" style="font-size:11px;">✏️ Ver/editar</a>
@@ -241,12 +243,14 @@
           <tr style="
             {% if l.tipo == 'error' %}background:#fff5f5;{% endif %}
             {% if l.tipo == 'omitida' %}background:#fff8f0;{% endif %}
+            {% if l.tipo == 'duplicada' %}background:#f5f0fa;{% endif %}
             {% if l.tipo == 'aviso' %}background:#fffde7;{% endif %}
           ">
             <td style="color:#999;">{{ forloop.counter }}</td>
             <td>
               {% if l.tipo == 'error' %}<span class="badge-inactivo">ERROR</span>
               {% elif l.tipo == 'omitida' %}<span class="badge-pendiente">OMITIDA</span>
+              {% elif l.tipo == 'duplicada' %}<span class="badge-blue">DUPLICADA</span>
               {% elif l.tipo == 'aviso' %}<span style="background:#fff9c4;color:#856404;padding:3px 8px;border-radius:10px;font-size:11px;font-weight:700;">AVISO</span>
               {% else %}<span class="badge-activo">OK</span>{% endif %}
             </td>

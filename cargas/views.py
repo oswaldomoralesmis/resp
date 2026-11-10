@@ -276,7 +276,9 @@ def carga_detalle(request, pk):
             linea = linea.strip()
             if not linea:
                 continue
-            if 'ERROR' in linea:
+            if 'DUPLICADA' in linea:
+                tipo = 'duplicada'
+            elif 'ERROR' in linea:
                 tipo = 'error'
             elif 'OMITIDA' in linea:
                 tipo = 'omitida'

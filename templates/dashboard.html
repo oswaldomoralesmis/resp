@@ -14,8 +14,8 @@
     <div><div class="stat-number">{{ total_dependencias|default:0|intcomma }}</div><div class="stat-label">Dependencias</div></div>
   </div>
   <div class="stat-card">
-    <div class="stat-icon dorado">📅</div>
-    <div><div class="stat-number">{% if periodo_actual %}{{ periodo_actual.quincena }}/{{ periodo_actual.ejercicio }}{% else %}—{% endif %}</div><div class="stat-label">Período Activo</div></div>
+    <div class="stat-icon {% if periodo_en_ventana %}dorado{% else %}gris{% endif %}">📅</div>
+    <div><div class="stat-number">{% if periodo_actual %}{{ periodo_actual.quincena }}/{{ periodo_actual.ejercicio }}{% else %}—{% endif %}</div><div class="stat-label">{% if periodo_en_ventana %}Período Activo{% else %}Último Período Procesado{% endif %}</div></div>
   </div>
   <div class="stat-card">
     <div class="stat-icon rojo">📊</div>
