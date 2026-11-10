@@ -26,7 +26,7 @@ from .forms import (
     InformacionBasicaForm, BajaForm, PuestoForm,
 )
 from catalogos.models import Dependencia, EstatusPlaza, Discapacidad, EnfermedadCronica, Idioma, Sindicato
-from cargas.models import PeriodoCarga, CargaLayout, periodo_vigente_hoy
+from cargas.models import PeriodoCarga, CargaLayout, periodo_vigente_hoy, ventana_permitida
 from usuarios.mixins import (
     DependenciaScopedMixin, filtrar_por_dependencia, admin_requerido,
     PermisoRequeridoMixin, PermisoEdicionRequeridoMixin, permiso_requerido,
@@ -45,6 +45,15 @@ def dashboard(request):
     total_dependencias = Dependencia.objects.count()
     # últimas cargas
     periodo_actual = periodo_vigente_hoy()
+    # periodo_vigente_hoy() puede devolver el período que quedó marcado
+    # 'activo' a mano (p.ej. sostenido para una excepción), aunque hoy ya no
+    # caiga en ninguna ventana real — por eso para "¿está vigente AHORA?" se
+    # vuelve a comprobar la ventana de verdad (general o de excepción) antes
+    # de mostrarlo como tal en el dashboard.
+    periodo_en_ventana = False
+    if periodo_actual:
+        ini, fin = ventana_permitida(periodo_actual, request.user.dependencia)
+        periodo_en_ventana = ini <= timezone.localdate() <= fin
     # estadísticas por estatus
     stats_estatus = InformacionBasica.objects.filter(
         activo=True
@@ -54,6 +63,7 @@ def dashboard(request):
         'total_servidores': total_servidores,
         'total_dependencias': total_dependencias,
         'periodo_actual': periodo_actual,
+        'periodo_en_ventana': periodo_en_ventana,
         'stats_estatus': stats_estatus,
         'titulo': 'Dashboard',
         'debug_mode': settings.DEBUG,

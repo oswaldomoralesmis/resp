@@ -55,12 +55,14 @@
 <div class="card">
   <div class="card-header">📅 Período de Carga Vigente</div>
   <div class="card-body">
-    {% if periodo_actual %}
+    {% if periodo_actual and periodo_en_ventana %}
     <div class="grid-3">
       <div><div class="form-label">Quincena</div><div style="font-size:22px;font-weight:800;color:var(--guinda);">{{ periodo_actual.quincena }}/{{ periodo_actual.ejercicio }}</div></div>
       <div><div class="form-label">Inicio de recepción</div><div style="font-size:15px;font-weight:600;">{{ periodo_actual.fecha_inicio }}</div></div>
       <div><div class="form-label">Fin de recepción</div><div style="font-size:15px;font-weight:600;">{{ periodo_actual.fecha_fin }}</div></div>
     </div>
+    {% elif periodo_actual %}
+    <div class="alert-resp alert-warning">⚠️ La quincena {{ periodo_actual.quincena }}/{{ periodo_actual.ejercicio }} ya no está en ventana de carga (ni general ni por excepción). <a href="{% url 'periodo_list' %}">Ver períodos</a></div>
     {% else %}
     <div class="alert-resp alert-warning">⚠️ No hay período activo. <a href="{% url 'periodo_create' %}">Configurar</a></div>
     {% endif %}
