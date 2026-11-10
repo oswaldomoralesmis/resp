@@ -19,13 +19,13 @@ from .models import (
     ServidorPublico, InformacionBasica, BajaServidorPublico, Puesto,
     DatosPersonales, DatosComplementarios, DiscapacidadServidor,
     EnfermedadCronicaServidor, IdiomaServidor, LogEvento, LogExportacion,
-    sincronizar_puesto, liberar_puestos_de,
+    SEXO_CHOICES, sincronizar_puesto, liberar_puestos_de,
 )
 from .forms import (
     ServidorPublicoForm, DatosPersonalesForm, DatosComplementariosForm,
     InformacionBasicaForm, BajaForm, PuestoForm,
 )
-from catalogos.models import Dependencia, EstatusPlaza, Discapacidad, EnfermedadCronica, Idioma
+from catalogos.models import Dependencia, EstatusPlaza, Discapacidad, EnfermedadCronica, Idioma, Sindicato
 from cargas.models import PeriodoCarga, CargaLayout, periodo_vigente_hoy
 from usuarios.mixins import (
     DependenciaScopedMixin, filtrar_por_dependencia, admin_requerido,
@@ -160,7 +160,7 @@ class ServidorListView(LoginRequiredMixin, PermisoRequeridoMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        qs = ServidorPublico.objects.all()
+        qs = ServidorPublico.objects.select_related('sindicato')
         estatus = self.request.GET.get('estatus', 'activos')
         if estatus == 'activos':
             qs = qs.filter(activo=True)
@@ -185,13 +185,23 @@ class ServidorListView(LoginRequiredMixin, PermisoRequeridoMixin, ListView):
         dep = self.request.GET.get('dependencia', '')
         if dep:
             qs = qs.filter(informacion_basica__dependencia_id=dep)
+        genero = self.request.GET.get('genero', '')
+        if genero:
+            qs = qs.filter(sexo=genero)
+        sindicato = self.request.GET.get('sindicato', '')
+        if sindicato:
+            qs = qs.filter(sindicato_id=sindicato)
         return qs.distinct()
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['dependencias'] = filtrar_por_dependencia(Dependencia.objects.all(), self.request.user, 'pk')
+        ctx['sindicatos'] = Sindicato.objects.all().order_by('clave')
+        ctx['genero_choices'] = SEXO_CHOICES
         ctx['q'] = self.request.GET.get('q', '')
         ctx['estatus'] = self.request.GET.get('estatus', 'activos')
+        ctx['genero'] = self.request.GET.get('genero', '')
+        ctx['sindicato'] = self.request.GET.get('sindicato', '')
         ctx['titulo'] = 'Padrón de Servidores Públicos'
         return ctx
 
