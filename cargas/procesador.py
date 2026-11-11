@@ -712,8 +712,12 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
         fecha_nacimiento_val = parse_fecha(col(C_FECHA_NAC))
         sexo_val             = normalizar_sexo(col(C_GENERO))
         estado_civil_val     = cache.estado_civil(col(C_ESTADO_CIVIL))
-        entidad_nac_val      = cache.entidad(col(C_ENTIDAD))
-        pais_nac_val         = cache.pais(col(C_PAIS))
+        # ENTIDAD/PAIS en este layout son del DOMICILIO del servidor (no de su
+        # nacimiento) — van a DatosPersonales, no a ServidorPublico. El lugar
+        # de nacimiento se captura aparte, en el Layout de Datos Personales
+        # (CP_ENTIDAD_NAC/CP_PAIS_NAC, ver procesar_layout_personales).
+        entidad_val          = cache.entidad(col(C_ENTIDAD))
+        pais_val             = cache.pais(col(C_PAIS))
         correo_val           = sd(col(C_CORREO, ''))
         iss_val              = normalizar_iss(col(C_ISS))
         nss_val              = sd(col(C_NSS, ''))
@@ -753,8 +757,6 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
                             'fecha_nacimiento':      fecha_nacimiento_val or date(1900, 1, 1),
                             'sexo':                  sexo_val,
                             'estado_civil':          estado_civil_val,
-                            'entidad_nacimiento':    entidad_nac_val,
-                            'pais_nacimiento':       pais_nac_val,
                             'correo_institucional':  correo_val,
                             'iss':                   iss_val,
                             'nss':                   nss_val,
@@ -815,8 +817,6 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
                         _actualizar('fecha_nacimiento', fecha_nacimiento_val)
                         _actualizar('sexo', sexo_val)
                         _actualizar('estado_civil', estado_civil_val)
-                        _actualizar('entidad_nacimiento', entidad_nac_val)
-                        _actualizar('pais_nacimiento', pais_nac_val)
                         _actualizar('correo_institucional', correo_val)
                         _actualizar('iss', iss_val)
                         _actualizar('nss', nss_val)
@@ -827,6 +827,19 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
                             servidor.activo = True; cambios = True; reactivado = True
                         if cambios:
                             servidor.save()
+
+                    # ENTIDAD/PAIS de este layout son domicilio, no nacimiento
+                    # (ver comentario donde se calculan entidad_val/pais_val) —
+                    # se guardan en DatosPersonales, igual que en el Layout de
+                    # Datos Personales. Aplica tanto a servidor recién creado
+                    # como a uno existente.
+                    if entidad_val or pais_val:
+                        datos_personales, _ = DatosPersonales.objects.get_or_create(servidor=servidor)
+                        if entidad_val:
+                            datos_personales.entidad = entidad_val
+                        if pais_val:
+                            datos_personales.pais = pais_val
+                        datos_personales.save()
 
             except Exception as e:
                 # Posible CURP duplicado con otro RFC
@@ -1039,8 +1052,13 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
                     fecha_nacimiento           = fecha_nacimiento_val,
                     sexo                       = sexo_val,
                     estado_civil               = estado_civil_val,
-                    entidad_nacimiento         = entidad_nac_val,
-                    pais_nacimiento            = pais_nac_val,
+                    # El layout básico no trae lugar de nacimiento (sus
+                    # columnas ENTIDAD/PAIS son domicilio, ver arriba) — la
+                    # fotografía refleja el nacimiento que el servidor ya
+                    # tenga registrado (capturado vía Layout de Datos
+                    # Personales o edición manual), no un dato de esta fila.
+                    entidad_nacimiento         = servidor.entidad_nacimiento,
+                    pais_nacimiento            = servidor.pais_nacimiento,
                     correo_institucional       = correo_val,
                     iss                        = iss_val,
                     nss                        = nss_val,
