@@ -102,12 +102,22 @@ def _registrar_eventos_de_carga(carga, filas, revisado_por_pk):
     un evento 'creado'/'carga' por cada Información Básica o Baja generada.
     El usuario del evento es quien aceptó la carga (revisado_por), porque es
     la acción que de verdad escribió en la base — no quien subió el archivo,
-    que pudo ser otra persona y en otro momento."""
-    from servidores.models import InformacionBasica, BajaServidorPublico, LogEvento
+    que pudo ser otra persona y en otro momento.
+
+    Para carga.tipo == 'personales' además VALIDA Datos Complementarios: no
+    existe un botón 'Validar' manual aparte (se quitó a propósito) — aceptar
+    esta carga es la única forma de marcar validado=True, y queda trazado con
+    'carga=carga' en el LogEvento de cada servidor, igual que Información
+    Básica/Bajas."""
+    from servidores.models import (
+        InformacionBasica, BajaServidorPublico, DatosPersonales,
+        DatosComplementarios, LogEvento,
+    )
 
     ib_ids = [f['informacion_basica_id'] for f in filas if f.get('informacion_basica_id')]
     baja_ids = [f['baja_id'] for f in filas if f.get('baja_id')]
-    if not ib_ids and not baja_ids:
+    servidor_ids_personales = [f['servidor_id'] for f in filas if f.get('servidor_id')]
+    if not ib_ids and not baja_ids and not servidor_ids_personales:
         return
 
     servidor_por_ib = dict(InformacionBasica.objects.filter(pk__in=ib_ids).values_list('pk', 'servidor_id'))
@@ -126,6 +136,35 @@ def _registrar_eventos_de_carga(carga, filas, revisado_por_pk):
         )
         for baja_id in baja_ids
     ]
+
+    if servidor_ids_personales:
+        ahora = timezone.now()
+        dp_por_servidor = dict(
+            DatosPersonales.objects.filter(servidor_id__in=servidor_ids_personales).values_list('servidor_id', 'pk')
+        )
+        dc_por_servidor = dict(
+            DatosComplementarios.objects.filter(servidor_id__in=servidor_ids_personales).values_list('servidor_id', 'pk')
+        )
+        # El procesador ya garantiza (get_or_create) que exista un
+        # DatosComplementarios por cada servidor_id de esta carga — aceptarla
+        # es lo que lo valida, traiga o no grado/pueblo nuevos en esta vuelta.
+        DatosComplementarios.objects.filter(servidor_id__in=servidor_ids_personales).update(
+            validado=True, fecha_validacion=ahora, validado_por_id=revisado_por_pk,
+        )
+        for servidor_id in servidor_ids_personales:
+            dp_id = dp_por_servidor.get(servidor_id)
+            if dp_id:
+                eventos.append(LogEvento(
+                    modelo='datos_personales', objeto_id=dp_id, servidor_id=servidor_id,
+                    accion='editado', origen='carga', carga=carga, usuario_id=revisado_por_pk,
+                ))
+            dc_id = dc_por_servidor.get(servidor_id)
+            if dc_id:
+                eventos.append(LogEvento(
+                    modelo='datos_complementarios', objeto_id=dc_id, servidor_id=servidor_id,
+                    accion='editado', origen='carga', carga=carga, usuario_id=revisado_por_pk,
+                ))
+
     LogEvento.objects.bulk_create(eventos)
 
 
@@ -753,7 +792,7 @@ CATALOGOS_ESTATICOS_BASICA = [
 # domicilio (Municipios/Entidades/Países), grado de estudios, estado civil y
 # lugar de nacimiento (mismas hojas Entidades/Países, reutilizadas) — más ISS
 # como catálogo fijo (no tiene tabla en BD, ver ISS_CHOICES en servidores/models.py).
-CATALOGOS_PLANTILLA_PERSONALES = ['entidad', 'municipio', 'pais', 'nivel_escolaridad', 'estado_civil']
+CATALOGOS_PLANTILLA_PERSONALES = ['entidad', 'municipio', 'pais', 'nivel_escolaridad', 'estado_civil', 'pueblo']
 CATALOGOS_ESTATICOS_PERSONALES = [
     ('ISS', [('ISSET', 'ISSET'), ('IMSS', 'IMSS'), ('ISSSTE', 'ISSSTE')]),
 ]

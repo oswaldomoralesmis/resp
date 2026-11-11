@@ -17,8 +17,6 @@ urlpatterns = [
     path('puestos/', views.PuestoListView.as_view(), name='puesto_list'),
     path('puestos/exportar/', views.exportar_plazas_excel, name='puesto_exportar'),
     path('auditoria/exportaciones/', views.LogExportacionListView.as_view(), name='log_exportacion_list'),
-    path('complementarios/pendientes/', views.ComplementariosPendientesListView.as_view(), name='complementarios_pendientes_list'),
-    path('complementarios/<int:pk>/validar/', views.complementarios_validar, name='complementarios_validar'),
     path('puestos/<int:pk>/', views.PuestoDetailView.as_view(), name='puesto_detail'),
     path('puestos/<int:pk>/editar/', views.PuestoUpdateView.as_view(), name='puesto_update'),
 ]

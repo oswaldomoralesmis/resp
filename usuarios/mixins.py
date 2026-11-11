@@ -129,25 +129,6 @@ def puede_revisar_carga(user, carga):
     return user.rol == 'validador' and user.dependencia_id == carga.dependencia_id
 
 
-def puede_validar_complementarios(user, servidor):
-    """Puede validar los Datos Complementarios de 'servidor': administrador
-    (cualquiera), o un validador de la misma dependencia donde el servidor
-    tiene su Información Básica vigente (igual criterio de dependencia que
-    ServidorDetailView.dependencia_lookup='informacion_basica__dependencia_id').
-    Si el servidor no tiene ninguna InformacionBasica activa, no hay
-    dependencia a la que amarrar el permiso — solo el administrador puede
-    validarlo."""
-    if not user.is_authenticated:
-        return False
-    if user.es_administrador:
-        return True
-    if user.rol != 'validador':
-        return False
-    from servidores.models import InformacionBasica
-    ib = InformacionBasica.objects.filter(servidor=servidor, activo=True).order_by('-quincena').first()
-    return bool(ib) and ib.dependencia_id == user.dependencia_id
-
-
 def puede_ver_auditoria(user):
     """Historial de Exportaciones: administrador o rol OIC (Órgano Interno
     de Control, el rol de auditoría/control interno de este sistema). No es

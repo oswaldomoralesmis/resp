@@ -97,13 +97,6 @@
         <div><div class="form-label">Entidad de Nacimiento</div><div>{{ servidor.entidad_nacimiento|default:"—" }}</div></div>
         <div><div class="form-label">País de Nacimiento</div><div>{{ servidor.pais_nacimiento|default:"—" }}</div></div>
       </div>
-      {% if puede_validar_complementarios and not datos_complementarios.validado %}
-      <form method="post" action="{% url 'complementarios_validar' servidor.pk %}" style="margin-top:10px;">
-        {% csrf_token %}
-        <input type="hidden" name="next" value="{% url 'servidor_detail' servidor.pk %}">
-        <button type="submit" class="btn-institucional btn-sm">Validar</button>
-      </form>
-      {% endif %}
     </div>
   </div>
   <div class="card">

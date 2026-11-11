@@ -68,7 +68,7 @@ from catalogos.models import (
     Programa, Proyecto, Categoria, TipoContratacion, TipoPersonal,
     TipoFuncion, NivelEstructura, EstatusPlaza, CentroTrabajo,
     TipoDeclaracion, Area, EntidadFederativa, Pais, Inmueble,
-    EstadoCivil, Sindicato, MotivoBaja, Municipio, NivelEscolaridad,
+    EstadoCivil, Sindicato, MotivoBaja, Municipio, NivelEscolaridad, Pueblo,
 )
 from .validadores import rfc_formato_valido, curp_formato_valido, curp_digito_verificador_valido
 from servidores.models import (
@@ -435,6 +435,10 @@ class Cache:
     def nivel_escolaridad(self, v):
         k = si(v)
         return self._get(f'nesc_{k}', lambda: NivelEscolaridad.objects.filter(clave=k).first())
+
+    def pueblo(self, v):
+        k = si(v)
+        return self._get(f'pue_{k}', lambda: Pueblo.objects.filter(clave=k).first())
 
     def sindicato(self, v):
         k = sv(v)
@@ -1366,6 +1370,7 @@ CP_GRADO_ESTUDIOS = 18   # clave NivelEscolaridad
 CP_ESTADO_CIVIL   = 19   # clave EstadoCivil
 CP_ENTIDAD_NAC    = 20   # clave EntidadFederativa — lugar de nacimiento
 CP_PAIS_NAC       = 21   # clave Pais — lugar de nacimiento
+CP_PUEBLO         = 22   # clave Pueblo — Pueblo Indígena/Afromexicano
 
 
 def procesar_layout_personales(carga, dry_run=True, overrides=None):
@@ -1376,11 +1381,19 @@ def procesar_layout_personales(carga, dry_run=True, overrides=None):
     Solo se usa una vez al año (quincena '06' — ver QUINCENA_DATOS_PERSONALES
     en cargas/models.py). Igual que bajas, el servidor debe existir ya (este
     layout no da de alta servidores): actualiza DatosPersonales (domicilio,
-    tipo de sangre, factor RH), DatosComplementarios (grado de estudios) y
-    los campos de ServidorPublico que no vienen en el layout básico quincenal
-    (ISS, NSS, estado civil, lugar de nacimiento). Cada campo solo se
-    sobrescribe si la fila trae un valor no vacío — igual que en básica —
-    para que una celda en blanco no borre un dato bueno que ya existía."""
+    tipo de sangre, factor RH), DatosComplementarios (grado de estudios,
+    pueblo indígena/afromexicano) y los campos de ServidorPublico que no
+    vienen en el layout básico quincenal (ISS, NSS, estado civil, lugar de
+    nacimiento). Cada campo solo se sobrescribe si la fila trae un valor no
+    vacío — igual que en básica — para que una celda en blanco no borre un
+    dato bueno que ya existía.
+
+    Aceptar esta carga (dry_run=False, tras la revisión del validador) es
+    también el acto que VALIDA Datos Complementarios: cada fila OK deja
+    'servidor_id' en el detalle para que cargas/views.py::_registrar_eventos_de_carga
+    marque validado=True/fecha_validacion/validado_por en el
+    DatosComplementarios de ese servidor — ya no existe un botón 'Validar'
+    manual aparte (ver histórico de este módulo)."""
     overrides = overrides or {}
     ruta = carga.archivo.path
     log = []
@@ -1497,6 +1510,7 @@ def procesar_layout_personales(carga, dry_run=True, overrides=None):
         estado_civil_val = cache.estado_civil(col(CP_ESTADO_CIVIL))
         entidad_nac_val  = cache.entidad(col(CP_ENTIDAD_NAC))
         pais_nac_val     = cache.pais(col(CP_PAIS_NAC))
+        pueblo_val       = cache.pueblo(col(CP_PUEBLO))
 
         avisos = list(avisos_forzados)
         if col(CP_ENTIDAD) and not entidad_val:
@@ -1509,6 +1523,8 @@ def procesar_layout_personales(carga, dry_run=True, overrides=None):
             avisos.append(f'Estado civil "{col(CP_ESTADO_CIVIL)}" no encontrado en el catálogo')
         if col(CP_ENTIDAD_NAC) and not entidad_nac_val:
             avisos.append(f'Entidad de nacimiento "{col(CP_ENTIDAD_NAC)}" no encontrada')
+        if col(CP_PUEBLO) and not pueblo_val:
+            avisos.append(f'Pueblo Indígena/Afromexicano "{col(CP_PUEBLO)}" no encontrado en el catálogo')
 
         if dry_run:
             ok += 1
@@ -1534,10 +1550,17 @@ def procesar_layout_personales(carga, dry_run=True, overrides=None):
                 if factor_rh_val:   datos_personales.factor_rh = factor_rh_val
                 datos_personales.save()
 
+                # Se obtiene/crea siempre (no solo si trae grado/pueblo en esta
+                # fila): aceptar esta carga es el acto de validación de Datos
+                # Complementarios (ver _registrar_eventos_de_carga en
+                # cargas/views.py, que marca validado=True sobre este mismo
+                # registro una vez que la carga completa queda aceptada).
+                datos_complementarios, _ = DatosComplementarios.objects.get_or_create(servidor=servidor)
                 if nivel_esc_val:
-                    datos_complementarios, _ = DatosComplementarios.objects.get_or_create(servidor=servidor)
                     datos_complementarios.nivel_escolaridad = nivel_esc_val
-                    datos_complementarios.save()
+                if pueblo_val:
+                    datos_complementarios.pueblo_indigena = pueblo_val
+                datos_complementarios.save()
 
                 cambios = False
 
@@ -1559,8 +1582,13 @@ def procesar_layout_personales(carga, dry_run=True, overrides=None):
             ok += 1
             if avisos:
                 log.append(f'Fila {num_fila} RFC={rfc}: OK — Avisos: {"; ".join(avisos)}')
+            # 'servidor_id' es lo que usa _registrar_eventos_de_carga (en
+            # cargas/views.py) para, al aceptar la carga, marcar validado=True
+            # en DatosComplementarios y dejar la bitácora (LogEvento) de
+            # Datos Personales/Complementarios de cada servidor afectado.
             filas_detalle.append({'fila': num_fila, 'rfc': rfc, 'curp': curp, 'nombre': nombre_completo,
-                                   'id_plaza': '', 'estado': 'OK', 'mensaje': '; '.join(avisos)})
+                                   'id_plaza': '', 'estado': 'OK', 'mensaje': '; '.join(avisos),
+                                   'servidor_id': servidor.pk})
 
         except Exception as e:
             errores += 1
