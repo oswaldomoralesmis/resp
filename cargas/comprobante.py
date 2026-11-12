@@ -120,62 +120,43 @@ def generar_comprobante_pdf(carga):
             filas_rev.append(['Motivo de rechazo', carga.motivo_rechazo or '—'])
         story.append(_tabla_datos(filas_rev))
 
-    # ── Decisiones del validador sobre filas con error (trazabilidad) ────
-    if carga.decisiones_filas:
-        story.append(Paragraph(
-            f'Revisión de registros con error ({len(carga.decisiones_filas)})', estilos['SeccionTitulo'],
-        ))
-        estilo_celda_dec = ParagraphStyle(name='CeldaDecision', fontSize=8, leading=10)
-        filas_por_num = {f.get('fila'): f for f in (carga.detalle_filas or [])}
-        datos_dec = [['Fila', 'RFC', 'Decisión', 'Motivo', 'Por', 'Fecha']]
-        for num_str, d in sorted(carga.decisiones_filas.items(), key=lambda kv: int(kv[0])):
-            f = filas_por_num.get(int(num_str), {})
-            fecha_dec = d.get('fecha', '')
-            parsed = parse_datetime(fecha_dec) if fecha_dec else None
-            if parsed:
-                fecha_dec = timezone.localtime(parsed).strftime('%d/%m/%Y %H:%M')
-            datos_dec.append([
-                num_str,
-                f.get('rfc') or '—',
-                'ACEPTADA' if d.get('decision') == 'aceptada' else 'RECHAZADA',
-                Paragraph(d.get('motivo') or '—', estilo_celda_dec),
-                Paragraph((d.get('por') or '—').strip(), estilo_celda_dec),
-                fecha_dec,
-            ])
-        tabla_dec = Table(
-            datos_dec, colWidths=(1.1 * cm, 2.6 * cm, 2 * cm, 5 * cm, 3.3 * cm, 2.5 * cm),
-            hAlign='LEFT', repeatRows=1,
-        )
-        tabla_dec.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), GRIS_CLARO),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#dddddd')),
-            ('TOPPADDING', (0, 0), (-1, -1), 3),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ]))
-        story.append(tabla_dec)
-        story.append(Spacer(1, 0.3 * cm))
-
     # ── Detalle de registros con error/omitidos ──────────────────────────
+    # Una sola línea por registro (fila del layout): junta ahí TODOS los
+    # errores de datos de esa fila (ya vienen unidos en 'mensaje' desde
+    # procesador.py) y, si el validador ya tomó una decisión sobre ella
+    # (carga.decisiones_filas, ver cargas/views.py::carga_decidir_fila), la
+    # decisión y su motivo de rechazo/aceptación — nunca en una tabla aparte,
+    # para no tener que cruzar dos tablas para saber qué pasó con una fila.
+    decisiones = carga.decisiones_filas or {}
     filas_error = [f for f in (carga.detalle_filas or []) if f.get('estado') in ('ERROR', 'OMITIDA')]
     if filas_error:
         story.append(Paragraph(
             f'Registros con error u omitidos ({len(filas_error)})', estilos['SeccionTitulo'],
         ))
         estilo_celda = ParagraphStyle(name='Celda', fontSize=8, leading=10)
-        datos = [['Fila', 'RFC', 'Nombre', 'Estado', 'Motivo']]
+        datos = [['Fila', 'RFC', 'Nombre', 'Estado', 'Detalle']]
         for f in filas_error:
+            detalle = f.get('mensaje') or ''
+            d = decisiones.get(str(f.get('fila')))
+            if d:
+                fecha_dec = d.get('fecha', '')
+                parsed = parse_datetime(fecha_dec) if fecha_dec else None
+                if parsed:
+                    fecha_dec = timezone.localtime(parsed).strftime('%d/%m/%Y %H:%M')
+                decision_txt = (
+                    f"Decisión del validador: {'ACEPTADA' if d.get('decision') == 'aceptada' else 'RECHAZADA'}"
+                    f" — {d.get('motivo') or '—'} (por {(d.get('por') or '—').strip()}, {fecha_dec or '—'})"
+                )
+                detalle = f'{detalle} | {decision_txt}' if detalle else decision_txt
             datos.append([
                 str(f.get('fila', '')),
                 f.get('rfc') or '—',
                 Paragraph(f.get('nombre') or '—', estilo_celda),
                 f.get('estado', ''),
-                Paragraph(f.get('mensaje') or '', estilo_celda),
+                Paragraph(detalle, estilo_celda),
             ])
         tabla_err = Table(
-            datos, colWidths=(1.3 * cm, 3 * cm, 4 * cm, 2.2 * cm, 5.5 * cm),
+            datos, colWidths=(1.1 * cm, 2.6 * cm, 3 * cm, 1.8 * cm, 7.5 * cm),
             hAlign='LEFT', repeatRows=1,
         )
         tabla_err.setStyle(TableStyle([
