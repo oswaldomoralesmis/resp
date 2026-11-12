@@ -61,6 +61,9 @@
     {% if 'reporte_discapacidad' in opciones_permitidas %}
     <a href="{% url 'reporte_discapacidad' %}" class="nav-link"><span class="nav-icon">♿</span> Monitor de Discapacidad</a>
     {% endif %}
+    {% if 'reporte_censo_inegi' in opciones_permitidas %}
+    <a href="{% url 'reporte_censo_inegi' %}" class="nav-link"><span class="nav-icon">🏛️</span> Censo INEGI</a>
+    {% endif %}
     <span class="nav-section">Administración</span>
     {% if 'catalogos' in opciones_permitidas %}
     <a href="{% url 'catalogo_index' %}" class="nav-link"><span class="nav-icon">🗂️</span> Catálogos</a>

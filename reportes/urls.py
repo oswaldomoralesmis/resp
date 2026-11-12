@@ -15,5 +15,7 @@ urlpatterns = [
     path('ocupacion/pdf/', views.reporte_ocupacion_pdf, name='reporte_ocupacion_pdf'),
     path('discapacidad/', views.reporte_discapacidad, name='reporte_discapacidad'),
     path('discapacidad/pdf/', views.reporte_discapacidad_pdf, name='reporte_discapacidad_pdf'),
+    path('censo-inegi/', views.reporte_censo_inegi, name='reporte_censo_inegi'),
+    path('censo-inegi/excel/', views.reporte_censo_inegi_excel, name='reporte_censo_inegi_excel'),
     path('exportar/<str:tipo>/', views.exportar_excel, name='exportar_excel'),
 ]

@@ -5,7 +5,10 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Avg, Count, ExpressionWrapper, F, IntegerField, Q, Value
 from django.db.models.functions import Cast, Substr
 from django.http import HttpResponse
-from servidores.models import ServidorPublico, InformacionBasica, BajaServidorPublico, Puesto, DiscapacidadServidor, LogExportacion
+from servidores.models import (
+    ServidorPublico, InformacionBasica, BajaServidorPublico, Puesto,
+    DiscapacidadServidor, DatosComplementarios, LogExportacion,
+)
 from catalogos.models import Dependencia
 from usuarios.mixins import filtrar_por_dependencia, permiso_requerido, usuario_tiene_permiso, _denegar_acceso
 from .pdf import generar_pdf_paridad, generar_pdf_ocupacion, generar_pdf_discapacidad
@@ -482,6 +485,163 @@ def reporte_discapacidad_pdf(request):
     return response
 
 
+ORDEN_ANTIGUEDAD = [
+    'Menos de 1 año', '1 a 5 años', '6 a 10 años', '11 a 15 años',
+    '16 a 20 años', '21 a 25 años', 'Más de 25 años', 'Sin dato',
+]
+
+
+def _rango_antiguedad(fecha_ingreso_gobierno, hoy):
+    if not fecha_ingreso_gobierno:
+        return 'Sin dato'
+    anios = hoy.year - fecha_ingreso_gobierno.year - (
+        (hoy.month, hoy.day) < (fecha_ingreso_gobierno.month, fecha_ingreso_gobierno.day)
+    )
+    if anios < 1:
+        return 'Menos de 1 año'
+    if anios <= 5:
+        return '1 a 5 años'
+    if anios <= 10:
+        return '6 a 10 años'
+    if anios <= 15:
+        return '11 a 15 años'
+    if anios <= 20:
+        return '16 a 20 años'
+    if anios <= 25:
+        return '21 a 25 años'
+    return 'Más de 25 años'
+
+
+SINDICALIZADO_LABELS = {'S': 'Sindicalizado', 'N': 'No sindicalizado'}
+
+
+def _stats_censo_inegi(request):
+    """Conteos agregados por dependencia/sexo/escolaridad/antigüedad/tipo de
+    nombramiento/sindicalización/discapacidad, en la forma en que los pide
+    el módulo de Recursos Humanos del Censo Nacional de Gobierno (INEGI):
+    ahí no se entrega dato individual, solo totales agregados. No reproduce
+    el formato exacto de INEGI (columnas/orden del cuestionario oficial),
+    pero trae ya calculados todos los conteos que ese cuestionario pide,
+    para transcribir o exportar sin tener que contarlos a mano."""
+    servidores_visibles = filtrar_por_dependencia(
+        ServidorPublico.objects.filter(activo=True), request.user, 'informacion_basica__dependencia_id'
+    ).distinct()
+    info_visible = filtrar_por_dependencia(InformacionBasica.objects.filter(activo=True), request.user)
+
+    total_personas = servidores_visibles.count()
+
+    hoy = date.today()
+    por_antiguedad_map = {}
+    for fecha_ingreso, sexo in info_visible.values_list('fecha_ingreso_gobierno', 'sexo'):
+        rango = _rango_antiguedad(fecha_ingreso, hoy)
+        c = por_antiguedad_map.setdefault(rango, {'hombres': 0, 'mujeres': 0, 'otro': 0})
+        if sexo == 'MASCULINO':
+            c['hombres'] += 1
+        elif sexo == 'FEMENINO':
+            c['mujeres'] += 1
+        else:
+            c['otro'] += 1
+    por_antiguedad = []
+    for r in ORDEN_ANTIGUEDAD:
+        if r not in por_antiguedad_map:
+            continue
+        c = por_antiguedad_map[r]
+        total_r = sum(c.values())
+        por_antiguedad.append({
+            'label': r, **c, 'total': total_r,
+            'pct_hombres': round(c['hombres'] * 100 / total_r, 1) if total_r else 0,
+            'pct_mujeres': round(c['mujeres'] * 100 / total_r, 1) if total_r else 0,
+        })
+
+    por_sindicalizacion = _cruce_por_sexo(info_visible, 'sindicalizado')
+    for fila in por_sindicalizacion:
+        fila['label'] = SINDICALIZADO_LABELS.get(fila['label'], 'Sin dato')
+
+    servidor_ids_discapacidad = list(
+        DiscapacidadServidor.objects.filter(servidor__in=servidores_visibles)
+        .exclude(discapacidad__clave__in=[0, 6])
+        .values_list('servidor_id', flat=True).distinct()
+    )
+    total_con_discapacidad = len(servidor_ids_discapacidad)
+
+    return {
+        'total_personas': total_personas,
+        'por_dependencia': _distribucion(info_visible, 'dependencia__descripcion'),
+        'por_sexo': _distribucion_sexo_con_pct(servidores_visibles),
+        'por_contratacion': _cruce_por_sexo(info_visible, 'nombramiento__descripcion'),
+        'por_escolaridad': _cruce_por_sexo(
+            DatosComplementarios.objects.filter(servidor__in=servidores_visibles),
+            'nivel_escolaridad__descripcion', campo_sexo='servidor__sexo',
+        ),
+        'por_sindicalizacion': por_sindicalizacion,
+        'por_antiguedad': por_antiguedad,
+        'total_con_discapacidad': total_con_discapacidad,
+        'porcentaje_discapacidad': round(total_con_discapacidad * 100 / total_personas, 1) if total_personas else 0,
+    }
+
+
+@login_required
+@permiso_requerido('reporte_censo_inegi')
+def reporte_censo_inegi(request):
+    """Censo Nacional de Gobierno (INEGI) — módulo de Recursos Humanos:
+    conteos agregados listos para transcribir al cuestionario oficial, sin
+    tener que levantarlos a mano desde Padrón/Plazas."""
+    stats = _stats_censo_inegi(request)
+    return render(request, 'reportes/censo_inegi.html', {'stats': stats, 'titulo': 'Censo Nacional de Gobierno (INEGI)'})
+
+
+@login_required
+@permiso_requerido('reporte_censo_inegi')
+def reporte_censo_inegi_excel(request):
+    """Mismos conteos que reporte_censo_inegi, en Excel — una hoja por
+    cruce, para adjuntar como respaldo o transcribir al cuestionario."""
+    stats = _stats_censo_inegi(request)
+    wb = openpyxl.Workbook()
+    header_fill = PatternFill(start_color='1B4F72', end_color='1B4F72', fill_type='solid')
+    header_font = Font(color='FFFFFF', bold=True)
+
+    def _hoja_cruce(ws, titulo, items):
+        ws.append([titulo])
+        ws.append(['Concepto', 'Hombres', 'Mujeres', 'Otro', 'Total'])
+        for col in range(1, 6):
+            cell = ws.cell(row=2, column=col)
+            cell.fill = header_fill
+            cell.font = header_font
+        for it in items:
+            ws.append([it['label'], it['hombres'], it['mujeres'], it['otro'], it['total']])
+
+    def _hoja_distribucion(ws, titulo, items):
+        ws.append([titulo])
+        ws.append(['Concepto', 'Total'])
+        for col in range(1, 3):
+            cell = ws.cell(row=2, column=col)
+            cell.fill = header_fill
+            cell.font = header_font
+        for it in items:
+            ws.append([it['label'], it['total']])
+
+    ws1 = wb.active
+    ws1.title = 'Resumen'
+    ws1.append(['Censo Nacional de Gobierno (INEGI) — Módulo de Recursos Humanos'])
+    ws1.append([])
+    ws1.append(['Total de servidores públicos activos', stats['total_personas']])
+    ws1.append(['Con discapacidad registrada', stats['total_con_discapacidad'], f"{stats['porcentaje_discapacidad']}%"])
+
+    _hoja_distribucion(wb.create_sheet('Por Dependencia'), 'Personal por Dependencia', stats['por_dependencia'])
+    _hoja_distribucion(wb.create_sheet('Por Sexo'), 'Personal por Sexo', stats['por_sexo'])
+    _hoja_cruce(wb.create_sheet('Por Contratacion'), 'Personal por Tipo de Contratación y Sexo', stats['por_contratacion'])
+    _hoja_cruce(wb.create_sheet('Por Escolaridad'), 'Personal por Nivel de Escolaridad y Sexo', stats['por_escolaridad'])
+    _hoja_cruce(wb.create_sheet('Por Sindicalizacion'), 'Personal Sindicalizado y Sexo', stats['por_sindicalizacion'])
+    _hoja_cruce(wb.create_sheet('Por Antiguedad'), 'Personal por Antigüedad y Sexo', stats['por_antiguedad'])
+
+    LogExportacion.registrar(request.user, 'censo_inegi', 'Censo Nacional de Gobierno (INEGI)', stats['total_personas'])
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="Censo_INEGI_RESP.xlsx"'
+    wb.save(response)
+    return response
+
+
 # Exportar comparte los mismos datos que su(s) módulo(s) de origen, así que
 # debe exigir el mismo permiso — de otro modo, un rol sin acceso a ninguno
 # podría descargar el padrón completo con solo tener sesión iniciada. Este
@@ -550,5 +710,6 @@ def reporte_index(request):
         {'icono': '⚖️', 'nombre': 'Monitor de Paridad', 'desc': 'Distribución por género y sus cruces', 'url': '/reportes/paridad/'},
         {'icono': '📌', 'nombre': 'Ocupación de Plazas', 'desc': 'Ocupadas vs. vacantes, con porcentaje', 'url': '/reportes/ocupacion/'},
         {'icono': '♿', 'nombre': 'Monitor de Discapacidad', 'desc': 'Servidores con discapacidad por tipo, sexo y edad', 'url': '/reportes/discapacidad/'},
+        {'icono': '🏛️', 'nombre': 'Censo Nacional de Gobierno (INEGI)', 'desc': 'Conteos agregados por dependencia, escolaridad, antigüedad y sindicalización', 'url': '/reportes/censo-inegi/'},
     ]
     return render(request, 'reportes/index.html', {'reporte_items': items, 'titulo': 'Reportes'})

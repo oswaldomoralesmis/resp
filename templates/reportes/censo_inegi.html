@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Censo Nacional de Gobierno (INEGI){% endblock %}
+{% block page_title %}Censo Nacional de Gobierno (INEGI){% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+  <a href="{% url 'reporte_censo_inegi_excel' %}" class="btn-dorado btn-sm">📊 Exportar Excel</a>
+</div>
+
+<div class="text-muted" style="margin-bottom:14px;font-size:12.5px;">
+  ℹ️ Estos son los conteos agregados que pide el módulo de Recursos Humanos del Censo Nacional de
+  Gobierno — no sustituyen el cuestionario oficial de INEGI, pero traen ya calculado lo que ese
+  cuestionario pide, para transcribirlo o adjuntarlo como respaldo.
+</div>
+
+<div class="grid-2" style="margin-bottom:16px;">
+  <div class="stat-card">
+    <div class="stat-icon azul">👤</div>
+    <div><div class="stat-number">{{ stats.total_personas|intcomma }}</div><div class="stat-label">Servidores Públicos Activos</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon dorado">♿</div>
+    <div><div class="stat-number">{{ stats.total_con_discapacidad|intcomma }} <span style="font-size:14px;color:#999;">({{ stats.porcentaje_discapacidad }}%)</span></div><div class="stat-label">Con Discapacidad Registrada</div></div>
+  </div>
+</div>
+
+<div class="form-section-title">🏢 Por Dependencia y Género</div>
+<div class="grid-2" style="margin-bottom:16px;">
+  {% include "reportes/_distribucion_card.html" with icono="🏢" titulo="Personal por Dependencia" items=stats.por_dependencia %}
+  {% include "reportes/_distribucion_card.html" with icono="🚻" titulo="Personal por Género" items=stats.por_sexo %}
+</div>
+
+<div class="form-section-title">📝 Por Tipo de Contratación y Escolaridad</div>
+<div class="grid-2" style="margin-bottom:16px;">
+  {% include "reportes/_cruce_sexo_table.html" with icono="📝" titulo="Por Tipo de Contratación" etiqueta_columna="Contratación" items=stats.por_contratacion %}
+  {% include "reportes/_cruce_sexo_table.html" with icono="🎓" titulo="Por Nivel de Escolaridad" etiqueta_columna="Escolaridad" items=stats.por_escolaridad %}
+</div>
+
+<div class="form-section-title">✊ Sindicalización y Antigüedad</div>
+<div class="grid-2" style="margin-bottom:16px;">
+  {% include "reportes/_cruce_sexo_table.html" with icono="✊" titulo="Por Sindicalización" etiqueta_columna="Sindicalización" items=stats.por_sindicalizacion %}
+  {% include "reportes/_cruce_sexo_table.html" with icono="📅" titulo="Por Antigüedad" etiqueta_columna="Antigüedad" items=stats.por_antiguedad %}
+</div>
+
+{% endblock %}
