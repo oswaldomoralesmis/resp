@@ -34,6 +34,7 @@
         <div><div class="form-label">Programa</div><div>{{ puesto.programa }}</div></div>
         <div><div class="form-label">Proyecto</div><div>{{ puesto.proyecto }}</div></div>
         <div><div class="form-label">Categoría</div><div>{{ puesto.categoria }}</div></div>
+        <div><div class="form-label">Descripción del Puesto</div><div>{{ puesto.descripcion_puesto|default:"—" }}</div></div>
         <div><div class="form-label">Tipo de Contratación</div><div>{{ puesto.nombramiento|default:"—" }}</div></div>
         <div><div class="form-label">Nivel de Estructura</div><div>{{ puesto.nivel_estructura|default:"—" }}</div></div>
         <div><div class="form-label">Centro de Trabajo</div><div>{{ puesto.cct|default:"—" }}</div></div>

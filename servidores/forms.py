@@ -224,7 +224,7 @@ class PuestoForm(forms.ModelForm):
     class Meta:
         model  = Puesto
         fields = [
-            'proyecto', 'programa', 'unidad', 'id_plaza', 'categoria', 'determinante',
+            'proyecto', 'programa', 'unidad', 'id_plaza', 'categoria', 'descripcion_puesto', 'determinante',
             'nombramiento', 'nivel_estructura', 'estatus_plaza', 'cct',
             'hsm', 'total_percepciones', 'total_bonos', 'total_neto', 'dias_pagados',
             'servidor_actual', 'id_plaza_jefe',
@@ -235,6 +235,7 @@ class PuestoForm(forms.ModelForm):
             'unidad':             UnidadSelect(attrs={'class': 'form-select'}),
             'id_plaza':           forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 50694'}),
             'categoria':          forms.Select(attrs={'class': 'form-select'}),
+            'descripcion_puesto': forms.TextInput(attrs={'class': 'form-control text-uppercase', 'placeholder': 'Ej: Director de Área'}),
             'determinante':       forms.TextInput(attrs={'class': 'form-control text-uppercase', 'placeholder': 'Determinante'}),
             'nombramiento':       forms.Select(attrs={'class': 'form-select'}),
             'nivel_estructura':   forms.Select(attrs={'class': 'form-select'}),
@@ -254,6 +255,7 @@ class PuestoForm(forms.ModelForm):
             'unidad':             'Unidad Administrativa',
             'id_plaza':           'ID de Plaza',
             'categoria':          'Categoría',
+            'descripcion_puesto': 'Descripción del Puesto',
             'determinante':       'Determinante',
             'nombramiento':       'Tipo de Contratación',
             'nivel_estructura':   'Nivel de Estructura',

@@ -131,6 +131,11 @@ class Puesto(models.Model):
         help_text='Es propio de la plaza, no del servidor — un servidor con más de una plaza '
                    'puede tener un Determinante distinto en cada una.')
     categoria = models.ForeignKey(Categoria, on_delete=models.PROTECT, verbose_name='Categoría')
+    descripcion_puesto = models.CharField(
+        max_length=200, blank=True, verbose_name='Descripción del Puesto',
+        help_text='Cargo/título de la plaza en texto libre (p.ej. "Director de Área de '
+                   'Recursos Humanos") — no viene de un catálogo, es propio de la plaza, '
+                   'igual que Determinante.')
     nombramiento = models.ForeignKey(TipoContratacion, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Tipo de Contratación')
     nivel_estructura = models.ForeignKey(NivelEstructura, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Nivel de Estructura')
     estatus_plaza = models.ForeignKey(EstatusPlaza, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Estatus de Plaza')

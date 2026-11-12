@@ -54,6 +54,10 @@
           {% if form.categoria.errors %}<div class="text-danger small mt-1">{{ form.categoria.errors|join:", " }}</div>{% endif %}
         </div>
         <div class="col-md-3">
+          <label for="{{ form.descripcion_puesto.id_for_label }}" class="form-label fw-semibold">{{ form.descripcion_puesto.label }}</label>
+          {{ form.descripcion_puesto }}
+        </div>
+        <div class="col-md-3">
           <label for="{{ form.nombramiento.id_for_label }}" class="form-label fw-semibold">{{ form.nombramiento.label }}</label>
           {{ form.nombramiento }}
         </div>

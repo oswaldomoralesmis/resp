@@ -91,48 +91,49 @@ C_TIPO_PERSONAL  = 7
 C_TIPO_FUNCION   = 8
 C_NIVEL_EST      = 9
 C_ID_PUESTO      = 10
-C_ID_PUESTO_JEFE = 11
-C_HSM            = 12
-C_PERCEPCIONES   = 13
-C_BONOS          = 14
-C_NETO           = 15
-C_DIAS_PAGADOS   = 16
-C_ESTATUS_PLAZA  = 17
-C_EXPEDIENTE     = 18
-C_RFC            = 19
-C_CURP           = 20
-C_DETERMINANTE   = 21
-C_NOMBRE         = 22
-C_PRIMER_AP      = 23
-C_SEGUNDO_AP     = 24
-C_FECHA_NAC      = 25
-C_GENERO         = 26
-C_ESTADO_CIVIL   = 27
-C_ENTIDAD        = 28
-C_PAIS           = 29
-C_CORREO         = 30
-C_ISS            = 31
-C_NSS            = 32
-C_CCT            = 33
-C_SINDICALIZADO  = 34
-C_SINDICATO      = 35
-C_ORDP           = 36   # Obligado Declaracion Patrimonial
-C_TIPO_DECLA     = 37
-C_OPAAER         = 38   # Obligado Entrega-Recepcion
-C_RENCTA         = 39   # Rinde Cuentas
-C_PRDMIS         = 40   # Puesto Resp. Decision / Info Sensible
-C_OTRA_PLAZA     = 41
-C_F_INGOB        = 42   # Fecha Ingreso Gobierno
-C_F_INDEP        = 43   # Fecha Ingreso Dependencia
-C_F_INPUES       = 44   # Fecha Ingreso Puesto
-C_AREA           = 45
-C_PARCONPUB      = 46   # Participa Contrataciones
-C_CONTRAT_PUB    = 47   # Nivel Contrataciones
-C_PARCON         = 48   # Participa Concesiones
-C_CONCESIONES    = 49   # Nivel Concesiones
-C_PARENA         = 50   # Participa Enajenacion
-C_ENAJENACION    = 51   # Nivel Enajenacion
-C_INMUEBLE       = 52
+C_DESCRIPCION_PUESTO = 11   # texto libre — cargo de la plaza, ver Puesto.descripcion_puesto
+C_ID_PUESTO_JEFE = 12
+C_HSM            = 13
+C_PERCEPCIONES   = 14
+C_BONOS          = 15
+C_NETO           = 16
+C_DIAS_PAGADOS   = 17
+C_ESTATUS_PLAZA  = 18
+C_EXPEDIENTE     = 19
+C_RFC            = 20
+C_CURP           = 21
+C_DETERMINANTE   = 22
+C_NOMBRE         = 23
+C_PRIMER_AP      = 24
+C_SEGUNDO_AP     = 25
+C_FECHA_NAC      = 26
+C_GENERO         = 27
+C_ESTADO_CIVIL   = 28
+C_ENTIDAD        = 29
+C_PAIS           = 30
+C_CORREO         = 31
+C_ISS            = 32
+C_NSS            = 33
+C_CCT            = 34
+C_SINDICALIZADO  = 35
+C_SINDICATO      = 36
+C_ORDP           = 37   # Obligado Declaracion Patrimonial
+C_TIPO_DECLA     = 38
+C_OPAAER         = 39   # Obligado Entrega-Recepcion
+C_RENCTA         = 40   # Rinde Cuentas
+C_PRDMIS         = 41   # Puesto Resp. Decision / Info Sensible
+C_OTRA_PLAZA     = 42
+C_F_INGOB        = 43   # Fecha Ingreso Gobierno
+C_F_INDEP        = 44   # Fecha Ingreso Dependencia
+C_F_INPUES       = 45   # Fecha Ingreso Puesto
+C_AREA           = 46
+C_PARCONPUB      = 47   # Participa Contrataciones
+C_CONTRAT_PUB    = 48   # Nivel Contrataciones
+C_PARCON         = 49   # Participa Concesiones
+C_CONCESIONES    = 50   # Nivel Concesiones
+C_PARENA         = 51   # Participa Enajenacion
+C_ENAJENACION    = 52   # Nivel Enajenacion
+C_INMUEBLE       = 53
 
 # Errores "forzables": tienen un valor capturado (no vacío) que solo falla una
 # validación de formato — el validador puede, fila por fila y con motivo,
@@ -713,6 +714,12 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
         # servidor (ver Puesto.determinante) — se usa para sincronizar la
         # Plaza de esta fila y para la fotografía de InformacionBasica.
         determinante_val     = sd(col(C_DETERMINANTE, ''))
+        # 'descripcion_puesto_val' también es de la PLAZA (Puesto.descripcion_puesto,
+        # texto libre) — a diferencia de determinante, NO se copia a la
+        # fotografía de InformacionBasica (el usuario decidió que solo vive
+        # en Puesto, igual que categoria/nombramiento ya lo hacen a través
+        # de sincronizar_puesto).
+        descripcion_puesto_val = sd(col(C_DESCRIPCION_PUESTO, ''))
         fecha_nacimiento_val = parse_fecha(col(C_FECHA_NAC))
         sexo_val             = normalizar_sexo(col(C_GENERO))
         estado_civil_val     = cache.estado_civil(col(C_ESTADO_CIVIL))
@@ -918,6 +925,8 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
             avisos.append(f'Estatus plaza "{col(C_ESTATUS_PLAZA)}" no encontrado')
         if not nombramiento:
             avisos.append(f'Tipo contratación "{col(C_TIPO_CONTRA)}" no encontrado')
+        if not descripcion_puesto_val:
+            avisos.append('Descripción del puesto no capturada')
         if (proyecto and programa and proyecto.clave != '00000000'
                 and not proyecto.programas.filter(pk=programa.pk).exists()):
             avisos.append(f'El programa "{programa.clave}" no está asignado al proyecto "{proyecto.clave}"')
@@ -1101,6 +1110,7 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
                     proyecto, programa, id_plaza, categoria, servidor,
                     unidad=unidad,
                     determinante=determinante_val,
+                    descripcion_puesto=descripcion_puesto_val,
                     nombramiento=nombramiento,
                     nivel_estructura=nivel_est,
                     estatus_plaza=estatus,
