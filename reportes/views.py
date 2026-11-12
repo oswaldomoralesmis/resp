@@ -523,10 +523,15 @@ def _stats_censo_inegi(request):
     el formato exacto de INEGI (columnas/orden del cuestionario oficial),
     pero trae ya calculados todos los conteos que ese cuestionario pide,
     para transcribir o exportar sin tener que contarlos a mano."""
-    servidores_visibles = filtrar_por_dependencia(
-        ServidorPublico.objects.filter(activo=True), request.user, 'informacion_basica__dependencia_id'
-    ).distinct()
     info_visible = filtrar_por_dependencia(InformacionBasica.objects.filter(activo=True), request.user)
+    # Población base = servidores activos CON una foto vigente (InformacionBasica
+    # activa) del periodo — no todo ServidorPublico.activo=True: hay servidores
+    # de alta que aún no tienen ninguna carga de Información Básica y por eso no
+    # pueden aparecer en ningún desglose por dependencia/sexo/escolaridad. Si el
+    # total del Resumen incluyera a esos, quedaría más alto que la suma real de
+    # las demás tarjetas (fue justo el síntoma reportado).
+    servidor_ids = info_visible.values_list('servidor_id', flat=True).distinct()
+    servidores_visibles = ServidorPublico.objects.filter(id__in=servidor_ids, activo=True)
 
     total_personas = servidores_visibles.count()
 
