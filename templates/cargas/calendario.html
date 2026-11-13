@@ -19,7 +19,13 @@
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
       {% for t in tipos_disponibles %}
+      {% if t.bloqueado %}
+      <span class="btn-outline" style="opacity:.6;cursor:not-allowed;" title="Ya hay una carga pendiente/aceptada para esta quincena — debe ser rechazada antes de poder subir otra.">
+        📤 {{ t.label }} — ya hay una carga para esta quincena
+      </span>
+      {% else %}
       <a href="{% url 'carga_new' %}?tipo={{ t.tipo }}" class="btn-verde">📤 {{ t.label }}</a>
+      {% endif %}
       {% endfor %}
     </div>
     {% if periodo_activo.quincena != '06' %}

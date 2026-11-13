@@ -12,13 +12,14 @@
   <div class="card-header">📁 Historial de Layouts Cargados</div>
   <div class="card-body">
     <table class="table-resp">
-      <thead><tr><th>Fecha</th><th>Período</th><th>Dependencia</th><th>Tipo</th><th>Estado</th><th>Registros</th><th>Errores</th><th>Acciones</th></tr></thead>
+      <thead><tr><th>Fecha</th><th>Período</th><th>Dependencia</th><th>Cargado por</th><th>Tipo</th><th>Estado</th><th>Registros</th><th>Errores</th><th>Acciones</th></tr></thead>
       <tbody>
         {% for c in cargas %}
         <tr>
           <td>{{ c.fecha_carga|date:"d/m/Y H:i" }}</td>
           <td><span class="badge-blue">{{ c.periodo.quincena }}/{{ c.periodo.ejercicio }}</span></td>
           <td>{{ c.dependencia.clave }}</td>
+          <td>{{ c.usuario_carga|default:"—" }}</td>
           <td>{{ c.get_tipo_display }}</td>
           <td>
             {% if c.estado == 'aceptado' %}<span class="badge-activo">✅ Aceptado</span>
@@ -39,7 +40,7 @@
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="8" class="text-muted text-center" style="padding:30px;">Sin cargas registradas.</td></tr>
+        <tr><td colspan="9" class="text-muted text-center" style="padding:30px;">Sin cargas registradas.</td></tr>
         {% endfor %}
       </tbody>
     </table>

@@ -1139,6 +1139,30 @@ def procesar_layout_basica(carga, dry_run=True, overrides=None):
                                    'id_plaza': id_plaza, 'estado': 'ERROR',
                                    'mensaje': f'Error al crear registro — {e}'})
 
+    # ── El layout debe venir completo: toda plaza vigente en RESP para esta
+    # dependencia debe aparecer en el archivo (aunque sea vacante o de baja),
+    # no solo las que cambiaron — si falta una, se bloquea la carga entera en
+    # vez de asumir una baja automática. 'ultima_fila_de_plaza' (pre-paso de
+    # arriba) ya tiene el conjunto de plazas que SÍ vinieron en el archivo.
+    plazas_vigentes = set(
+        InformacionBasica.objects.filter(dependencia_id=carga.dependencia_id, activo=True)
+        .values_list('id_plaza', flat=True).distinct()
+    )
+    for id_plaza_faltante in sorted(plazas_vigentes - set(ultima_fila_de_plaza.keys())):
+        ocupante = InformacionBasica.objects.filter(
+            dependencia_id=carga.dependencia_id, id_plaza=id_plaza_faltante, activo=True,
+        ).select_related('servidor').first()
+        errores += 1
+        log.append(f'Plaza {id_plaza_faltante}: ERROR — vigente en RESP pero no viene en el archivo')
+        filas_detalle.append({
+            'fila': '—', 'id_plaza': id_plaza_faltante,
+            'rfc': ocupante.servidor.rfc if ocupante and ocupante.servidor_id else '—',
+            'nombre': ocupante.servidor.nombre_completo if ocupante and ocupante.servidor_id else '—',
+            'estado': 'ERROR',
+            'mensaje': 'Esta plaza está vigente en RESP para esta dependencia pero no viene en el '
+                       'archivo — el layout debe incluir TODAS las plazas (ocupadas y vacantes).',
+        })
+
     return {
         'ok':      ok,
         'errores': errores,

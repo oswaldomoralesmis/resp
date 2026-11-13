@@ -190,6 +190,9 @@ class CargaListView(LoginRequiredMixin, PermisoRequeridoMixin, DependenciaScoped
     context_object_name = 'cargas'
     paginate_by = 20
 
+    def get_queryset(self):
+        return super().get_queryset().select_related('periodo', 'dependencia', 'usuario_carga')
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['titulo'] = 'Historial de Cargas'
@@ -258,6 +261,27 @@ def carga_layout(request):
                     'form': form, 'titulo': f'Cargar {tipo_label}', 'periodo_activo': periodo_activo,
                     'tipo': tipo, 'tipo_label': tipo_label,
                 })
+
+            # Información Básica: solo se admite un archivo vigente por
+            # quincena por dependencia — mientras exista uno sin rechazar, no
+            # se permite otro intento (la única salida es que el validador lo
+            # rechace, lo que habilita subir una corrección).
+            if tipo == 'basica':
+                ya_existe = CargaLayout.objects.filter(
+                    periodo=carga.periodo, dependencia=carga.dependencia, tipo='basica',
+                ).exclude(estado='rechazado').exists()
+                if ya_existe:
+                    messages.error(
+                        request,
+                        f'Ya existe una carga de Información Básica para {carga.dependencia} en esta '
+                        f'quincena que no ha sido rechazada. Solo se admite un archivo por quincena por '
+                        f'dependencia — espere su revisión, o pida al validador que la rechace para poder '
+                        f'subir una corrección.'
+                    )
+                    return render(request, 'cargas/form.html', {
+                        'form': form, 'titulo': f'Cargar {tipo_label}', 'periodo_activo': periodo_activo,
+                        'tipo': tipo, 'tipo_label': tipo_label,
+                    })
 
             ini, fin = ventana_permitida(carga.periodo, carga.dependencia)
             if not (ini <= hoy <= fin):
@@ -414,6 +438,10 @@ def carga_decidir_fila(request, pk, fila):
     carga = get_object_or_404(CargaLayout, pk=pk)
     if not puede_revisar_carga(request.user, carga):
         raise PermissionDenied
+    if carga.tipo == 'basica':
+        messages.error(request, 'Información Básica ya no se decide fila por fila: corrija el archivo '
+                                 'completo y, tras rechazar esta carga, suba uno nuevo.')
+        return redirect('carga_detalle', pk=carga.pk)
     if carga.estado != 'pendiente_revision':
         messages.error(request, 'Esta carga ya fue revisada o no está lista para revisión.')
         return redirect('carga_detalle', pk=carga.pk)
@@ -458,6 +486,10 @@ def carga_rechazar_pendientes(request, pk):
     carga = get_object_or_404(CargaLayout, pk=pk)
     if not puede_revisar_carga(request.user, carga):
         raise PermissionDenied
+    if carga.tipo == 'basica':
+        messages.error(request, 'Información Básica ya no se decide fila por fila: corrija el archivo '
+                                 'completo y, tras rechazar esta carga, suba uno nuevo.')
+        return redirect('carga_detalle', pk=carga.pk)
     if carga.estado != 'pendiente_revision':
         messages.error(request, 'Esta carga ya fue revisada o no está lista para revisión.')
         return redirect('carga_detalle', pk=carga.pk)
@@ -499,11 +531,22 @@ def carga_aceptar(request, pk):
     filas_error = [f for f in carga.detalle_filas if f.get('estado') in ('ERROR', 'OMITIDA')]
     pendientes = [f for f in filas_error if str(f.get('fila')) not in carga.decisiones_filas]
     if pendientes:
-        messages.error(
-            request,
-            f'No se puede aceptar: hay {len(pendientes)} registro(s) con error sin revisar. '
-            f'Acepte o rechace cada uno abajo (o use "Rechazar pendientes no forzables").'
-        )
+        if carga.tipo == 'basica':
+            # Para Información Básica ya no hay decisión por fila (regla "todo
+            # o nada"): decisiones_filas nunca se llena, así que CUALQUIER
+            # error deja esta carga sin poder aceptarse.
+            messages.error(
+                request,
+                f'No se puede aceptar: el archivo tiene {len(pendientes)} registro(s) con error. '
+                f'Corrija el archivo (debe incluir TODAS las plazas vigentes de la dependencia) y, '
+                f'tras rechazar esta carga, suba un archivo nuevo.'
+            )
+        else:
+            messages.error(
+                request,
+                f'No se puede aceptar: hay {len(pendientes)} registro(s) con error sin revisar. '
+                f'Acepte o rechace cada uno abajo (o use "Rechazar pendientes no forzables").'
+            )
         return redirect('carga_detalle', pk=carga.pk)
 
     hay_algo_que_aplicar = carga.registros_ok > 0 or any(
@@ -641,8 +684,20 @@ def calendario_cargas(request):
             ventana_abierta = ventana_ini <= hoy <= ventana_fin
         if ventana_abierta:
             etiquetas_tipo = dict(CargaLayout.TIPO_CHOICES)
+            # Aviso temprano de la regla "una sola carga vigente por quincena
+            # por dependencia" (el bloqueo real y obligatorio está en
+            # carga_layout) — el admin no tiene dependencia fija, así que no
+            # aplica para él.
+            carga_basica_vigente = (
+                not request.user.es_administrador and CargaLayout.objects.filter(
+                    periodo=periodo_activo, dependencia=request.user.dependencia, tipo='basica',
+                ).exclude(estado='rechazado').exists()
+            )
             tipos_disponibles = [
-                {'tipo': t, 'label': etiquetas_tipo.get(t, t)}
+                {
+                    'tipo': t, 'label': etiquetas_tipo.get(t, t),
+                    'bloqueado': t == 'basica' and carga_basica_vigente,
+                }
                 for t in tipos_permitidos_periodo(periodo_activo)
             ]
 

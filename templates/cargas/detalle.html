@@ -36,6 +36,7 @@
       <div>
         <div class="form-label">Fecha de carga</div>
         <div>{{ carga.fecha_carga|date:"d/m/Y H:i" }}</div>
+        <div class="text-muted" style="font-size:11px;margin-top:2px;">Cargado por: {{ carga.usuario_carga|default:"—" }}</div>
       </div>
     </div>
 
@@ -51,9 +52,15 @@
       </div>
       {% if pendientes_count > 0 %}
       <div class="alert-resp" style="background:#fff5f5;border:1px solid #e57373;color:#b71c1c;padding:14px 16px;border-radius:6px;margin-bottom:16px;">
+        {% if carga.tipo == 'basica' %}
+        <strong>&#9888; No se puede aceptar.</strong> El archivo tiene {{ pendientes_count }} registro(s) con error
+        (vea el detalle abajo). Corrija el archivo completo &mdash;debe incluir TODAS las plazas vigentes de la
+        dependencia&mdash; y, tras rechazar esta carga, suba un archivo nuevo.
+        {% else %}
         <strong>&#9888; No se puede aceptar todav&iacute;a.</strong> Hay {{ pendientes_count }} registro(s) con error
         sin revisar. Ac&eacute;ptelos o rech&aacute;celos uno por uno en la tabla de abajo
         {% if hay_no_forzables_pendientes %}(o use "Rechazar pendientes no forzables" para los que no se pueden aceptar){% endif %}.
+        {% endif %}
       </div>
       {% elif not puede_aceptar %}
       <div class="alert-resp" style="background:#fff5f5;border:1px solid #e57373;color:#b71c1c;padding:14px 16px;border-radius:6px;margin-bottom:16px;">
@@ -71,7 +78,7 @@
         <button type="button" class="btn-outline" onclick="document.getElementById('form-rechazo').style.display='flex';this.style.display='none';">
           &#10060; Rechazar toda la carga
         </button>
-        {% if hay_no_forzables_pendientes %}
+        {% if hay_no_forzables_pendientes and carga.tipo != 'basica' %}
         <form method="post" action="{% url 'carga_rechazar_pendientes' carga.pk %}"
               onsubmit="return confirm('¿Rechazar todas las filas con error que no se pueden forzar? Quedarán omitidas.');">
           {% csrf_token %}
@@ -149,7 +156,7 @@
             <th>ID Plaza</th>
             <th style="width:90px;">Estado</th>
             <th>Error</th>
-            {% if puede_revisar %}<th style="width:220px;">Revisi&oacute;n</th>{% endif %}
+            {% if puede_revisar and carga.tipo != 'basica' %}<th style="width:220px;">Revisi&oacute;n</th>{% endif %}
           </tr>
         </thead>
         <tbody>
@@ -179,7 +186,7 @@
             <td style="{% if r.estado == 'ERROR' or r.estado == 'OMITIDA' %}color:var(--institucional-rojo);font-weight:600;{% elif r.mensaje %}color:#856404;{% endif %}">
               {{ r.mensaje|default:"" }}
             </td>
-            {% if puede_revisar %}
+            {% if puede_revisar and carga.tipo != 'basica' %}
             <td>
               {% if r.estado == 'ERROR' or r.estado == 'OMITIDA' %}
                 {% if r.decision == 'aceptada' %}
