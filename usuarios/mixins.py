@@ -143,11 +143,24 @@ class AuditoriaRequiredMixin(NoAccesoMixin, UserPassesTestMixin):
         return puede_ver_auditoria(self.request.user)
 
 
+def usuario_ve_todas_dependencias(user):
+    """Si 'user' puede ver información de TODAS las dependencias (Padrón,
+    Plazas, Cargas, Reportes...) sin quedar limitado a la suya — igual que
+    un administrador en cuanto a ALCANCE de lectura, pero sin ganar ninguna
+    otra facultad de administrador (catálogos, usuarios, Permisos por Rol
+    siguen exigiendo es_administrador aparte). El administrador siempre la
+    tiene; para cualquier otro rol depende de la opción 'ver_todas_dependencias'
+    en Permisos por Rol (sin fila = sin permiso, como el resto de opciones)."""
+    return user.is_authenticated and (user.es_administrador or usuario_tiene_permiso(user, 'ver_todas_dependencias'))
+
+
 def filtrar_por_dependencia(qs, user, lookup='dependencia'):
-    """Limita qs a la dependencia del usuario, salvo que sea administrador
-    (que ve todo). 'lookup' es la ruta del filtro, p.ej. 'dependencia',
-    'proyecto__dependencia' o 'informacion_basica__dependencia'."""
-    if user.is_authenticated and user.es_administrador:
+    """Limita qs a la dependencia del usuario, salvo que tenga alcance de
+    'ver todas las dependencias' (administrador, o el permiso configurable
+    'ver_todas_dependencias' — ver usuario_ve_todas_dependencias). 'lookup'
+    es la ruta del filtro, p.ej. 'dependencia', 'proyecto__dependencia' o
+    'informacion_basica__dependencia'."""
+    if usuario_ve_todas_dependencias(user):
         return qs
     return qs.filter(**{lookup: getattr(user, 'dependencia_id', None)})
 

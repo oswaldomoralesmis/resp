@@ -2,7 +2,7 @@
 from datetime import date
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from django.db.models import Avg, Count, ExpressionWrapper, F, IntegerField, Q, Value
+from django.db.models import Avg, Count, ExpressionWrapper, F, IntegerField, Prefetch, Q, Value
 from django.db.models.functions import Cast, Substr
 from django.http import HttpResponse
 from servidores.models import (
@@ -669,31 +669,105 @@ def exportar_excel(request, tipo):
 
     if tipo == 'padron':
         ws.title = 'Padrón RESP'
-        headers = ['Expediente', 'RFC', 'CURP', 'Nombre', 'Primer Apellido', 'Segundo Apellido',
-                   'Fecha Nacimiento', 'Género', 'Correo Institucional', 'ISS', 'NSS', 'Activo']
+        headers = [
+            'Expediente', 'RFC', 'CURP', 'Nombre', 'Primer Apellido', 'Segundo Apellido',
+            'Fecha Nacimiento', 'Género', 'Estado Civil', 'Entidad de Nacimiento', 'País de Nacimiento',
+            'Correo Institucional', 'ISS', 'NSS', '¿Sindicalizado?', 'Sindicato', '¿Tiene Otra Plaza?',
+            'Nivel de Escolaridad', 'Pueblo Indígena/Afromexicano', 'Discapacidad',
+            'Dependencia', 'Unidad Administrativa', 'Programa', 'Proyecto', 'ID Plaza', 'Categoría',
+            'Descripción del Puesto', 'Tipo de Contratación', 'Tipo de Personal', 'Nivel de Estructura',
+            'Estatus de Plaza', 'Determinante', 'Total Percepciones', 'Total Bonos', 'Total Neto',
+            'Fecha Ingreso al Gobierno', 'Fecha Ingreso a la Dependencia', 'Fecha Ingreso al Puesto',
+            'Quincena (del periodo vigente)', 'Activo',
+        ]
         for col, h in enumerate(headers, 1):
             cell = ws.cell(row=1, column=col, value=h)
             cell.fill = header_fill
             cell.font = header_font
             cell.alignment = Alignment(horizontal='center')
+        # La "fotografía" vigente (InformacionBasica.activo=True) trae todo lo
+        # de dependencia/plaza/sueldo — se precarga con Prefetch (no es FK
+        # directa: un servidor puede tener más de una InformacionBasica activa
+        # si ocupa dos plazas a la vez; se usa la primera como representativa,
+        # igual criterio ya tolerado en el resto del Padrón). select_related
+        # de un lado y prefetch_related del otro evitan N+1 por cada columna.
         servidores_export = filtrar_por_dependencia(
-            ServidorPublico.objects.filter(activo=True), request.user, 'informacion_basica__dependencia_id'
+            ServidorPublico.objects.filter(activo=True).select_related(
+                'estado_civil', 'entidad_nacimiento', 'pais_nacimiento', 'sindicato',
+                'datos_complementarios__nivel_escolaridad', 'datos_complementarios__pueblo_indigena',
+            ).prefetch_related(
+                Prefetch(
+                    'informacion_basica',
+                    queryset=InformacionBasica.objects.filter(activo=True).select_related(
+                        'dependencia', 'unidad', 'programa', 'proyecto', 'categoria',
+                        'nombramiento', 'tipo_personal', 'nivel_estructura', 'estatus_plaza',
+                    ).order_by('-quincena'),
+                    to_attr='informacion_activa_prefetch',
+                ),
+                Prefetch(
+                    'discapacidades',
+                    queryset=DiscapacidadServidor.objects.exclude(discapacidad__clave__in=[0, 6]).select_related('discapacidad'),
+                    to_attr='discapacidades_prefetch',
+                ),
+            ),
+            request.user, 'informacion_basica__dependencia_id'
         ).distinct()
-        for row, s in enumerate(servidores_export, 2):
-            ws.cell(row=row, column=1, value=s.expediente)
-            ws.cell(row=row, column=2, value=s.rfc)
-            ws.cell(row=row, column=3, value=s.curp)
-            ws.cell(row=row, column=4, value=s.nombre)
-            ws.cell(row=row, column=5, value=s.primer_apellido)
-            ws.cell(row=row, column=6, value=s.segundo_apellido or '')
-            ws.cell(row=row, column=7, value=str(s.fecha_nacimiento))
-            ws.cell(row=row, column=8, value=s.sexo)
-            ws.cell(row=row, column=9, value=s.correo_institucional)
-            ws.cell(row=row, column=10, value=s.iss)
-            ws.cell(row=row, column=11, value=s.nss)
-            ws.cell(row=row, column=12, value='Sí' if s.activo else 'No')
+        servidores_export = list(servidores_export)
 
-        LogExportacion.registrar(request.user, 'padron', 'Padrón de Servidores Públicos', servidores_export.count())
+        def _fecha(d):
+            return str(d) if d else ''
+
+        # 'Descripción del Puesto' vive en Puesto, no en InformacionBasica (es
+        # propia de la PLAZA, igual que Determinante — ver Puesto.descripcion_puesto)
+        # y no hay FK directa entre ambas tablas (solo comparten id_plaza como
+        # texto), así que se resuelve en un solo lote por fuera del for para no
+        # hacer una consulta de Puesto por cada servidor.
+        ids_plaza = {
+            s.informacion_activa_prefetch[0].id_plaza
+            for s in servidores_export if s.informacion_activa_prefetch
+        }
+        descripciones_puesto = dict(
+            Puesto.objects.filter(id_plaza__in=ids_plaza).values_list('id_plaza', 'descripcion_puesto')
+        )
+
+        for row, s in enumerate(servidores_export, 2):
+            info = s.informacion_activa_prefetch[0] if s.informacion_activa_prefetch else None
+            descripcion_puesto = descripciones_puesto.get(info.id_plaza, '') if info else ''
+            discapacidades_txt = ', '.join(
+                d.discapacidad.descripcion for d in s.discapacidades_prefetch
+            )
+            datos_c = getattr(s, 'datos_complementarios', None)
+            valores = [
+                s.expediente, s.rfc, s.curp, s.nombre, s.primer_apellido, s.segundo_apellido or '',
+                _fecha(s.fecha_nacimiento), s.sexo, str(s.estado_civil) if s.estado_civil else '',
+                str(s.entidad_nacimiento) if s.entidad_nacimiento else '', str(s.pais_nacimiento) if s.pais_nacimiento else '',
+                s.correo_institucional, s.iss, s.nss,
+                'Sí' if s.sindicalizado == 'S' else 'No', str(s.sindicato) if s.sindicato else '',
+                'Sí' if s.tiene_otra_plaza == 'S' else 'No',
+                str(datos_c.nivel_escolaridad) if datos_c and datos_c.nivel_escolaridad else '',
+                str(datos_c.pueblo_indigena) if datos_c and datos_c.pueblo_indigena else '',
+                discapacidades_txt,
+                str(info.dependencia) if info else '', str(info.unidad) if info and info.unidad else '',
+                str(info.programa) if info and info.programa else '', str(info.proyecto) if info and info.proyecto else '',
+                info.id_plaza if info else '', str(info.categoria) if info and info.categoria else '',
+                descripcion_puesto,
+                str(info.nombramiento) if info and info.nombramiento else '',
+                str(info.tipo_personal) if info and info.tipo_personal else '',
+                str(info.nivel_estructura) if info and info.nivel_estructura else '',
+                str(info.estatus_plaza) if info and info.estatus_plaza else '',
+                info.determinante if info else '',
+                float(info.total_percepciones) if info else '', float(info.total_bonos) if info else '',
+                float(info.total_neto) if info else '',
+                _fecha(info.fecha_ingreso_gobierno) if info else '',
+                _fecha(info.fecha_ingreso_dependencia) if info else '',
+                _fecha(info.fecha_ingreso_puesto) if info else '',
+                info.quincena if info else '',
+                'Sí' if s.activo else 'No',
+            ]
+            for col, valor in enumerate(valores, 1):
+                ws.cell(row=row, column=col, value=valor)
+
+        LogExportacion.registrar(request.user, 'padron', 'Padrón de Servidores Públicos', len(servidores_export))
 
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'

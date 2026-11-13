@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
-from reportlab.lib.pagesizes import letter
+from reportlab.lib.pagesizes import landscape, letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.platypus import (
@@ -45,7 +45,7 @@ def _estilos():
     return base
 
 
-def _tabla_datos(filas, col_widths=(5 * cm, 11 * cm)):
+def _tabla_datos(filas, col_widths=(6 * cm, 17.9 * cm)):
     t = Table(filas, colWidths=col_widths, hAlign='LEFT')
     t.setStyle(TableStyle([
         ('FONTSIZE', (0, 0), (-1, -1), 9),
@@ -63,7 +63,7 @@ def generar_comprobante_pdf(carga):
     """Devuelve los bytes del PDF de comprobante para 'carga'."""
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
-        buffer, pagesize=letter,
+        buffer, pagesize=landscape(letter),
         topMargin=1.5 * cm, bottomMargin=1.5 * cm, leftMargin=2 * cm, rightMargin=2 * cm,
     )
     estilos = _estilos()
@@ -91,7 +91,7 @@ def generar_comprobante_pdf(carga):
     resumen = Table([
         ['Total de registros', 'Correctos', 'Con error / omitidos'],
         [str(carga.registros_totales), str(carga.registros_ok), str(carga.registros_error)],
-    ], colWidths=(5.3 * cm, 5.3 * cm, 5.4 * cm), hAlign='LEFT')
+    ], colWidths=(7.97 * cm, 7.97 * cm, 7.96 * cm), hAlign='LEFT')
     resumen.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), AZUL_INSTITUCIONAL),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
@@ -150,13 +150,17 @@ def generar_comprobante_pdf(carga):
                 detalle = f'{detalle} | {decision_txt}' if detalle else decision_txt
             datos.append([
                 str(f.get('fila', '')),
-                f.get('rfc') or '—',
+                # RFC como Paragraph, no texto plano: un texto plano en una
+                # celda de Table no se ajusta a colWidths — si no entra en el
+                # ancho de la columna se dibuja encimado sobre la celda
+                # siguiente (Nombre) en vez de hacer salto de línea/recorte.
+                Paragraph(f.get('rfc') or '—', estilo_celda),
                 Paragraph(f.get('nombre') or '—', estilo_celda),
                 f.get('estado', ''),
                 Paragraph(detalle, estilo_celda),
             ])
         tabla_err = Table(
-            datos, colWidths=(1.1 * cm, 2.6 * cm, 3 * cm, 1.8 * cm, 7.5 * cm),
+            datos, colWidths=(1.3 * cm, 3.2 * cm, 5.5 * cm, 2.3 * cm, 11.6 * cm),
             hAlign='LEFT', repeatRows=1,
         )
         tabla_err.setStyle(TableStyle([

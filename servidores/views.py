@@ -30,7 +30,7 @@ from cargas.models import PeriodoCarga, CargaLayout, periodo_vigente_hoy, ventan
 from usuarios.mixins import (
     DependenciaScopedMixin, filtrar_por_dependencia, admin_requerido,
     PermisoRequeridoMixin, PermisoEdicionRequeridoMixin, permiso_requerido,
-    AuditoriaRequiredMixin,
+    AuditoriaRequiredMixin, usuario_ve_todas_dependencias,
 )
 from django.core.exceptions import PermissionDenied
 
@@ -184,7 +184,7 @@ class ServidorListView(LoginRequiredMixin, PermisoRequeridoMixin, ListView):
         # activo=True aquí lo dejaría invisible incluso para su propia
         # dependencia al buscarlo como inactivo/baja.
         user = self.request.user
-        if not user.es_administrador:
+        if not usuario_ve_todas_dependencias(user):
             qs = qs.filter(informacion_basica__dependencia_id=user.dependencia_id)
         q = self.request.GET.get('q', '')
         if q:
